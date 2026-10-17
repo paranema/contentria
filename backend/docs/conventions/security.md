@@ -136,7 +136,7 @@ If `SameSite` were set to `Strict` instead of `Lax`, the cookies would **not** b
 
 ### Never Expose in Logs or Responses
 
-See [Logging Conventions](logging-conventions.md) for the full list. Summary:
+See [Logging Conventions](logging.md) for the full list. Summary:
 
 - Token values (JWT, refresh token, API keys)
 - Passwords (raw or hashed)
