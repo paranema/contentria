@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 /**
  * Long-running worker that transcodes uploaded videos. The work queue is Cloudflare
  * Queue, which this app pulls directly via an `http_pull` consumer (see
- * `backend/docs/cloudflare/video-pipeline.md`). It accesses the `videos` table with
+ * `backend/docs/operations/cloudflare-video-pipeline.md`). It accesses the `videos` table with
  * JdbcTemplate (no dependency on blog-api's JPA entity), mirroring `blog-batch`.
  *
  * Component scan is scoped to this module so blog-common's web/JPA beans are not pulled in.

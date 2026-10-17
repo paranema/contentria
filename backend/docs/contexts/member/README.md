@@ -17,8 +17,8 @@
 
 | 문서 | 다루는 것 |
 |---|---|
-| [architecture/03-bounded-contexts.md](../../architecture/03-bounded-contexts.md) | account와 profile을 나눈 이유 |
-| [security-conventions.md](../../security-conventions.md) | 토큰, 쿠키, 비밀번호 해싱, 응답 규약 |
+| [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md) | account와 profile을 나눈 이유 |
+| [conventions/security.md](../../conventions/security.md) | 토큰, 쿠키, 비밀번호 해싱, 응답 규약 |
 
-비밀번호 저장 방식이나 토큰 수명 같은 횡단 관심사는 `security-conventions.md`에 있다.
+비밀번호 저장 방식이나 토큰 수명 같은 횡단 관심사는 `conventions/security.md`에 있다.
 이 디렉터리에는 account 컨텍스트에만 해당하는 규칙을 둔다.

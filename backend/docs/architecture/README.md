@@ -8,7 +8,7 @@
 |---|---|
 | [01-module-structure.md](01-module-structure.md) | Gradle 모듈 구성, 모듈을 나누는 기준 |
 | [02-hexagonal-architecture.md](02-hexagonal-architecture.md) | 레이어 정의, 패키지 구조, 의존 방향 |
-| [03-bounded-contexts.md](03-bounded-contexts.md) | 바운디드 컨텍스트 목록, 컨텍스트 간 통신 규칙 |
+| [03-bounded-contexts.md](../strategic/03-bounded-contexts.md) | 바운디드 컨텍스트 목록, 컨텍스트 간 통신 규칙 |
 | [04-persistence-conventions.md](04-persistence-conventions.md) | 엔티티 작성 규칙, 식별자 전략, 공통 필드 |
 
 ## 요약

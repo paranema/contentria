@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
           // Prevent MIME-sniffing. If a response is served with an incorrect Content-Type,
           // the browser must not re-interpret it based on content (e.g. rendering a
           // disguised HTML file as a script). Complements server-side magic number
-          // validation for uploaded images (see backend/docs/media-upload-hardening.md).
+          // validation for uploaded images (see backend/docs/design-notes/media-upload-hardening.md).
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',

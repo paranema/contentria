@@ -96,7 +96,7 @@
 | 가입 시 중복 응답 | 409로 알린다. 어떤 공급자로 가입됐는지도 알려준다 | 앱 |
 | 이메일 정규화 | 앞뒤 공백 제거 + 소문자. **점이나 `+` 이후는 제거하지 않는다** | 도메인 |
 
-비밀번호 해싱, 토큰 수명, 쿠키 속성은 [security-conventions.md](../../security-conventions.md)를 따른다.
+비밀번호 해싱, 토큰 수명, 쿠키 속성은 [conventions/security.md](../../conventions/security.md)를 따른다.
 
 ## 왜 이렇게 정했나
 
