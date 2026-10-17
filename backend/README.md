@@ -18,7 +18,7 @@ backend/
 │
 ├── build-logic/          Gradle 컨벤션 플러그인
 ├── gradle/               의존성 버전 카탈로그(libs.versions.toml), Gradle wrapper
-└── docs/
+└── docs/                 설계 문서. 색인과 읽는 순서는 docs/README.md
 ```
 
 ### 모듈 의존 관계
@@ -49,14 +49,14 @@ com.contentria.api.<도메인>/
 
 ### 헥사고날 모듈 패키지
 
-최상위 패키지는 계층이 아니라 도메인(바운디드 컨텍스트)이다.
+최상위 패키지는 계층이 아니라 바운디드 컨텍스트다. 컨텍스트 목록은 [docs/strategic/03-bounded-contexts.md](docs/strategic/03-bounded-contexts.md)에 있다.
 
 ```
-com.contentria.core.<도메인>/
+com.contentria.core.<컨텍스트>/
 ├── domain/               도메인 모델, 비즈니스 규칙
 ├── application/
-│   ├── provided/         인바운드 포트. 이 도메인이 외부에 제공하는 유스케이스
-│   └── required/         아웃바운드 포트. 이 도메인이 필요로 하는 외부 기능 (저장, 외부 API 등)
+│   ├── provided/         인바운드 포트. 이 컨텍스트가 외부에 제공하는 유스케이스
+│   └── required/         아웃바운드 포트. 이 컨텍스트가 필요로 하는 외부 기능 (저장, 외부 API, 다른 컨텍스트)
 └── adapter/
     └── required/         아웃바운드 포트 구현 (JPA, 외부 API 클라이언트)
 
@@ -66,7 +66,7 @@ com.contentria.core.shared/
 └── persistence/          엔티티 공통 필드, JPA 설정
 ```
 
-`app/*`는 모듈 전체가 인바운드 어댑터다. 컨트롤러와 배치 잡이 `core`의 인바운드 포트를 호출한다. 패키지는 `com.contentria.api.<도메인>`처럼 도메인 단위로 나눈다.
+`app/*`는 모듈 전체가 인바운드 어댑터다. 컨트롤러와 배치 잡이 `core`의 인바운드 포트를 호출한다. 패키지는 `com.contentria.api.<컨텍스트>`처럼 컨텍스트 단위로 나눈다.
 
 ## 빌드와 실행
 

@@ -20,11 +20,12 @@ core/src/main/kotlin/com/contentria/
 │   ├── id/                  식별자 생성
 │   └── exception/           공통 예외 계층
 │
-├── account/
+├── member/
 │   ├── domain/
 │   │   ├── Account.kt
 │   │   ├── Credential.kt
-│   │   └── AccountStatus.kt
+│   │   ├── AccountStatus.kt
+│   │   └── Profile.kt
 │   ├── application/
 │   │   ├── port/
 │   │   │   ├── in/          유스케이스 인터페이스, 커맨드, 결과 DTO
@@ -35,10 +36,14 @@ core/src/main/kotlin/com/contentria/
 │           ├── persistence/ JpaRepository, PersistenceAdapter
 │           └── crypto/      PasswordHasher 구현
 │
-├── profile/
-├── blog/
-└── post/
+├── publishing/
+├── interaction/
+├── media/
+├── analytics/
+└── notification/
 ```
+
+컨텍스트 목록은 [strategic/03-bounded-contexts.md](../strategic/03-bounded-contexts.md)를 따른다.
 
 `in`은 Kotlin 키워드이므로 코드에서 백틱으로 감싼다.
 
@@ -56,11 +61,10 @@ app/api/src/main/kotlin/com/contentria/api/
 ├── ApiApplication.kt
 ├── config/
 ├── security/                SecurityConfig, JWT 필터
-├── account/
+├── member/
 │   ├── AccountController.kt
 │   └── dto/
-├── post/
-└── blog/
+└── publishing/
 ```
 
 ```

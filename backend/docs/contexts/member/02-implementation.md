@@ -28,6 +28,14 @@
 
 `Account`가 루트, `Credential`과 `Role`이 멤버다. `Credential`은 `Account`를 통해서만 도달한다.
 
+`Profile`은 별도 애그리거트다. 식별자는 계정 ID와 같은 값을 쓴다.
+다른 컨텍스트는 이미 계정 ID를 작성자나 소유자 참조로 들고 있으므로, 그 ID로 프로필을 바로 읽는다.
+
+`Account`와 한 애그리거트로 합치지 않는 이유는 읽는 쪽이 다르기 때문이다.
+프로필은 글과 댓글을 보여줄 때마다 누구나 읽고, 계정은 인증할 때 본인만 읽는다.
+한 애그리거트로 두면 프로필을 읽을 때 이메일과 권한이 함께 로딩된다.
+두 애그리거트는 가입 유스케이스에서 한 트랜잭션으로 함께 만든다. 같은 컨텍스트 안이므로 허용한다.
+
 **가입 시도는 계정 애그리거트가 아니다.** 아직 계정이 아니고 계정 불변식과 무관하다.
 만료가 있는 임시 데이터이므로 캐시여도 되고 테이블이어도 된다.
 
@@ -38,6 +46,9 @@
 | `accounts.email` UNIQUE | 한 이메일에 계정 하나 |
 | `credentials(account_id, provider)` UNIQUE | 한 계정에 같은 공급자 하나 |
 | `credentials(provider, provider_user_id)` UNIQUE | 한 소셜 신원은 계정 하나에만 |
+| `profiles.display_name` UNIQUE | 표시 이름 중복 금지 |
+
+"프로필은 계정이 있어야 존재한다"를 보증하는 DB 제약은 아직 없다. 아래 "현재 코드와의 차이"를 참고한다.
 
 로컬 자격증명의 `provider_user_id`는 NULL이다. PostgreSQL은 UNIQUE 비교에서 NULL을
 서로 다른 값으로 취급하므로 충돌하지 않는다.
@@ -60,10 +71,12 @@
 
 ## 현재 코드와의 차이
 
-`core/src/main/kotlin/com/contentria/core/account/domain/` 기준이다.
+`core/src/main/kotlin/com/contentria/core/account/domain/`, `core/.../profile/domain/` 기준이다.
 
 | 항목 | 현재 | 필요한 변경 |
 |---|---|---|
+| 패키지 | `core.account`, `core.profile`로 나뉘어 있다 | `core.member` 하나로 합친다 |
+| profiles와 accounts 사이의 FK | `SchemaMappingTest`가 "컨텍스트 경계를 넘는 외래키"라는 이유로 profiles가 걸린 FK가 없음을 검증한다. 반면 `Profile.create`의 주석은 FK가 존재를 보증한다고 적고 있다 | 같은 컨텍스트가 되었으므로 테스트의 근거를 "애그리거트 사이에는 연관관계 매핑을 하지 않는다"로 바꾼다. DB 수준 FK를 둘지는 스키마 이전 때 정하고, 정한 뒤 주석을 맞춘다 |
 | `AccountStatus` | `UNVERIFIED` 포함 | 제거. 미확인 계정이 존재하지 않는다 |
 | `verifyEmail()` | 있음 | 제거. 확인은 계정 생성 전에 끝난다 |
 | `registerWithPassword` | 원문 비밀번호와 해셔를 받는다 | 해시를 받는다. 원문은 가입 유스케이스에만 존재 |
