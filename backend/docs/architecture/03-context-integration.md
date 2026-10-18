@@ -14,7 +14,7 @@
 ## 호출 규칙
 
 1. 상대 컨텍스트의 `-api` 모듈에 있는 포트만 호출한다. 상대의 `-core`는 의존성에 없으므로 참조할 수 없다([01-module-structure.md](01-module-structure.md)).
-2. 상대를 호출하는 코드는 번역 계층 한 곳에 모은다. 헥사고날은 `adapter/required/<상대>/`, 레이어드는 `client/`다([02-internal-architecture.md](02-internal-architecture.md)).
+2. 상대를 호출하는 코드는 번역 계층 한 곳에 모은다. 헥사고날은 `adapter/required/<상대>/`, 레이어드는 `infra/client/`다([02-internal-architecture.md](02-internal-architecture.md)).
 3. 번역 계층은 상대의 타입을 자기 타입으로 바꿔서 돌려준다. 번역 계층 밖에 상대 컨텍스트의 타입이 나타나지 않는다.
 4. 화면에 보여주기 위한 조합은 `apps/*`의 `composition`에서 한다. 컨텍스트는 표시 목적만으로 다른 컨텍스트를 호출하지 않는다.
 
@@ -133,7 +133,7 @@ class PostDetailQuery(
 |---|---|
 | 위치 | 발행 컨텍스트 스키마의 `outbox_event` 테이블 ([04-persistence-conventions.md](04-persistence-conventions.md)) |
 | 기록 | 애그리거트를 저장하는 트랜잭션 안에서 기록한다. Kafka에 직접 보내지 않는다 |
-| 기록하는 코드 | 헥사고날은 `application/required`의 이벤트 발행 포트를 `adapter/required/messaging`이 구현한다. 레이어드는 서비스가 `platform/messaging`의 기록기를 직접 쓴다 |
+| 기록하는 코드 | 헥사고날은 `application/required`의 이벤트 발행 포트를 `adapter/required/messaging`이 구현한다. 레이어드는 `application`이 `platform/messaging`의 기록기를 직접 쓴다 |
 
 ```kotlin
 // publishing-core: application/service/PostCommandService.kt
@@ -195,7 +195,7 @@ fun publish(command: PublishPostCommand) {
 
 | 항목 | 규칙 | 예 |
 |---|---|---|
-| 위치 | 소비 컨텍스트의 진입점. 헥사고날은 `adapter/provided/messaging`, 레이어드는 `messaging` | |
+| 위치 | 소비 컨텍스트의 진입점. 헥사고날은 `adapter/provided/messaging`, 레이어드는 `presentation/messaging` | |
 | 소비자 그룹 | `<소비 컨텍스트>.<소비자 이름>` | `interaction.post-deleted` |
 | 중복 제거 | 처리와 같은 트랜잭션에서 소비 컨텍스트 스키마의 `inbox_event`에 `(eventId, 소비자)`를 기록한다. 이미 있으면 처리하지 않고 넘어간다 | |
 | 오프셋 커밋 | 처리 트랜잭션이 커밋된 뒤 | |
@@ -203,7 +203,7 @@ fun publish(command: PublishPostCommand) {
 | 거르기 | 같은 토픽의 다른 이벤트 종류는 `type`을 보고 무시한다 | |
 
 ```kotlin
-// interaction-core: messaging/PostDeletedConsumer.kt (레이어드)
+// interaction-core: presentation/messaging/PostDeletedConsumer.kt (레이어드)
 @Component
 class PostDeletedConsumer(
     private val inbox: Inbox,                                   // platform/messaging
