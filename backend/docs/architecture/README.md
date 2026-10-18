@@ -28,6 +28,6 @@
 
 문서에 적힌 규칙 중 기계적으로 검증 가능한 것은 Gradle 의존성과 ArchUnit 테스트로 강제한다.
 
-현재 상태: `apps/api/src/test/kotlin/com/contentria/app/api/ArchitectureTest.kt`가 있으나 규칙이 모두 주석 처리되어 있다. 경계 강제 단계에서 [02-internal-architecture.md](02-internal-architecture.md)의 규칙으로 다시 작성한다.
+규칙은 `platform/architecture-rules`에 있고, 각 컨텍스트(`MemberArchitectureTest`)와 app(`apps/api`의 `ArchitectureTest`)이 테스트에서 불러 쓴다. 구현과 자체 검증 방법은 [02-internal-architecture.md](02-internal-architecture.md)의 "ArchUnit"에 있다.
 
 규칙을 바꿔야 할 상황이 생기면 테스트를 우회하지 말고 문서와 테스트를 함께 수정한다.

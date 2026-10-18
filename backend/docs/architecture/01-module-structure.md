@@ -11,7 +11,8 @@ backend/
 ├── build-logic/                 Gradle 컨벤션 플러그인
 ├── shared-kernel/               모든 컨텍스트가 쓰는 공통 기반. 도메인 개념 없음
 ├── platform/                    기술 라이브러리
-│   └── messaging/               아웃박스, 릴레이, 인박스
+│   ├── messaging/               아웃박스, 릴레이, 인박스
+│   └── architecture-rules/      아키텍처 규칙. 테스트 전용
 ├── contexts/
 │   ├── member/
 │   │   ├── member-api/
@@ -41,7 +42,7 @@ backend/
 | 모듈 | 담는 것 | 담지 않는 것 |
 |---|---|---|
 | `shared-kernel` | 식별자 생성, 예외 기반 타입, 영속성 기반 클래스, 이벤트 봉투 | 도메인 개념. 특정 컨텍스트만 쓰는 코드 |
-| `platform/*` | 여러 컨텍스트가 쓰는 기술 구현 (아웃박스 기록, 릴레이, 인박스) | 도메인 개념 |
+| `platform/*` | 여러 컨텍스트가 쓰는 기술 구현 (아웃박스 기록, 릴레이, 인박스). 테스트 전용 아키텍처 규칙 | 도메인 개념 |
 | `<컨텍스트>-api` | 다른 컨텍스트에 공개하는 조회 포트, 그 입출력 DTO, 이벤트 | 구현. Spring 의존 |
 | `<컨텍스트>-core` | 그 컨텍스트의 전부. 도메인, 유스케이스, 진입점(웹, 메시지 소비, 배치 잡), 저장소, 외부 연동, 마이그레이션 | 다른 컨텍스트의 구현 |
 | `apps/*` | 프로세스 기동, 조립, 요청 인증, 화면 조합 | 도메인 로직 |
@@ -206,7 +207,7 @@ apps/api/src/main/kotlin/com/contentria/app/api/
 | 플러그인 | 적용 대상 | 역할 | 상태 |
 |---|---|---|---|
 | `contentria-kotlin-common-conventions` | 전체 | 툴체인, 테스트, 컴파일 옵션 | 있음 |
-| `contentria-kotlin-library-conventions` | `<컨텍스트>-api`, `shared-kernel` | Spring Boot 플러그인 없이 BOM으로 버전만 관리. Spring 런타임에 의존하지 않는다 | 있음 |
+| `contentria-kotlin-library-conventions` | `<컨텍스트>-api`, `shared-kernel`, `platform/architecture-rules` | Spring Boot 플러그인 없이 BOM으로 버전만 관리. Spring 런타임에 의존하지 않는다 | 있음 |
 | `contentria-spring-library-conventions` | `<컨텍스트>-core`, `platform/*` | Boot 플러그인, bootJar 비활성화 | 있음 |
 | `contentria-jpa-conventions` | 저장소를 가진 `<컨텍스트>-core`, `shared-kernel` | noarg, allOpen | 있음 |
 | `contentria-spring-boot-app-conventions` | `apps/*` | Boot 플러그인 | 있음 |
@@ -241,6 +242,7 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | `contexts/member` | `member-core`에 도메인 모델(계정, 프로필)만 있음. `member-api`는 비어 있음 |
 | `contexts/publishing`, `interaction`, `media`, `analytics`, `notification` | 없음 |
 | `platform/messaging` | 없음 |
+| `platform/architecture-rules` | 있음. 헥사고날 규칙과 app 규칙. 레이어드 규칙은 없음 |
 | `apps/api` | 있음. 조립만 함 (member) |
 | `apps/batch` | 있음. 잡 없음 |
 | `apps/worker`, `apps/migrator` | 없음 |

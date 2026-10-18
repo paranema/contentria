@@ -223,6 +223,37 @@ presentation ─→ application ─→ domain ←─ infra/persistence
 
 ## ArchUnit
 
+### 구현
+
+규칙은 테스트 전용 모듈 `platform/architecture-rules`에 컨텍스트 이름을 받는 함수로 구현했다. 각 컨텍스트와 app은 그 함수를 불러 쓴다.
+
+| 위치 | 내용 |
+|---|---|
+| `ContextRules.forHexagonal(context)` | 모든 컨텍스트 공통 규칙 + 헥사고날 규칙 |
+| `ContextRules.forEveryContext(context, structure)` | 모든 컨텍스트 공통 규칙 |
+| `AppRules.forApps()` | app 규칙 |
+| `ContextRulesTest` | 규칙마다 어기는 픽스처는 실패하고 지키는 픽스처는 통과하는지 검증한다 |
+
+```kotlin
+// contexts/member/member-core/src/test/.../MemberArchitectureTest.kt
+@AnalyzeClasses(packages = ["com.contentria.member"], importOptions = [ImportOption.DoNotIncludeTests::class])
+class MemberArchitectureTest {
+    @ArchTest
+    val hexagonal: ArchRule = CompositeArchRule.of(ContextRules.forHexagonal("member"))
+}
+```
+
+자체 검증 테스트를 둔 이유: 규칙이 아무 클래스에도 걸리지 않으면(패키지 이름 오타, 클래스 파일 버전을 읽지 못하는 경우 등) 위반이 없다고 조용히 통과한다.
+
+아래 예시와 실제 구현의 차이는 다음과 같다.
+
+| 항목 | 예시 | 구현 |
+|---|---|---|
+| 헥사고날 domain | 웹, 저장소, 보안 기술을 금지하는 목록 | 허용 목록. `java`, `kotlin`, `org.jetbrains.annotations`, `jakarta.persistence`, `com.contentria.shared`, 자기 `domain`만 허용한다 |
+| app | `-api`와 설정 클래스만 사용 | 위에 더해 `@Entity` 금지 |
+| 레이어드 규칙 | 있음 | 아직 없다. 첫 레이어드 컨텍스트를 만들 때 자체 검증 테스트와 함께 추가한다 |
+| 빈 대상 | | 모든 규칙이 대상 클래스가 없어도 통과한다. 컨텍스트는 계층이 하나씩 늘어나기 때문이다 |
+
 ### 모든 컨텍스트
 
 ```kotlin
@@ -313,7 +344,6 @@ val 진입점은_서비스_구현체를_모른다: ArchRule =
         .should().dependOnClassesThat().resideInAPackage("com.contentria.publishing.application.service..")
 ```
 
-규칙이 컨텍스트마다 반복되므로, 구현할 때 컨텍스트 이름을 받는 공통 규칙 함수로 만든다.
 
 ## 결정과 이유
 

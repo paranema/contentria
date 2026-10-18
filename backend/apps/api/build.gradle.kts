@@ -9,4 +9,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
 
     runtimeOnly("org.postgresql:postgresql")
+
+    testImplementation(project(":platform:architecture-rules"))
+    testImplementation(libs.archunit.junit5)
 }
