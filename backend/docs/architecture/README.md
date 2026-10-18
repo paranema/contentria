@@ -12,7 +12,7 @@
 | [01-module-structure.md](01-module-structure.md) | 디렉터리와 Gradle 모듈 구성, 의존 규칙, 조립 방식, 서비스 분리 시 바뀌는 것 |
 | [02-internal-architecture.md](02-internal-architecture.md) | 컨텍스트 내부 구조(헥사고날, 레이어드)를 고르는 기준과 각 구조의 규칙 |
 | [03-context-integration.md](03-context-integration.md) | 컨텍스트 간 조회, 이벤트(Kafka, 아웃박스, 인박스), 트랜잭션 규칙 |
-| [04-persistence-conventions.md](04-persistence-conventions.md) | 컨텍스트별 스키마, DB 롤, 마이그레이션(Flyway), 아웃박스·인박스 테이블, 기존 데이터 이전. 엔티티 작성 규칙은 작성 예정 |
+| [04-persistence-conventions.md](04-persistence-conventions.md) | 데이터베이스, 컨텍스트별 스키마, DB 롤, 마이그레이션(Flyway), 아웃박스·인박스 테이블. 엔티티 작성 규칙은 작성 예정 |
 
 ## 요약
 
@@ -28,6 +28,6 @@
 
 문서에 적힌 규칙 중 기계적으로 검증 가능한 것은 Gradle 의존성과 ArchUnit 테스트로 강제한다.
 
-현재 상태: `app/api/src/test/kotlin/com/contentria/api/ArchitectureTest.kt`가 있으나 규칙이 모두 주석 처리되어 있다. 새 모듈 구조로 옮길 때 [02-internal-architecture.md](02-internal-architecture.md)의 규칙으로 다시 작성한다.
+현재 상태: `apps/api/src/test/kotlin/com/contentria/app/api/ArchitectureTest.kt`가 있으나 규칙이 모두 주석 처리되어 있다. 경계 강제 단계에서 [02-internal-architecture.md](02-internal-architecture.md)의 규칙으로 다시 작성한다.
 
 규칙을 바꿔야 할 상황이 생기면 테스트를 우회하지 말고 문서와 테스트를 함께 수정한다.

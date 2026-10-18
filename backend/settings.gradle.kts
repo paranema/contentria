@@ -7,10 +7,7 @@ pluginManagement {
 }
 
 rootProject.name = "backend"
-include("blog-common")
-include("blog-api")
-include("blog-batch")
-include("blog-worker")
 
-include("core")
-include("app:api", "app:batch")
+include("shared-kernel")
+include("contexts:member:member-api", "contexts:member:member-core")
+include("apps:api", "apps:batch")

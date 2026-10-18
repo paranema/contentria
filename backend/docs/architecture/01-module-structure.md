@@ -28,8 +28,10 @@ backend/
 │   ├── batch/
 │   ├── worker/
 │   └── migrator/
-└── blog-common/, blog-api/, blog-batch/, blog-worker/   레거시. 이전이 끝나면 삭제
+└── docs/
 ```
+
+레거시 모듈(`blog-*`)은 이 구조와 호환하지 않고 저장소에서 지웠다. 소스는 `legacy-final` 태그에 있다.
 
 `contexts/`, `contexts/<컨텍스트>/`, `apps/`, `platform/`은 모듈을 묶는 디렉터리다. `build.gradle.kts`를 두지 않는다.
 파일이 있으면 플러그인이 적용되어 빈 jar를 만들려다 빌드가 실패한다.
@@ -204,10 +206,12 @@ apps/api/src/main/kotlin/com/contentria/app/api/
 | 플러그인 | 적용 대상 | 역할 | 상태 |
 |---|---|---|---|
 | `contentria-kotlin-common-conventions` | 전체 | 툴체인, 테스트, 컴파일 옵션 | 있음 |
-| `contentria-context-api-conventions` | `<컨텍스트>-api` | Kotlin만. Spring 의존 금지 | 새로 만든다 |
-| `contentria-spring-library-conventions` | `<컨텍스트>-core`, `platform/*`, `shared-kernel` | Boot BOM, bootJar 비활성화 | 있음 |
+| `contentria-kotlin-library-conventions` | `<컨텍스트>-api`, `shared-kernel` | Spring Boot 플러그인 없이 BOM으로 버전만 관리. Spring 런타임에 의존하지 않는다 | 있음 |
+| `contentria-spring-library-conventions` | `<컨텍스트>-core`, `platform/*` | Boot 플러그인, bootJar 비활성화 | 있음 |
 | `contentria-jpa-conventions` | 저장소를 가진 `<컨텍스트>-core`, `shared-kernel` | noarg, allOpen | 있음 |
 | `contentria-spring-boot-app-conventions` | `apps/*` | Boot 플러그인 | 있음 |
+
+`gradle.properties`에서 Kotlin의 Build Tools API 경로를 끈다(`kotlin.compiler.runViaBuildToolsApi=false`). Kotlin 2.4.10에서 Spring Boot 플러그인이 없는 모듈을 컴파일할 때 NullPointerException이 나기 때문이다. Kotlin을 올릴 때 다시 확인한다.
 
 ## 서비스로 분리할 때
 
@@ -229,15 +233,17 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | 이벤트 | 바뀌지 않는다. 모놀리스에서도 Kafka로 주고받기 때문이다 |
 | `notification-api` 소비자 | 모노레포 안의 프로젝트 의존을 라이브러리 의존으로 바꾼다 |
 
-## 현재 코드와의 대응
+## 현재 상태
 
-| 현재 | 이동 후 |
+| 모듈 | 상태 |
 |---|---|
-| `core/.../core/account`, `core/.../core/profile` | `contexts/member/member-core` (`com.contentria.member`) |
-| `core/.../core/blog`, `core/.../core/post` (빈 디렉터리) | `contexts/publishing/publishing-core` |
-| `core/.../core/shared` | `shared-kernel` (`com.contentria.shared`) |
-| `app/api`, `app/batch` | `apps/api`, `apps/batch` |
-| 레거시 패키지 | [strategic/05-legacy-mapping.md](../strategic/05-legacy-mapping.md) |
+| `shared-kernel` | 있음. 식별자 생성, 예외 기반, `AuditableEntity` |
+| `contexts/member` | `member-core`에 도메인 모델(계정, 프로필)만 있음. `member-api`는 비어 있음 |
+| `contexts/publishing`, `interaction`, `media`, `analytics`, `notification` | 없음 |
+| `platform/messaging` | 없음 |
+| `apps/api` | 있음. 조립만 함 (member) |
+| `apps/batch` | 있음. 잡 없음 |
+| `apps/worker`, `apps/migrator` | 없음 |
 
 ## 검증
 

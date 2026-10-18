@@ -1,5 +1,7 @@
 # Media Upload Hardening
 
+> 레거시(`legacy-final` 태그) 구현의 기록이다. 새 구조에서 같은 기능을 만들 때 참고한다.
+
 > **Hardening** is a security term meaning "to reduce the attack surface and add defensive layers to a system." A feature may work correctly in its default state, but hardening ensures it remains secure against intentional misuse or unexpected input.
 
 | Before (default) | After (hardened) |

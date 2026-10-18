@@ -1,5 +1,7 @@
 # Cloudflare Setup — Video Transcoding Pipeline
 
+> 레거시(`legacy-final` 태그) 구현의 기록이다. 새 구조에서 같은 기능을 만들 때 참고한다.
+
 This is a self-contained runbook for the Cloudflare-side infrastructure of the video
 feature. The original upload lands in R2, R2 emits an event, and `blog-worker` learns
 about it by **pulling a Cloudflare Queue directly** over HTTP — there is no Cloudflare

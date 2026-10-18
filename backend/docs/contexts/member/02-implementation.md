@@ -71,11 +71,10 @@
 
 ## 현재 코드와의 차이
 
-`core/src/main/kotlin/com/contentria/core/account/domain/`, `core/.../profile/domain/` 기준이다.
+`contexts/member/member-core/src/main/kotlin/com/contentria/member/domain/` 기준이다.
 
 | 항목 | 현재 | 필요한 변경 |
 |---|---|---|
-| 모듈과 패키지 | `core` 모듈의 `com.contentria.core.account`, `com.contentria.core.profile`로 나뉘어 있다 | `contexts/member/member-core`의 `com.contentria.member` 하나로 합친다. 다른 컨텍스트에 공개할 조회 포트는 `member-api`로 옮긴다 |
 | profiles와 accounts 사이의 FK | `SchemaMappingTest`가 "컨텍스트 경계를 넘는 외래키"라는 이유로 profiles가 걸린 FK가 없음을 검증한다. 반면 `Profile.create`의 주석은 FK가 존재를 보증한다고 적고 있다 | 같은 컨텍스트가 되었으므로 테스트의 근거를 "애그리거트 사이에는 연관관계 매핑을 하지 않는다"로 바꾼다. DB 수준 FK를 둘지는 스키마 이전 때 정하고, 정한 뒤 주석을 맞춘다 |
 | `AccountStatus` | `UNVERIFIED` 포함 | 제거. 미확인 계정이 존재하지 않는다 |
 | `verifyEmail()` | 있음 | 제거. 확인은 계정 생성 전에 끝난다 |

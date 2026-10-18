@@ -1,5 +1,7 @@
 # Refresh Token Grace Window
 
+> 레거시(`legacy-final` 태그) 구현의 기록이다. 새 구조에서 같은 기능을 만들 때 참고한다.
+
 How `POST /auth/refresh` handles concurrent rotation attempts on the same token.
 
 Related code: `RefreshTokenService.rotate`, `RefreshTokenGraceCache`, `AuthFacade.refreshTokens`.

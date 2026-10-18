@@ -4,7 +4,7 @@
 
 이 폴더의 문서는 기술을 모른다. 모듈, 패키지, 프레임워크 이름을 쓰지 않는다.
 경계를 코드로 옮기는 규칙은 [architecture/](../architecture/README.md)에 있다.
-예외는 05 하나다. 05는 레거시 코드를 새 경계에 대응시키는 임시 문서다.
+예외는 05 하나다. 05는 레거시 코드에서 확인한 경계 문제를 근거와 함께 기록한다.
 
 ## 문서 목록
 
@@ -16,7 +16,7 @@
 | [02-ubiquitous-language.md](02-ubiquitous-language.md) | 용어집. 컨텍스트마다 단어가 뜻하는 것 |
 | [03-bounded-contexts.md](03-bounded-contexts.md) | 컨텍스트 목록, 소유 범위, 경계를 나눈 기준과 이유 |
 | [04-context-map.md](04-context-map.md) | 컨텍스트 간 관계, 도메인 이벤트, 동기 호출, 조회 조합 |
-| [05-legacy-mapping.md](05-legacy-mapping.md) | 레거시 패키지와 새 컨텍스트의 대응, 레거시에서 확인한 경계 문제 |
+| [05-legacy-mapping.md](05-legacy-mapping.md) | 레거시에서 확인한 경계 문제. 03의 결정 근거 |
 
 ## 고치는 방법
 
