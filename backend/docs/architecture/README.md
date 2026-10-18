@@ -12,7 +12,7 @@
 | [01-module-structure.md](01-module-structure.md) | Gradle 모듈 구성, 모듈을 나누는 기준 |
 | [02-hexagonal-architecture.md](02-hexagonal-architecture.md) | 레이어 정의, 패키지 구조, 의존 방향 |
 | [03-context-integration.md](03-context-integration.md) | 컨텍스트 간 호출, 이벤트, 트랜잭션, 조회 조합 규칙 |
-| 04-persistence-conventions.md (작성 예정) | 엔티티 작성 규칙, 식별자 전략, 공통 필드 |
+| [04-persistence-conventions.md](04-persistence-conventions.md) | 컨텍스트별 스키마, DB 롤, 마이그레이션(Flyway), 기존 데이터 이전. 엔티티 작성 규칙은 작성 예정 |
 
 ## 요약
 
