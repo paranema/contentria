@@ -13,6 +13,8 @@ backend/
 ├── build-logic/                 Gradle 컨벤션 플러그인
 ├── gradle/                      의존성 버전 카탈로그(libs.versions.toml), Gradle wrapper
 ├── shared-kernel/               모든 컨텍스트가 쓰는 공통 기반 (식별자, 예외, 영속성 기반)
+├── platform/
+│   └── architecture-rules/      아키텍처 규칙 (테스트 전용)
 ├── contexts/
 │   └── member/
 │       ├── member-api/          다른 컨텍스트에 공개하는 계약
@@ -30,6 +32,7 @@ backend/
 | 모듈 | 종류 | 의존 모듈 |
 |---|---|---|
 | `shared-kernel` | 라이브러리 | 없음 |
+| `platform:architecture-rules` | 테스트 전용 라이브러리 | 없음 (ArchUnit) |
 | `contexts:member:member-api` | 라이브러리 | `shared-kernel` |
 | `contexts:member:member-core` | 라이브러리 | `member-api`, `shared-kernel` |
 | `apps:api` | 실행 (API 서버) | `member-core` |

@@ -14,8 +14,13 @@ caffeine-jcache = "3.2.2"
 commonmark = "0.27.0"
 uuid-creator = "6.1.0"
 slugify = "3.0.7"
+archunit = "1.4.1"
 
 [libraries]
+# Architecture tests
+archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
 kotlin-logging = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlin-logging" }
 
 # AWS SDK (Cloudflare R2 호환). 개별 모듈(s3)의 버전은 BOM이 관리한다.
