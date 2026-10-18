@@ -42,7 +42,7 @@
 ### 그 밖의 규칙
 
 - `strategic/` 문서에는 코드 경로, 모듈 이름, 프레임워크 이름을 쓰지 않는다. 예외는 [strategic/05-legacy-mapping.md](strategic/05-legacy-mapping.md)다.
-- `contexts/` 아래 폴더 이름은 `core`의 컨텍스트 패키지 이름과 같게 한다 (`core.member` ↔ `contexts/member/`).
+- `docs/contexts/` 아래 폴더 이름은 코드의 컨텍스트 디렉터리 이름과 같게 한다 (`backend/contexts/member/` ↔ `backend/docs/contexts/member/`).
 - 컨텍스트 폴더는 `01-rules.md`(제품 규칙, 아키텍처를 모름)와 `02-implementation.md`(규칙의 계층 배치)로 나눈다.
 - 번호를 쓰는 폴더에는 README를 두고 문서 목록과 읽는 순서를 적는다.
 - 결정의 이유는 해당 문서의 "결정과 이유" 절에 적는다. 기존 결정을 뒤집으면 이전 결정과 뒤집은 이유를 함께 남긴다.
