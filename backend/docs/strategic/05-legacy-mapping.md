@@ -73,9 +73,48 @@
 | 영상 상태 전이가 세 모듈에 SQL 문자열로 흩어져 있다 | [Video.kt](../../blog-api/src/main/kotlin/com/contentria/api/video/domain/Video.kt), [VideoJobRepository.kt:25-63](../../blog-worker/src/main/kotlin/com/contentria/worker/video/VideoJobRepository.kt#L25), [VideoGcJobConfig.kt:66-111](../../blog-batch/src/main/kotlin/com/contentria/batch/jobs/video/VideoGcJobConfig.kt#L66) | 영상 모델 하나에 상태 규칙을 둔다. worker와 batch는 그 모델의 진입점이 된다 |
 | 글 저장 트랜잭션 안에서 외부 저장소의 파일을 옮긴다 | [PostFacade.kt:107](../../blog-api/src/main/kotlin/com/contentria/api/post/application/PostFacade.kt#L107), [MediaService.kt:95-130](../../blog-api/src/main/kotlin/com/contentria/api/media/application/MediaService.kt#L95) | 아래 "확인하지 못한 것" 참고 |
 
+## 컨텍스트를 넘는 DB 제약
+
+스키마를 나누기 전에 지울 외래키다([architecture/04-persistence-conventions.md](../architecture/04-persistence-conventions.md)의 "기존 데이터 이전" 1번).
+`현재 동작`은 외래키를 지우면 사라지는 동작이다. DDL은 `infra/postgresql/tables/`에 있다.
+
+| 외래키 | 방향 | 현재 동작 | 처리 |
+|---|---|---|---|
+| `blogs.user_id → users` RESTRICT ([06_blogs.sql:10](../../../infra/postgresql/tables/06_blogs.sql#L10)) | 출판 → 회원 | 블로그가 있으면 회원 행을 지울 수 없다 | 삭제. 탈퇴는 상태 변경이라 회원 행이 지워지지 않는다 |
+| `posts.author_id → users` SET NULL ([08_posts.sql:27](../../../infra/postgresql/tables/08_posts.sql#L27)) | 출판 → 회원 | 회원 행 삭제 시 작성자가 비워진다 | 컬럼째 제거 |
+| `media.post_id → posts` SET NULL ([09_media.sql:12](../../../infra/postgresql/tables/09_media.sql#L12)) | 미디어 → 출판 | 글 삭제 시 이미지 연결이 해제된다 | 출판이 미디어를 호출해 연결 해제 ([04-context-map.md](04-context-map.md)의 "삭제의 전파") |
+| `videos.post_id → posts` SET NULL ([10_videos.sql:31](../../../infra/postgresql/tables/10_videos.sql#L31)) | 미디어 → 출판 | 글 삭제 시 영상 연결이 해제된다 | 위와 같다 |
+| `media.uploader_id → users` CASCADE ([09_media.sql:13](../../../infra/postgresql/tables/09_media.sql#L13)) | 미디어 → 회원 | 회원 행 삭제 시 이미지 행이 지워진다. 저장소의 파일은 남는다 | 삭제 |
+| `videos.uploader_id → users` CASCADE ([10_videos.sql:33](../../../infra/postgresql/tables/10_videos.sql#L33)) | 미디어 → 회원 | 회원 행 삭제 시 영상 행이 지워진다 | 삭제 |
+| `visit_logs.blog_id → blogs` CASCADE ([11_visit_logs.sql:10](../../../infra/postgresql/tables/11_visit_logs.sql#L10)) | 분석 → 출판 | 블로그 삭제 시 방문 기록이 지워진다 | 삭제. 분석 기록은 남긴다 |
+| `daily_statistics.blog_id → blogs` CASCADE ([12_daily_statistics.sql:14](../../../infra/postgresql/tables/12_daily_statistics.sql#L14)) | 분석 → 출판 | 블로그 삭제 시 통계가 지워진다 | 삭제. 분석 기록은 남긴다 |
+
+회원 행이 실제로 지워지는 경로는 레거시에 하나 있다. 미확인 회원이 다시 가입하면 기존 행을 지운다([UserService.kt:105](../../blog-api/src/main/kotlin/com/contentria/api/user/application/UserService.kt#L105)).
+새 회원 규칙에는 미확인 계정이 없으므로 이 경로는 사라진다.
+
+같은 컨텍스트 안의 외래키(`credentials`, `refresh_tokens`, `user_roles` → `users`, `posts` → `blogs`, `categories`)는 유지한다.
+
+### `contentria` 스키마를 명시한 코드
+
+테이블을 새 스키마로 옮기면 깨진다. 해당 테이블을 옮길 때 함께 고친다.
+
+| 위치 | 대상 테이블 |
+|---|---|
+| [VisitLog.kt](../../blog-common/src/main/kotlin/com/contentria/common/domain/analytics/VisitLog.kt) `@Table(schema = "contentria")` | `visit_logs` |
+| [DailyStatisticsJobConfig.kt:82](../../blog-batch/src/main/kotlin/com/contentria/batch/jobs/statistics/DailyStatisticsJobConfig.kt#L82), [:125](../../blog-batch/src/main/kotlin/com/contentria/batch/jobs/statistics/DailyStatisticsJobConfig.kt#L125) | `visit_logs`, `daily_statistics` |
+| `infra/kubernetes/blog-*-config.yaml`의 `currentSchema=contentria` | 접속 기본 스키마 |
+
+### 마이그레이션 도입 시 바꿀 설정
+
+| 위치 | 현재 | 변경 |
+|---|---|---|
+| [app/api application.yml:23](../../app/api/src/main/resources/application.yml#L23) | `ddl-auto` 기본값이 `update` | `validate` |
+
 ## 확인하지 못한 것
 
 | 항목 | 확인 방법 |
 |---|---|
 | 글 저장이 승격 뒤에 실패하면, DB의 미디어 기록은 롤백되지만 외부 저장소에서 이미 옮긴 파일은 되돌아가지 않을 것으로 보인다. 코드를 읽고 추론한 것이며 재현하지 않았다 | 승격 후 글 저장에서 예외를 내는 테스트로 재현 |
 | 스키마 이전 계획 (users를 accounts와 profiles로 나누는 순서, `posts.author_id` 제거 시점) | 이 문서의 범위가 아니다. 이전 작업 계획에서 정한다 |
+| Spring Batch 메타데이터 테이블이 운영 DB의 어느 스키마에 있는지. `initialize-schema: never`이고 `infra/postgresql/tables/`에도 DDL이 없다 | 운영 DB에서 `batch_job_instance` 테이블의 스키마를 조회 |
+| 미확인 회원이 업로드를 할 수 있는지. 할 수 있다면 재가입 시 CASCADE로 미디어 행이 지워진다 | 업로드 API의 인증 조건 확인 |
