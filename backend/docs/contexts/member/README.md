@@ -7,6 +7,9 @@
 | `Account` | `Credential`, `Role` | 본인만. 다른 컨텍스트에는 계정 상태만 공개한다 |
 | `Profile` | 없음 | 누구나 |
 
+**내부 구조: 헥사고날.** 서브도메인 분류는 일반이지만 보안 규칙이 많고, 소셜 공급자와 메일 같은 외부 연동이 많다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
+코드 위치는 `backend/contexts/member/`(`member-api`, `member-core`)다.
+
 ## 문서 목록
 
 | 파일 | 내용 | 읽는 사람 |

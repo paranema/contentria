@@ -11,7 +11,7 @@
 |---|---|---|
 | `blog-api` `user` | 회원 | `User`는 Account와 Profile로 나뉜다 |
 | `blog-api` `auth` (application, domain, infrastructure) | 회원 | |
-| `blog-api` `auth/security`, `global/security` | 진입점 (`app/api`) | 요청 인증 처리 |
+| `blog-api` `auth/security`, `global/security` | 진입점 (`apps/api`) | 요청 인증 처리 |
 | `blog-api` `blog`, `category`, `post` | 출판 | |
 | `blog-api` `media`, `video` | 미디어 | |
 | `blog-worker` 전체 | 미디어 | 영상 변환 진입점 |
@@ -20,13 +20,15 @@
 | `blog-common` `common/domain/analytics` | 분석 | 공용 라이브러리에 도메인이 들어가 있다 |
 | `blog-batch` `jobs/statistics` | 분석 | 일별 집계 진입점 |
 | `blog-batch` `jobs/auth` | 회원 | 만료 토큰 정리 진입점 |
-| `blog-api` `dashboard` | 진입점 (`app/api`) | 조회 조합 |
+| `blog-api` `dashboard` | 진입점 (`apps/api`의 `composition`) | 조회 조합 |
 | `blog-api` `comment`, `subscription` | 상호작용 | 코드 전체가 주석 처리되어 있다 |
 | `blog-api` `notification` | 알림 | 코드 전체가 주석 처리되어 있다 |
 | `blog-common` `global` (error, model, config, aop) | 공유 커널 또는 진입점 설정 | 성격별로 나눈다 |
 | `blog-common` `infrastructure/email` | 정하지 않음 | 회원의 출력 포트로 둘지 알림으로 보낼지는 03의 "정하지 않은 것"에 따른다 |
-| `core` `account`, `profile` | 회원 | `core.member` 하나로 합친다 |
-| `core` `blog`, `post` | 출판 | 빈 디렉터리. `core.publishing`으로 만든다 |
+| `core` `account`, `profile` | 회원 | `contexts/member/member-core` 하나로 합친다 |
+| `core` `blog`, `post` | 출판 | 빈 디렉터리. `contexts/publishing/publishing-core`로 만든다 |
+| `core` `shared` | 공유 커널 | `shared-kernel`로 옮긴다 |
+| `app/api`, `app/batch` | 조립 모듈 | `apps/api`, `apps/batch`로 옮긴다 |
 
 ## 레거시에서 확인한 경계 문제
 

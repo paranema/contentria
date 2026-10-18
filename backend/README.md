@@ -4,6 +4,8 @@
 
 레이어드 아키텍처로 작성한 기존 모듈(`blog-*`)을 헥사고날 아키텍처 모듈(`core`, `app/*`)로 옮기는 중이다. 이전이 끝날 때까지 두 구조가 함께 있다. 현재 배포되는 모듈은 `blog-*`이다.
 
+> 목표 구조가 바뀌었다. `core`, `app/*`는 컨텍스트별 모듈(`contexts/<컨텍스트>/`, `apps/*`)로 다시 옮긴다. 목표 구조는 [docs/architecture/01-module-structure.md](docs/architecture/01-module-structure.md)에 있다. 아래는 현재 코드의 구조다.
+
 ```
 backend/
 ├── blog-common/          [레이어드] 공용 라이브러리. 여러 모듈이 함께 쓰는 엔티티, 설정, 예외

@@ -91,7 +91,7 @@ Flyway를 쓴다.
 
 | 항목 | 규칙 |
 |---|---|
-| 파일 위치 | 각 컨텍스트 모듈의 `src/main/resources/db/migration/<컨텍스트>/` |
+| 파일 위치 | 각 `<컨텍스트>-core` 모듈의 `src/main/resources/db/migration/<컨텍스트>/` |
 | 이력 테이블 | 각 스키마 안의 `flyway_schema_history` |
 | 실행 계정 | `<컨텍스트>_migrator` |
 | 파일 이름 | `V<번호>__<설명>.sql`. 번호는 컨텍스트 안에서만 증가한다 |
@@ -100,7 +100,45 @@ Flyway를 쓴다.
 | Hibernate `ddl-auto` | 테스트를 뺀 모든 환경에서 `validate` |
 | Spring Batch 메타데이터 | `spring-batch-core`가 제공하는 PostgreSQL DDL을 `batch` 스키마의 마이그레이션으로 넣는다. `spring.batch.jdbc.initialize-schema`는 `never`로 둔다 |
 
-마이그레이션 Job을 어느 모듈에 둘지는 모듈 구조([01-module-structure.md](01-module-structure.md))를 정할 때 함께 정한다.
+마이그레이션은 `apps/migrator`가 실행한다([01-module-structure.md](01-module-structure.md)).
+`apps/migrator`는 모든 `<컨텍스트>-core`의 마이그레이션 파일을 가져와, 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway를 실행한다.
+
+## 아웃박스와 인박스 테이블
+
+이벤트를 발행하는 컨텍스트는 `outbox_event`를, 소비하는 컨텍스트는 `inbox_event`를 자기 스키마에 둔다.
+동작 규칙은 [03-context-integration.md](03-context-integration.md)의 "이벤트"에 있다.
+
+| 컨텍스트 | `outbox_event` | `inbox_event` |
+|---|---|---|
+| publishing | 있음 | 없음 |
+| interaction | 있음 | 있음 |
+| notification | 없음 | 있음 |
+| member, media, analytics | 발행하는 이벤트가 생길 때 만든다 | 소비하는 이벤트가 생길 때 만든다 |
+
+```sql
+CREATE TABLE publishing.outbox_event (
+    id             uuid        PRIMARY KEY,         -- eventId
+    aggregate_type varchar(50) NOT NULL,            -- 토픽 결정에 쓴다
+    aggregate_id   uuid        NOT NULL,            -- 메시지 키
+    event_type     varchar(100) NOT NULL,
+    event_version  int         NOT NULL,
+    payload        jsonb       NOT NULL,
+    occurred_at    timestamptz NOT NULL,
+    published_at   timestamptz                      -- 릴레이가 Kafka에 보낸 시각. 비어 있으면 아직 안 보냈다
+);
+CREATE INDEX idx_outbox_event_unpublished ON publishing.outbox_event (occurred_at) WHERE published_at IS NULL;
+
+CREATE TABLE interaction.inbox_event (
+    event_id     uuid         NOT NULL,
+    consumer     varchar(100) NOT NULL,             -- 소비자 그룹 이름
+    processed_at timestamptz  NOT NULL,
+    PRIMARY KEY (event_id, consumer)
+);
+```
+
+`inbox_event`의 기본키에 소비자를 넣는 이유: 같은 컨텍스트 안의 소비자 여럿이 같은 이벤트를 각자 처리할 수 있다.
+
+두 테이블은 각 컨텍스트의 마이그레이션으로 만든다. 공통 테이블을 하나 두지 않는다. 컨텍스트를 서비스로 분리할 때 그 스키마만 옮기면 되도록 하기 위해서다.
 
 ## 기존 데이터 이전
 

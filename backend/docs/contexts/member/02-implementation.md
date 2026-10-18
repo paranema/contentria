@@ -3,7 +3,7 @@
 [01-rules.md](01-rules.md)의 `계층` 열을 정하는 기준과, 그 열만으로는 담기 어려운 세부를 적는다.
 규칙이 바뀌면 01을, 구현 방법이 바뀌면 이 문서를 고친다.
 
-계층 정의는 [architecture/02-hexagonal-architecture.md](../../architecture/02-hexagonal-architecture.md)를 따른다.
+계층 정의는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 헥사고날 규칙을 따른다.
 
 ## 불변식과 정책을 가르는 기준
 
@@ -75,7 +75,7 @@
 
 | 항목 | 현재 | 필요한 변경 |
 |---|---|---|
-| 패키지 | `core.account`, `core.profile`로 나뉘어 있다 | `core.member` 하나로 합친다 |
+| 모듈과 패키지 | `core` 모듈의 `com.contentria.core.account`, `com.contentria.core.profile`로 나뉘어 있다 | `contexts/member/member-core`의 `com.contentria.member` 하나로 합친다. 다른 컨텍스트에 공개할 조회 포트는 `member-api`로 옮긴다 |
 | profiles와 accounts 사이의 FK | `SchemaMappingTest`가 "컨텍스트 경계를 넘는 외래키"라는 이유로 profiles가 걸린 FK가 없음을 검증한다. 반면 `Profile.create`의 주석은 FK가 존재를 보증한다고 적고 있다 | 같은 컨텍스트가 되었으므로 테스트의 근거를 "애그리거트 사이에는 연관관계 매핑을 하지 않는다"로 바꾼다. DB 수준 FK를 둘지는 스키마 이전 때 정하고, 정한 뒤 주석을 맞춘다 |
 | `AccountStatus` | `UNVERIFIED` 포함 | 제거. 미확인 계정이 존재하지 않는다 |
 | `verifyEmail()` | 있음 | 제거. 확인은 계정 생성 전에 끝난다 |
