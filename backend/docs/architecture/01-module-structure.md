@@ -126,7 +126,8 @@ contexts/publishing/publishing-api/src/main/kotlin/com/contentria/publishing/api
 |---|---|
 | `com.contentria.<컨텍스트>.config` | 채널별 설정 클래스. `apps/*`가 import한다 |
 | `src/main/resources/db/migration/<컨텍스트>/` | 그 컨텍스트 스키마의 Flyway 마이그레이션 |
-| 다른 컨텍스트를 호출하는 번역 계층 | 헥사고날은 `adapter/required/<상대>/`, 레이어드는 `client/` |
+| 다른 컨텍스트를 호출하는 번역 계층 | 헥사고날은 `adapter/required/<상대>/`, 레이어드는 `infra/client/` |
+| 리포지토리 | Spring Data `Repository` 마커를 상속한 인터페이스. 위치는 헥사고날 `application/required/`, 레이어드 `domain/` ([02-internal-architecture.md](02-internal-architecture.md)) |
 
 ## 조립 모듈 (apps)
 
