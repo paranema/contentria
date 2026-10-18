@@ -1,9 +1,11 @@
 package com.contentria.member.domain.account
 
+/**
+ * There is no unverified state. An account is created only after its email address has been
+ * confirmed (a sign-up code for email, the provider's `email_verified` claim for social), so
+ * every account begins ACTIVE.
+ */
 enum class AccountStatus {
-
-    /** Registered by email, waiting for the verification code to be confirmed. */
-    UNVERIFIED,
 
     ACTIVE,
 
@@ -15,14 +17,5 @@ enum class AccountStatus {
 
     val canAuthenticate: Boolean get() = this == ACTIVE
 
-    /**
-     * DELETED is terminal, and no account returns to UNVERIFIED once it has left that state,
-     * because verification is a one-time step at sign-up.
-     */
-    fun canTransitionTo(next: AccountStatus): Boolean = when {
-        this == next -> false
-        this == DELETED -> false
-        next == UNVERIFIED -> false
-        else -> true
-    }
+    fun canTransitionTo(next: AccountStatus): Boolean = this != next && this != DELETED
 }

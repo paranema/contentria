@@ -91,6 +91,7 @@ class Credential private constructor(
 
     internal fun replacePasswordHash(newHash: String) {
         check(provider.usesPassword) { "A $provider credential cannot hold a password" }
+        require(newHash.isNotBlank()) { "passwordHash must not be blank" }
         passwordHash = newHash
     }
 
@@ -101,14 +102,16 @@ class Credential private constructor(
 
     companion object {
 
-        internal fun withPassword(account: Account, passwordHash: String): Credential =
-            Credential(
+        internal fun withPassword(account: Account, passwordHash: String): Credential {
+            require(passwordHash.isNotBlank()) { "passwordHash must not be blank" }
+            return Credential(
                 id = Ids.newId(),
                 account = account,
                 provider = AuthProvider.EMAIL,
                 passwordHash = passwordHash,
                 providerId = null,
             )
+        }
 
         internal fun withSocialProvider(
             account: Account,

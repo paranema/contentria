@@ -72,8 +72,8 @@ class SchemaMappingTest {
     }
 
     @Test
-    @DisplayName("컨텍스트 경계를 넘는 외래키는 만들지 않는다. profiles는 accounts를 참조하지 않는다")
-    fun `no foreign key crosses a context boundary`(@TempDir tempDir: Path) {
+    @DisplayName("애그리거트 사이에는 연관관계를 매핑하지 않는다. Profile은 Account를 ID로만 참조한다")
+    fun `no association crosses an aggregate boundary`(@TempDir tempDir: Path) {
         val script = generateSchema(tempDir.resolve("schema.sql"))
 
         assertThat(script.lines().filter { it.contains("alter table") })

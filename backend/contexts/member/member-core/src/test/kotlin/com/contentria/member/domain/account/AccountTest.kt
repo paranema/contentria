@@ -14,30 +14,39 @@ class AccountTest {
     private fun emailAccount(
         email: String = "reader@contentria.com",
         rawPassword: String = "correct horse",
-    ) = Account.registerWithPassword(email, rawPassword, hasher)
+    ) = Account.registerWithPassword(email, hasher.hash(rawPassword))
 
     private fun socialAccount(
         email: String = "reader@contentria.com",
         providerId: String = "google-subject-1",
-    ) = Account.registerWithSocialProvider(email, AuthProvider.GOOGLE, providerId)
+    ) = Account.registerWithSocialProvider(email, AuthProvider.GOOGLE, providerId, emailVerifiedByProvider = true)
 
     @Nested
     @DisplayName("가입")
     inner class Registration {
 
         @Test
-        @DisplayName("이메일 가입 계정은 인증 전이라 아직 로그인할 수 없다")
-        fun `email sign-up starts unverified`() {
+        @DisplayName("이메일 가입은 코드 확인을 마친 뒤에 일어나므로 계정은 즉시 활성이다")
+        fun `email sign-up starts active`() {
             val account = emailAccount()
 
-            assertThat(account.status).isEqualTo(AccountStatus.UNVERIFIED)
-            assertThat(account.status.canAuthenticate).isFalse()
+            assertThat(account.status).isEqualTo(AccountStatus.ACTIVE)
         }
 
         @Test
         @DisplayName("소셜 가입 계정은 제공자가 이미 주소를 확인했으므로 즉시 활성이다")
         fun `social sign-up starts active`() {
             assertThat(socialAccount().status).isEqualTo(AccountStatus.ACTIVE)
+        }
+
+        @Test
+        @DisplayName("제공자가 이메일을 확인하지 않았으면 소셜 가입을 거부한다")
+        fun `social sign-up needs an address the provider verified`() {
+            assertThatThrownBy {
+                Account.registerWithSocialProvider(
+                    "reader@contentria.com", AuthProvider.GOOGLE, "google-subject-1", emailVerifiedByProvider = false,
+                )
+            }.isInstanceOf(AccountException.EmailNotVerifiedByProvider::class.java)
         }
 
         @Test
@@ -55,13 +64,20 @@ class AccountTest {
         }
 
         @Test
-        @DisplayName("이메일 가입은 원시 비밀번호가 아니라 해시를 저장한다")
-        fun `stores a hash, never the raw password`() {
+        @DisplayName("이메일 가입은 해시를 받아 저장한다. 원시 비밀번호는 계정에 들어오지 않는다")
+        fun `stores the given hash`() {
             val account = emailAccount(rawPassword = "correct horse")
             val credential = account.credentials.single()
 
             assertThat(credential.matchesPassword("correct horse", hasher)).isTrue()
             assertThat(credential.matchesPassword("wrong horse", hasher)).isFalse()
+        }
+
+        @Test
+        @DisplayName("빈 해시는 거부한다")
+        fun `blank hash is rejected`() {
+            assertThatThrownBy { Account.registerWithPassword("reader@contentria.com", "  ") }
+                .isInstanceOf(IllegalArgumentException::class.java)
         }
 
         @Test
@@ -78,7 +94,7 @@ class AccountTest {
         @DisplayName("EMAIL은 소셜 제공자가 아니므로 소셜 가입에 쓸 수 없다")
         fun `EMAIL is not a social provider`() {
             assertThatThrownBy {
-                Account.registerWithSocialProvider("a@b.com", AuthProvider.EMAIL, "x")
+                Account.registerWithSocialProvider("a@b.com", AuthProvider.EMAIL, "x", emailVerifiedByProvider = true)
             }.isInstanceOf(IllegalArgumentException::class.java)
         }
 
@@ -86,7 +102,7 @@ class AccountTest {
         @DisplayName("빈 provider 식별자는 거부한다")
         fun `blank provider id is rejected`() {
             assertThatThrownBy {
-                Account.registerWithSocialProvider("a@b.com", AuthProvider.GOOGLE, "  ")
+                Account.registerWithSocialProvider("a@b.com", AuthProvider.GOOGLE, "  ", emailVerifiedByProvider = true)
             }.isInstanceOf(IllegalArgumentException::class.java)
         }
     }
@@ -110,6 +126,13 @@ class AccountTest {
         }
 
         @Test
+        @DisplayName("점이나 + 이후는 지우지 않는다")
+        fun `keeps dots and plus suffixes`() {
+            assertThat(emailAccount(email = "first.last+blog@x.com").email)
+                .isEqualTo("first.last+blog@x.com")
+        }
+
+        @Test
         @DisplayName("주소 형태가 아니면 가입을 거부한다")
         fun `rejects values that are not addresses`() {
             listOf("", "   ", "no-at-sign", "missing@tld", "two parts@x.com", "@x.com")
@@ -130,14 +153,14 @@ class AccountTest {
         }
 
         @Test
-        @DisplayName("주소 변경도 같은 정규화와 검증을 거친다")
-        fun `changeEmail applies the same rules`() {
+        @DisplayName("확인된 새 주소로 바꿀 때도 같은 정규화와 검증을 거친다")
+        fun `changeToVerifiedEmail applies the same rules`() {
             val account = emailAccount()
 
-            account.changeEmail("  NEW@Contentria.com ")
+            account.changeToVerifiedEmail("  NEW@Contentria.com ")
             assertThat(account.email).isEqualTo("new@contentria.com")
 
-            assertThatThrownBy { account.changeEmail("broken") }
+            assertThatThrownBy { account.changeToVerifiedEmail("broken") }
                 .isInstanceOf(AccountException.InvalidEmail::class.java)
             assertThat(account.email).isEqualTo("new@contentria.com")
         }
@@ -151,7 +174,6 @@ class AccountTest {
         @DisplayName("활성 계정이 올바른 비밀번호를 내면 통과한다")
         fun `active account with the right password passes`() {
             val account = emailAccount(rawPassword = "correct horse")
-            account.verifyEmail()
 
             assertThatCode { account.authenticateWithPassword("correct horse", hasher) }
                 .doesNotThrowAnyException()
@@ -161,26 +183,15 @@ class AccountTest {
         @DisplayName("비밀번호가 틀리면 실패한다")
         fun `wrong password fails`() {
             val account = emailAccount(rawPassword = "correct horse")
-            account.verifyEmail()
 
             assertThatThrownBy { account.authenticateWithPassword("wrong horse", hasher) }
                 .isInstanceOf(AccountException.InvalidCredentials::class.java)
         }
 
         @Test
-        @DisplayName("이메일 인증 전에는 비밀번호가 맞아도 세션을 열 수 없다")
-        fun `unverified account cannot start a session`() {
-            val account = emailAccount(rawPassword = "correct horse")
-
-            assertThatThrownBy { account.authenticateWithPassword("correct horse", hasher) }
-                .isInstanceOf(AccountException.NotAuthenticatable::class.java)
-        }
-
-        @Test
         @DisplayName("정지된 계정은 비밀번호가 맞아도 세션을 열 수 없다")
         fun `suspended account cannot start a session`() {
             val account = emailAccount(rawPassword = "correct horse")
-            account.verifyEmail()
             account.suspend()
 
             assertThatThrownBy { account.authenticateWithPassword("correct horse", hasher) }
@@ -195,26 +206,44 @@ class AccountTest {
             assertThatThrownBy { account.authenticateWithPassword("anything", hasher) }
                 .isInstanceOf(AccountException.InvalidCredentials::class.java)
         }
+    }
+
+    @Nested
+    @DisplayName("비밀번호 설정")
+    inner class PasswordSetting {
 
         @Test
-        @DisplayName("비밀번호 변경 후에는 새 비밀번호만 통과한다")
-        fun `changePassword replaces the old one`() {
+        @DisplayName("비밀번호를 교체하면 새 비밀번호만 통과한다")
+        fun `setPassword replaces the existing one`() {
             val account = emailAccount(rawPassword = "old one")
-            account.verifyEmail()
 
-            account.changePassword("new one", hasher)
+            account.setPassword(hasher.hash("new one"))
 
             assertThatCode { account.authenticateWithPassword("new one", hasher) }
                 .doesNotThrowAnyException()
             assertThatThrownBy { account.authenticateWithPassword("old one", hasher) }
                 .isInstanceOf(AccountException.InvalidCredentials::class.java)
+            assertThat(account.credentials).hasSize(1)
         }
 
         @Test
-        @DisplayName("이메일 자격증명이 없으면 비밀번호를 바꿀 수 없다")
-        fun `changePassword needs an email credential`() {
-            assertThatThrownBy { socialAccount().changePassword("x", hasher) }
-                .isInstanceOf(AccountException.ProviderNotLinked::class.java)
+        @DisplayName("소셜 전용 계정에 비밀번호를 처음 설정하면 이메일 자격증명이 생긴다")
+        fun `setPassword creates the email credential when missing`() {
+            val account = socialAccount()
+
+            account.setPassword(hasher.hash("first one"))
+
+            assertThat(account.hasCredentialFor(AuthProvider.EMAIL)).isTrue()
+            assertThat(account.credentials).hasSize(2)
+            assertThatCode { account.authenticateWithPassword("first one", hasher) }
+                .doesNotThrowAnyException()
+        }
+
+        @Test
+        @DisplayName("빈 해시는 거부한다")
+        fun `blank hash is rejected`() {
+            assertThatThrownBy { emailAccount().setPassword("") }
+                .isInstanceOf(IllegalArgumentException::class.java)
         }
     }
 
@@ -246,7 +275,6 @@ class AccountTest {
         @DisplayName("연결되지 않은 provider로는 로그인할 수 없다")
         fun `an unlinked provider cannot be used`() {
             val account = emailAccount()
-            account.verifyEmail()
 
             assertThatThrownBy {
                 account.authenticateWithSocialProvider(AuthProvider.GOOGLE, "google-subject-1")
@@ -345,41 +373,78 @@ class AccountTest {
     }
 
     @Nested
-    @DisplayName("계정 생명주기")
-    inner class Lifecycle {
+    @DisplayName("소셜 자동 연동")
+    inner class AutomaticLinking {
 
         @Test
-        @DisplayName("이메일 인증에 성공하면 활성이 된다")
-        fun `verifyEmail activates an unverified account`() {
-            val account = emailAccount()
+        @DisplayName("같은 주소의 활성 계정에, 제공자가 확인한 주소라면 소셜 자격증명을 붙인다")
+        fun `links a verified social identity to the account with the same address`() {
+            val account = emailAccount(email = "reader@contentria.com")
 
-            account.verifyEmail()
+            account.autoLinkSocialProvider(
+                AuthProvider.GOOGLE, "google-subject-1", providerEmail = "Reader@Contentria.com", emailVerifiedByProvider = true,
+            )
 
-            assertThat(account.status).isEqualTo(AccountStatus.ACTIVE)
+            assertThat(account.hasCredentialFor(AuthProvider.GOOGLE)).isTrue()
+            assertThatCode { account.authenticateWithSocialProvider(AuthProvider.GOOGLE, "google-subject-1") }
+                .doesNotThrowAnyException()
         }
 
         @Test
-        @DisplayName("이미 인증된 계정을 다시 인증해도 오류가 아니다")
-        fun `verifyEmail is idempotent on an active account`() {
-            val account = emailAccount()
-            account.verifyEmail()
+        @DisplayName("제공자가 주소를 확인하지 않았으면 자동 연동하지 않는다")
+        fun `refuses an address the provider did not verify`() {
+            val account = emailAccount(email = "reader@contentria.com")
 
-            assertThatCode { account.verifyEmail() }.doesNotThrowAnyException()
-            assertThat(account.status).isEqualTo(AccountStatus.ACTIVE)
+            assertThatThrownBy {
+                account.autoLinkSocialProvider(
+                    AuthProvider.GOOGLE, "google-subject-1", providerEmail = "reader@contentria.com", emailVerifiedByProvider = false,
+                )
+            }.isInstanceOf(AccountException.EmailNotVerifiedByProvider::class.java)
+            assertThat(account.hasCredentialFor(AuthProvider.GOOGLE)).isFalse()
         }
 
         @Test
-        @DisplayName("이메일 인증은 정지를 푸는 우회로가 될 수 없다")
-        fun `verifyEmail is not a way to lift a suspension`() {
-            val account = emailAccount()
-            account.verifyEmail()
+        @DisplayName("활성이 아닌 계정에는 자동 연동하지 않는다")
+        fun `refuses an account that is not active`() {
+            val account = emailAccount(email = "reader@contentria.com")
             account.suspend()
 
-            assertThatThrownBy { account.verifyEmail() }
-                .isInstanceOf(AccountException.StatusTransitionNotAllowed::class.java)
-
-            assertThat(account.status).isEqualTo(AccountStatus.SUSPENDED)
+            assertThatThrownBy {
+                account.autoLinkSocialProvider(
+                    AuthProvider.GOOGLE, "google-subject-1", providerEmail = "reader@contentria.com", emailVerifiedByProvider = true,
+                )
+            }.isInstanceOf(AccountException.NotAuthenticatable::class.java)
+            assertThat(account.hasCredentialFor(AuthProvider.GOOGLE)).isFalse()
         }
+
+        @Test
+        @DisplayName("주소가 다른 계정에는 자동 연동할 수 없다")
+        fun `refuses an account with a different address`() {
+            val account = emailAccount(email = "reader@contentria.com")
+
+            assertThatThrownBy {
+                account.autoLinkSocialProvider(
+                    AuthProvider.GOOGLE, "google-subject-1", providerEmail = "other@contentria.com", emailVerifiedByProvider = true,
+                )
+            }.isInstanceOf(IllegalArgumentException::class.java)
+        }
+
+        @Test
+        @DisplayName("이미 그 제공자가 연결된 계정에는 다시 연동하지 않는다")
+        fun `refuses a provider that is already linked`() {
+            val account = socialAccount(email = "reader@contentria.com", providerId = "google-subject-1")
+
+            assertThatThrownBy {
+                account.autoLinkSocialProvider(
+                    AuthProvider.GOOGLE, "google-subject-2", providerEmail = "reader@contentria.com", emailVerifiedByProvider = true,
+                )
+            }.isInstanceOf(AccountException.ProviderAlreadyLinked::class.java)
+        }
+    }
+
+    @Nested
+    @DisplayName("계정 생명주기")
+    inner class Lifecycle {
 
         @Test
         @DisplayName("정지한 계정은 복구할 수 있다")
@@ -393,7 +458,7 @@ class AccountTest {
         }
 
         @Test
-        @DisplayName("삭제는 되돌릴 수 없다")
+        @DisplayName("탈퇴는 되돌릴 수 없다")
         fun `closing is terminal`() {
             val account = socialAccount()
             account.close()
@@ -401,6 +466,33 @@ class AccountTest {
             assertThat(account.status).isEqualTo(AccountStatus.DELETED)
             assertThatThrownBy { account.reinstate() }
                 .isInstanceOf(AccountException.StatusTransitionNotAllowed::class.java)
+            assertThatThrownBy { account.close() }
+                .isInstanceOf(AccountException.StatusTransitionNotAllowed::class.java)
+        }
+
+        @Test
+        @DisplayName("탈퇴하면 자격증명을 모두 지운다. 소셜 신원을 다른 계정이 다시 쓸 수 있다")
+        fun `closing releases every credential`() {
+            val account = emailAccount()
+            account.linkSocialProvider(AuthProvider.GOOGLE, "google-subject-1")
+
+            account.close()
+
+            assertThat(account.credentials).isEmpty()
+        }
+
+        @Test
+        @DisplayName("탈퇴하면 이메일을 익명화한다. 같은 주소로 다시 가입할 수 있다")
+        fun `closing anonymises the email address`() {
+            val account = emailAccount(email = "reader@contentria.com")
+
+            account.close()
+
+            assertThat(account.email)
+                .isNotEqualTo("reader@contentria.com")
+                .contains(account.id.toString())
+                .endsWith(".invalid")
+            assertThat(account.email.length).isLessThanOrEqualTo(Account.EMAIL_MAX_LENGTH)
         }
     }
 
