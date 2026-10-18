@@ -8,5 +8,6 @@ pluginManagement {
 
 rootProject.name = "backend"
 
-include("core")
-include("app:api", "app:batch")
+include("shared-kernel")
+include("contexts:member:member-api", "contexts:member:member-core")
+include("apps:api", "apps:batch")
