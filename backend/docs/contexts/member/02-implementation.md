@@ -69,18 +69,28 @@
 
 메일 발송이 실패해도 트랜잭션을 되돌리지 않는다. 커밋 후 처리한다.
 
+## 규칙과 도메인 메서드
+
+01에서 계층이 `도메인`이거나 `앱 → 도메인`인 규칙을 어느 메서드가 맡는지 적는다. 유스케이스는 이 메서드를 호출한다.
+
+| 01의 규칙 | `Account` 메서드 | 비고 |
+|---|---|---|
+| 흐름 1의 3번 (코드 확인 후 계정 생성) | `registerWithPassword(email, passwordHash)` | 해시를 받는다. 원시 비밀번호는 유스케이스에만 있다. 계정은 `ACTIVE`로 시작한다 |
+| 흐름 2의 2번 (기존 자격증명으로 로그인) | `authenticateWithSocialProvider(provider, providerId)` | `email_verified`를 보지 않는다 |
+| 흐름 2의 4, 5번 (소셜 가입) | `registerWithSocialProvider(email, provider, providerId, emailVerifiedByProvider)` | 확인되지 않은 주소면 `EmailNotVerifiedByProvider` |
+| 흐름 2의 6, 7번 (자동 연동) | `autoLinkSocialProvider(provider, providerId, providerEmail, emailVerifiedByProvider)` | 확인된 주소, 같은 주소, 활성 계정일 때만. 같은 주소의 계정을 찾는 것은 유스케이스다 |
+| 흐름 3 (수동 연동) | `linkSocialProvider(provider, providerId)` | `email_verified`를 보지 않는다 |
+| 흐름 4 비밀번호 최초 설정, 재설정 | `setPassword(passwordHash)` | 이메일 자격증명이 없으면 만들고 있으면 교체 |
+| 흐름 4 비밀번호 변경 | `authenticateWithPassword` 후 `setPassword` | 현재 비밀번호 확인을 유스케이스가 두 메서드로 조합한다 |
+| 흐름 4 연동 해제 | `unlinkProvider(provider)` | 마지막 자격증명이면 `LastCredentialRemoval` |
+| 흐름 4 이메일 변경 확정 | `changeToVerifiedEmail(verifiedEmail)` | 확인 절차는 유스케이스. 메서드 이름이 계약을 드러낸다 |
+| 흐름 4 탈퇴 (ACTIVE) | `close()` | `DELETED`로 바꾸고, 자격증명을 모두 지우고, 이메일을 `deleted+<id>@deleted.invalid`로 익명화한다 |
+| 공통 이메일 정규화 | 가입, 이메일 변경, 자동 연동이 같은 정규화를 쓴다 | 앞뒤 공백 제거와 소문자화. 점과 `+` 이후는 지우지 않는다 |
+
 ## 현재 코드와의 차이
 
 `contexts/member/member-core/src/main/kotlin/com/contentria/member/domain/` 기준이다.
 
 | 항목 | 현재 | 필요한 변경 |
 |---|---|---|
-| profiles와 accounts 사이의 FK | `SchemaMappingTest`가 "컨텍스트 경계를 넘는 외래키"라는 이유로 profiles가 걸린 FK가 없음을 검증한다. 반면 `Profile.create`의 주석은 FK가 존재를 보증한다고 적고 있다 | 같은 컨텍스트가 되었으므로 테스트의 근거를 "애그리거트 사이에는 연관관계 매핑을 하지 않는다"로 바꾼다. DB 수준 FK를 둘지는 스키마 이전 때 정하고, 정한 뒤 주석을 맞춘다 |
-| `AccountStatus` | `UNVERIFIED` 포함 | 제거. 미확인 계정이 존재하지 않는다 |
-| `verifyEmail()` | 있음 | 제거. 확인은 계정 생성 전에 끝난다 |
-| `registerWithPassword` | 원문 비밀번호와 해셔를 받는다 | 해시를 받는다. 원문은 가입 유스케이스에만 존재 |
-| `registerWithSocialProvider` | 확인 여부를 받지 않는다 | 확인 여부를 받고 거짓이면 거부 |
-| 비밀번호 설정 | `changePassword`만 있어 로컬 자격증명이 없으면 던진다 | `setPassword` 추가. 없으면 만들고 있으면 교체 |
-| 자동 연동 | 없음 | 기존 계정에 소셜 자격증명을 붙이는 메서드 추가 |
-| `close()` | 상태만 바꾼다 | 자격증명을 비우고 이메일을 익명화한다 |
-| `changeEmail` | 형식만 보고 대입한다 | 확인된 주소만 받는 계약으로 바꾸고 이름에 드러낸다 |
+| profiles와 accounts 사이의 FK | `SchemaMappingTest`는 애그리거트 사이에 연관관계 매핑이 없음을 검증한다. `Profile.create`의 주석은 DB 수준 FK가 계정의 존재를 보증한다고 적고 있지만, 그런 FK는 아직 없다 | DB 수준 FK를 둘지는 member 스키마의 첫 마이그레이션을 쓸 때 정하고, 정한 뒤 주석을 맞춘다 |

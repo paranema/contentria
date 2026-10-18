@@ -14,6 +14,14 @@ sealed class AccountException(message: String) : DomainException(message) {
     class InvalidCredentials :
         AccountException("Email or password does not match")
 
+    /**
+     * The provider did not vouch for the address. An unverified address cannot create an
+     * account or be matched to an existing one, because the address is what decides which
+     * account a social identity joins.
+     */
+    class EmailNotVerifiedByProvider(provider: AuthProvider) :
+        AccountException("$provider did not verify this email address")
+
     class NotAuthenticatable(status: AccountStatus) :
         AccountException("An account in status $status cannot start a session")
 
