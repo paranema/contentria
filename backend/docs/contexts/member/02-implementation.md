@@ -123,6 +123,7 @@
 | 흐름 4 탈퇴 | `StartWithdrawalUseCase`, `CompleteWithdrawalUseCase` | `WithdrawalService` | `POST /me/withdrawal/start` → 202, `/complete` → 204, 쿠키 만료 |
 | 설정 화면의 로그인 수단 | `GetMyCredentialsQuery` | `SocialCredentialService` | `GET /me/credentials` |
 | 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
+| 공통 로그아웃 | `LogoutUseCase` | `SessionService` | `POST /auth/logout` → 항상 204, 쿠키 만료. 그 리프레시 토큰 하나만 지운다. 액세스 토큰은 만료까지 통과하지만 브라우저는 쿠키와 함께 버린다 |
 | 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
 | 요청 인증 | `AuthenticateAccessTokenQuery` (`member-api`) | `AccessTokenAuthenticationService` | `apps/api`의 필터가 호출 |
 
@@ -180,7 +181,6 @@
 | 코드 로그인 응답 시간 차이. 있는 주소만 메일을 보내므로 응답이 늦다 | 범위 밖. 가입이 이미 가입 여부를 알려주므로([01, 가입은 가입 여부를 알려준다](01-rules.md#가입은-가입-여부를-알려준다)) 이것만 막아서는 얻는 것이 없다 |
 | 정지와 해제 API, 정지 시 세션 무효화 | 관리자 기능과 함께 정한다. 도메인 메서드(`suspend`, `reinstate`)만 있다 |
 | 무효화 직후의 액세스 토큰 차단 | 범위 밖. 최대 15분을 받아들인다. 막으려면 토큰마다 서버 조회가 필요하다 |
-| 로그아웃 | 범위 밖. 01에 규칙이 없다. 리프레시 토큰 하나를 지우고 쿠키를 만료시키면 된다 |
 | 속도 제한, reCAPTCHA, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
 
 ## 현재 코드와의 차이

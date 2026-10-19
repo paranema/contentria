@@ -1,6 +1,7 @@
 package com.contentria.member.application.service
 
 import com.contentria.member.application.provided.IssuedSession
+import com.contentria.member.application.provided.LogoutUseCase
 import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.RefreshSessionUseCase
 import com.contentria.member.application.required.AccessTokenCodec
@@ -28,7 +29,7 @@ class SessionService(
     private val accessTokens: AccessTokenCodec,
     private val policy: SessionPolicy,
     private val clock: Clock,
-) : RefreshSessionUseCase {
+) : RefreshSessionUseCase, LogoutUseCase {
 
     /** Called inside the caller's transaction, after the account has been authenticated. */
     fun startFor(account: Account): IssuedSession {
@@ -57,6 +58,13 @@ class SessionService(
     /** Every refresh token of the account goes; no device can renew its session. */
     fun endAllFor(accountId: UUID) {
         refreshTokens.deleteByAccountId(accountId)
+    }
+
+    /** The access token stays valid until it expires; the browser drops it with the cookies. */
+    @Transactional
+    override fun logout(refreshToken: String?) {
+        refreshToken ?: return
+        refreshTokens.findByTokenHash(RefreshToken.hashOf(refreshToken))?.let(refreshTokens::delete)
     }
 
     @Transactional
