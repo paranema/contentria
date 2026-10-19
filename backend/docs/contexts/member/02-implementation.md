@@ -40,6 +40,9 @@
 **가입 시도는 계정 애그리거트가 아니다.** 아직 계정이 아니고 계정 불변식과 무관하다.
 만료가 있는 임시 데이터이므로 캐시여도 되고 테이블이어도 된다.
 
+**로그인 시도도 계정 애그리거트가 아니다.** 계정 ID가 아니라 주소를 담고, 코드가 돌아오면 주소로 계정을 다시 찾는다.
+코드를 보낸 뒤 주소가 바뀌거나 탈퇴로 익명화된 계정에는 옛 주소로 받은 코드로 들어올 수 없다.
+
 ## DB 제약
 
 | 제약 | 보증하는 것 |
@@ -86,6 +89,7 @@
 | 흐름 4 연동 해제 | `unlinkProvider(provider)` | 마지막 자격증명이면 `LastCredentialRemoval` |
 | 흐름 4 이메일 변경 확정 | `changeToVerifiedEmail(verifiedEmail)` | 확인 절차는 유스케이스. 메서드 이름이 계약을 드러낸다 |
 | 흐름 4 탈퇴 (ACTIVE) | `close()` | `DELETED`로 바꾸고, 자격증명을 모두 지우고, 이메일을 `deleted+<id>@deleted.invalid`로 익명화한다 |
+| 흐름 6의 3번 (코드 로그인) | `authenticateWithEmailCode(confirmedEmail)` | 코드 확인은 유스케이스. 계정 주소와 같은 주소인지, ACTIVE인지만 본다. 비밀번호가 없는 계정도 통과한다 |
 | 공통 이메일 정규화 | 가입, 이메일 변경, 자동 연동이 같은 정규화를 쓴다 | 앞뒤 공백 제거와 소문자화. 점과 `+` 이후는 지우지 않는다 |
 
 ## 유스케이스
@@ -97,6 +101,8 @@
 | 흐름 1의 1, 2번 | `StartEmailSignUpUseCase` | `EmailSignUpService` | `POST /auth/sign-up/start` → 202, 시도 ID |
 | 흐름 1의 3번 | `CompleteEmailSignUpUseCase` | `EmailSignUpService` | `POST /auth/sign-up/complete` → 201, 세션 쿠키 |
 | 비밀번호 로그인 | `LoginWithPasswordUseCase` | `PasswordLoginService` | `POST /auth/login` |
+| 흐름 6의 1, 2번 | `StartEmailCodeLoginUseCase` | `EmailCodeLoginService` | `POST /auth/login/code/start` → 202, 시도 ID |
+| 흐름 6의 3번 | `CompleteEmailCodeLoginUseCase` | `EmailCodeLoginService` | `POST /auth/login/code/complete` → 200, 세션 쿠키 |
 | 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
 | 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
 | 요청 인증 | `AuthenticateAccessTokenQuery` (`member-api`) | `AccessTokenAuthenticationService` | `apps/api`의 필터가 호출 |
@@ -105,7 +111,11 @@
 
 | 항목 | 내용 |
 |---|---|
-| 가입 시도의 세션 묶기 | 시작 응답의 시도 ID를 완료 요청에 함께 내야 한다. ID를 가진 요청자만 코드를 검증할 수 있다 |
+| 시도의 세션 묶기 | 시작 응답의 시도 ID를 완료 요청에 함께 내야 한다. ID를 가진 요청자만 코드를 검증할 수 있다 |
+| 가입 시도와 로그인 시도 | 만료, 실패 횟수, 해시 규칙은 `EmailCodeAttempt` 하나에 있고 두 시도가 상속한다. 테이블은 `signup_attempts`와 `login_attempts`로 나눠, 한 목적으로 시작한 시도를 다른 목적으로 완료할 수 없다 |
+| 없는 주소의 코드 로그인 | 시도를 저장하지 않고 새 ID만 돌려준다. 응답 모양은 있는 주소와 같다. 그 ID로 완료하면 만료된 시도와 같은 `VERIFICATION_EXPIRED`다 |
+| 코드 로그인과 계정 상태 | ACTIVE가 아니면 코드가 맞아도 403 `ACCOUNT_NOT_ACTIVE`다. 이 거부는 예외라서 시도 삭제도 함께 되돌아가고, 시도는 만료될 때까지 남는다. 다시 내도 같은 거부다 |
+| 코드 메일 | 제목으로 가입 코드와 로그인 코드를 구분하고, 요청하지 않았다면 코드를 알려주지 말라고 적는다 |
 | 실패 횟수 | 틀린 코드의 실패 횟수를 커밋한 뒤 실패를 알린다. 예외로 알리면 트랜잭션과 함께 횟수가 되돌아간다 |
 | 코드와 토큰 저장 | 원값을 저장하지 않는다. 코드는 시도 ID를 섞은 SHA-256, 리프레시 토큰은 SHA-256 |
 | 액세스 토큰 | HS256 JWT, 15분. 정지된 계정의 토큰도 만료 전까지는 통과한다. 리프레시는 거부된다 |
@@ -118,9 +128,9 @@
 
 | 항목 | 하위 단계 |
 |---|---|
-| 이메일 코드 로그인 (흐름 6) | 5b |
 | 소셜 로그인, 자동 연동, 수동 연동과 해제 (흐름 2, 3) | 5c |
 | 비밀번호 설정과 재설정, 이메일 변경, 탈퇴와 프로필 탈퇴 표시 (흐름 4) | 5d |
+| 코드 로그인 응답 시간 차이. 있는 주소만 메일을 보내므로 응답이 늦다 | 범위 밖. 가입 시작이 이미 409로 가입 여부를 알려주므로 이것만 막아서는 얻는 것이 없다 |
 | 속도 제한, reCAPTCHA, 세션 무효화, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
 
 ## 현재 코드와의 차이

@@ -1,6 +1,7 @@
 package com.contentria.member.application.required
 
 import com.contentria.member.domain.account.Account
+import com.contentria.member.domain.login.LoginAttempt
 import com.contentria.member.domain.profile.Profile
 import com.contentria.member.domain.session.RefreshToken
 import com.contentria.member.domain.signup.SignUpAttempt
@@ -27,6 +28,13 @@ interface SignUpAttemptRepository : Repository<SignUpAttempt, UUID> {
     fun findById(id: UUID): SignUpAttempt?
     fun deleteByEmail(email: String)
     fun delete(attempt: SignUpAttempt)
+}
+
+interface LoginAttemptRepository : Repository<LoginAttempt, UUID> {
+    fun save(attempt: LoginAttempt): LoginAttempt
+    fun findById(id: UUID): LoginAttempt?
+    fun deleteByEmail(email: String)
+    fun delete(attempt: LoginAttempt)
 }
 
 interface RefreshTokenRepository : Repository<RefreshToken, UUID> {

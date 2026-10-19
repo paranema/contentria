@@ -294,6 +294,42 @@ class AccountTest {
     }
 
     @Nested
+    @DisplayName("이메일 코드 인증")
+    inner class EmailCodeAuthentication {
+
+        @Test
+        @DisplayName("활성 계정은 자기 주소로 받은 코드로 세션을 열 수 있다")
+        fun `active account passes with its own address`() {
+            assertThatCode { emailAccount().authenticateWithEmailCode(" Reader@Contentria.com ") }
+                .doesNotThrowAnyException()
+        }
+
+        @Test
+        @DisplayName("비밀번호가 없는 소셜 전용 계정도 코드로 로그인할 수 있다")
+        fun `social-only account can use a code`() {
+            assertThatCode { socialAccount().authenticateWithEmailCode("reader@contentria.com") }
+                .doesNotThrowAnyException()
+        }
+
+        @Test
+        @DisplayName("정지된 계정은 코드가 맞아도 세션을 열 수 없다")
+        fun `suspended account cannot start a session`() {
+            val account = emailAccount()
+            account.suspend()
+
+            assertThatThrownBy { account.authenticateWithEmailCode("reader@contentria.com") }
+                .isInstanceOf(AccountException.NotAuthenticatable::class.java)
+        }
+
+        @Test
+        @DisplayName("다른 주소로 확인한 코드로는 이 계정에 들어올 수 없다")
+        fun `a code confirmed for another address is refused`() {
+            assertThatThrownBy { emailAccount().authenticateWithEmailCode("someone-else@contentria.com") }
+                .isInstanceOf(IllegalArgumentException::class.java)
+        }
+    }
+
+    @Nested
     @DisplayName("자격증명 연결과 해제")
     inner class CredentialLinking {
 

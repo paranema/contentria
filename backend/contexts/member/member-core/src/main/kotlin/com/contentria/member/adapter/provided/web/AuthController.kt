@@ -1,11 +1,13 @@
 package com.contentria.member.adapter.provided.web
 
 import com.contentria.member.api.SessionCookieNames
+import com.contentria.member.application.provided.CompleteEmailCodeLoginUseCase
 import com.contentria.member.application.provided.CompleteEmailSignUpCommand
 import com.contentria.member.application.provided.CompleteEmailSignUpUseCase
 import com.contentria.member.application.provided.LoginWithPasswordUseCase
 import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.RefreshSessionUseCase
+import com.contentria.member.application.provided.StartEmailCodeLoginUseCase
 import com.contentria.member.application.provided.StartEmailSignUpUseCase
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -22,13 +24,15 @@ class AuthController(
     private val startSignUp: StartEmailSignUpUseCase,
     private val completeSignUp: CompleteEmailSignUpUseCase,
     private val loginWithPassword: LoginWithPasswordUseCase,
+    private val startCodeLogin: StartEmailCodeLoginUseCase,
+    private val completeCodeLogin: CompleteEmailCodeLoginUseCase,
     private val refreshSession: RefreshSessionUseCase,
     private val cookies: SessionCookies,
 ) {
 
     @PostMapping("/sign-up/start")
-    fun startSignUp(@Valid @RequestBody request: StartSignUpRequest): ResponseEntity<StartSignUpResponse> =
-        ResponseEntity.status(HttpStatus.ACCEPTED).body(StartSignUpResponse(startSignUp.start(request.email)))
+    fun startSignUp(@Valid @RequestBody request: StartSignUpRequest): ResponseEntity<CodeSentResponse> =
+        ResponseEntity.status(HttpStatus.ACCEPTED).body(CodeSentResponse(startSignUp.start(request.email)))
 
     @PostMapping("/sign-up/complete")
     fun completeSignUp(@Valid @RequestBody request: CompleteSignUpRequest): ResponseEntity<SessionResponse> {
@@ -39,6 +43,15 @@ class AuthController(
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<SessionResponse> =
         cookies.respond(ResponseEntity.ok(), loginWithPassword.login(request.email, request.password))
+
+    /** 202 whether or not an account uses the address (01-rules, 코드 로그인은 계정 존재를 알려주지 않는다). */
+    @PostMapping("/login/code/start")
+    fun startCodeLogin(@Valid @RequestBody request: StartCodeLoginRequest): ResponseEntity<CodeSentResponse> =
+        ResponseEntity.status(HttpStatus.ACCEPTED).body(CodeSentResponse(startCodeLogin.start(request.email)))
+
+    @PostMapping("/login/code/complete")
+    fun completeCodeLogin(@Valid @RequestBody request: CompleteCodeLoginRequest): ResponseEntity<SessionResponse> =
+        cookies.respond(ResponseEntity.ok(), completeCodeLogin.complete(request.attemptId, request.code))
 
     @PostMapping("/refresh")
     fun refresh(

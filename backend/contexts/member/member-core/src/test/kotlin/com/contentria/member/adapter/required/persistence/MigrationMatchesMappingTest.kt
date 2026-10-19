@@ -3,7 +3,10 @@ package com.contentria.member.adapter.required.persistence
 import com.contentria.member.domain.MemberSchema
 import com.contentria.member.domain.account.Account
 import com.contentria.member.domain.account.Credential
+import com.contentria.member.domain.login.LoginAttempt
 import com.contentria.member.domain.profile.Profile
+import com.contentria.member.domain.session.RefreshToken
+import com.contentria.member.domain.signup.SignUpAttempt
 import org.assertj.core.api.Assertions.assertThatCode
 import org.flywaydb.core.Flyway
 import org.hibernate.boot.MetadataSources
@@ -57,6 +60,9 @@ class MigrationMatchesMappingTest {
                 .addAnnotatedClass(Account::class.java)
                 .addAnnotatedClass(Credential::class.java)
                 .addAnnotatedClass(Profile::class.java)
+                .addAnnotatedClass(SignUpAttempt::class.java)
+                .addAnnotatedClass(LoginAttempt::class.java)
+                .addAnnotatedClass(RefreshToken::class.java)
                 .buildMetadata()
                 .buildSessionFactory()
                 .close()

@@ -124,6 +124,22 @@ class Account private constructor(
         if (credential.providerId != providerId) throw AccountException.InvalidCredentials()
     }
 
+    /**
+     * Confirms this account may start a session for someone who has just returned a code sent
+     * to [confirmedEmail].
+     *
+     * No credential is involved: control of the account's address is the proof, so an account
+     * signs in this way whether or not it has a password. Checking the code is the use case's
+     * job; this method only refuses an address that is not this account's, and a status that
+     * does not permit a session.
+     */
+    fun authenticateWithEmailCode(confirmedEmail: String) {
+        if (!status.canAuthenticate) throw AccountException.NotAuthenticatable(status)
+        require(EmailAddresses.normalize(confirmedEmail) == email) {
+            "A code login needs the confirmed address to be this account's address"
+        }
+    }
+
     // ---------------------------------------------------------------- credentials
 
     /**

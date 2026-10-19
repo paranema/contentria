@@ -1,5 +1,6 @@
 package com.contentria.member.adapter.required.mail
 
+import com.contentria.member.application.required.CodePurpose
 import com.contentria.member.application.required.VerificationCodeSender
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -16,7 +17,7 @@ class LoggingVerificationCodeSender : VerificationCodeSender {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun send(email: String, code: String) {
-        log.warn("[local mail] verification code {} for a sign-up or login request", code)
+    override fun send(email: String, code: String, purpose: CodePurpose) {
+        log.warn("[local mail] {} code {}", purpose, code)
     }
 }
