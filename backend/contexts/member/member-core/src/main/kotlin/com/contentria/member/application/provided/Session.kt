@@ -8,6 +8,14 @@ interface RefreshSessionUseCase {
     fun refresh(refreshToken: String): IssuedSession
 }
 
+interface LogoutUseCase {
+    /**
+     * Ends the session [refreshToken] belongs to, and only that one. A missing, unknown or already
+     * rotated token is not an error: the caller is signed out either way.
+     */
+    fun logout(refreshToken: String?)
+}
+
 data class IssuedSession(
     val accountId: UUID,
     val accessToken: String,

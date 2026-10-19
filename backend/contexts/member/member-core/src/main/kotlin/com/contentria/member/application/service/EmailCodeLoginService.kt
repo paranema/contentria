@@ -2,7 +2,6 @@ package com.contentria.member.application.service
 
 import com.contentria.member.application.provided.CompleteEmailCodeLoginUseCase
 import com.contentria.member.application.provided.IssuedSession
-import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.MemberUseCaseException.VerificationFailed.Reason
 import com.contentria.member.application.provided.StartEmailCodeLoginUseCase
 import com.contentria.member.application.required.AccountRepository
@@ -12,7 +11,6 @@ import com.contentria.member.application.required.VerificationCodeGenerator
 import com.contentria.member.application.required.VerificationCodeSender
 import com.contentria.member.domain.account.EmailAddresses
 import com.contentria.member.domain.login.LoginAttempt
-import com.contentria.member.domain.verification.CodeVerification
 import com.contentria.shared.id.Ids
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -57,36 +55,19 @@ class EmailCodeLoginService(
      *
      * As in sign-up, a wrong code is recorded and committed before the failure is reported.
      */
-    override fun complete(attemptId: UUID, code: String): IssuedSession {
-        val outcome = transactions.execute { completeInTransaction(attemptId, code) }!!
-        return when (outcome) {
-            is Outcome.Completed -> outcome.session
-            is Outcome.Rejected -> throw MemberUseCaseException.VerificationFailed(outcome.reason)
-        }
-    }
-
-    private fun completeInTransaction(attemptId: UUID, code: String): Outcome {
-        val attempt = attempts.findById(attemptId) ?: return Outcome.Rejected(Reason.EXPIRED)
-
-        when (attempt.verify(code, clock.instant())) {
-            CodeVerification.VERIFIED -> Unit
-            CodeVerification.MISMATCH -> { attempts.save(attempt); return Outcome.Rejected(Reason.MISMATCH) }
-            CodeVerification.LOCKED -> { attempts.save(attempt); return Outcome.Rejected(Reason.LOCKED) }
-            CodeVerification.EXPIRED -> { attempts.delete(attempt); return Outcome.Rejected(Reason.EXPIRED) }
-        }
+    override fun complete(attemptId: UUID, code: String): IssuedSession = transactions.runCodeChecked {
+        val attempt = attempts.findById(attemptId) ?: return@runCodeChecked CodeChecked.Rejected(Reason.EXPIRED)
+        attempt.verify(code, clock.instant())
+            .recordOn(attempt, attempts::save, attempts::delete)
+            ?.let { return@runCodeChecked CodeChecked.Rejected(it) }
         attempts.delete(attempt)
 
         // The address may have left its account since the code was sent: changed, or anonymised on closing.
-        val account = accounts.findByEmail(attempt.email) ?: return Outcome.Rejected(Reason.EXPIRED)
+        val account = accounts.findByEmail(attempt.email) ?: return@runCodeChecked CodeChecked.Rejected(Reason.EXPIRED)
 
         // Refusing an account that is not ACTIVE rolls the delete back with it. The attempt then
         // lives until it expires, and returning the code again is refused the same way.
         account.authenticateWithEmailCode(attempt.email)
-        return Outcome.Completed(sessions.startFor(account))
-    }
-
-    private sealed interface Outcome {
-        class Completed(val session: IssuedSession) : Outcome
-        class Rejected(val reason: Reason) : Outcome
+        CodeChecked.Done(sessions.startFor(account))
     }
 }

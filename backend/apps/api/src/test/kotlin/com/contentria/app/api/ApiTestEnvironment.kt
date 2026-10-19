@@ -3,6 +3,7 @@ package com.contentria.app.api
 import org.flywaydb.core.Flyway
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.testcontainers.postgresql.PostgreSQLContainer
+import java.sql.DriverManager
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.UUID
@@ -28,6 +29,18 @@ object ApiTestEnvironment {
     val google = FakeOidcProvider().apply { start() }
 
     private val accessTokenSecret = Base64.getEncoder().encodeToString(ByteArray(32).also(SecureRandom()::nextBytes))
+
+    /** One row of [sql] as column name to value, or null. For checking what an API call left behind. */
+    fun row(sql: String, vararg args: Any): Map<String, Any?>? =
+        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                args.forEachIndexed { i, arg -> statement.setObject(i + 1, arg) }
+                statement.executeQuery().use { rows ->
+                    if (!rows.next()) return null
+                    (1..rows.metaData.columnCount).associate { rows.metaData.getColumnLabel(it) to rows.getObject(it) }
+                }
+            }
+        }
 
     fun register(registry: DynamicPropertyRegistry) {
         registry.add("spring.datasource.url") { postgres.jdbcUrl }

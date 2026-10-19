@@ -22,6 +22,9 @@ class SmtpVerificationCodeSender(
             subject = when (purpose) {
                 CodePurpose.SIGN_UP -> "[Contentria] 회원가입 인증 코드"
                 CodePurpose.LOGIN -> "[Contentria] 로그인 코드"
+                CodePurpose.EMAIL_CHANGE_CURRENT -> "[Contentria] 이메일 변경 요청 확인 코드"
+                CodePurpose.EMAIL_CHANGE_NEW -> "[Contentria] 새 이메일 주소 확인 코드"
+                CodePurpose.WITHDRAWAL -> "[Contentria] 회원 탈퇴 확인 코드"
             }
             text = "인증 코드: $code\n\n${properties.mail.codeValidityNotice}\n$UNREQUESTED_NOTICE"
         }

@@ -3,6 +3,8 @@ package com.contentria.app.api
 import com.contentria.member.application.required.AccountNotice
 import com.contentria.member.application.required.AccountNoticeSender
 import com.contentria.member.application.required.CodePurpose
+import com.contentria.member.application.required.PasswordLinkPurpose
+import com.contentria.member.application.required.PasswordLinkSender
 import com.contentria.member.application.required.VerificationCodeSender
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -26,6 +28,15 @@ class RecordingNoticeSender : AccountNoticeSender {
     fun sentTo(email: String): List<AccountNotice> = notices.filter { it.first == email }.map { it.second }
 }
 
+/** Captures password link tokens instead of mailing them. */
+class RecordingPasswordLinkSender : PasswordLinkSender {
+    private val tokens = ConcurrentHashMap<Pair<String, PasswordLinkPurpose>, String>()
+    override fun send(email: String, token: String, purpose: PasswordLinkPurpose) { tokens[email to purpose] = token }
+    fun lastTokenFor(email: String, purpose: PasswordLinkPurpose): String =
+        tokens[email to purpose] ?: error("No $purpose link was sent to $email")
+    fun sentAnyTo(email: String): Boolean = tokens.keys.any { it.first == email }
+}
+
 @TestConfiguration
 class RecordingSenders {
     @Bean
@@ -35,4 +46,8 @@ class RecordingSenders {
     @Bean
     @Primary
     fun recordingNoticeSender() = RecordingNoticeSender()
+
+    @Bean
+    @Primary
+    fun recordingPasswordLinkSender() = RecordingPasswordLinkSender()
 }

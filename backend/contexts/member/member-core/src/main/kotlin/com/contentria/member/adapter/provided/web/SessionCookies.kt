@@ -24,6 +24,12 @@ class SessionCookies(
             .header(HttpHeaders.SET_COOKIE, *cookiesFor(session))
             .body(SessionResponse(session.accountId, session.accessTokenExpiresAt))
 
+    /** Expires both cookies: the browser forgets a session the server has ended. */
+    fun cleared(status: ResponseEntity.BodyBuilder): ResponseEntity<Void> =
+        status
+            .header(HttpHeaders.SET_COOKIE, expired(SessionCookieNames.ACCESS_TOKEN), expired(SessionCookieNames.REFRESH_TOKEN))
+            .build()
+
     /** For responses that are redirects rather than bodies, such as the social login callback. */
     fun write(response: HttpServletResponse, session: IssuedSession) {
         cookiesFor(session).forEach { response.addHeader(HttpHeaders.SET_COOKIE, it) }
@@ -33,6 +39,16 @@ class SessionCookies(
         cookie(SessionCookieNames.ACCESS_TOKEN, session.accessToken, session.accessTokenExpiresAt),
         cookie(SessionCookieNames.REFRESH_TOKEN, session.refreshToken, session.refreshTokenExpiresAt),
     )
+
+    private fun expired(name: String): String =
+        ResponseCookie.from(name, "")
+            .httpOnly(true)
+            .secure(properties.cookie.secure)
+            .sameSite("Lax")
+            .path("/")
+            .maxAge(Duration.ZERO)
+            .build()
+            .toString()
 
     private fun cookie(name: String, value: String, expiresAt: Instant): String =
         ResponseCookie.from(name, value)

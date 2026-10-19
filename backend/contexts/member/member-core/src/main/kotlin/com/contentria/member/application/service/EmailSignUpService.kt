@@ -15,7 +15,6 @@ import com.contentria.member.domain.account.Account
 import com.contentria.member.domain.account.EmailAddresses
 import com.contentria.member.domain.account.PasswordHasher
 import com.contentria.member.domain.signup.SignUpAttempt
-import com.contentria.member.domain.verification.CodeVerification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
@@ -57,38 +56,21 @@ class EmailSignUpService(
      * A wrong code is recorded and committed before the failure is reported. Throwing inside
      * the transaction would roll the failed-attempt count back and make the limit meaningless.
      */
-    override fun complete(command: CompleteEmailSignUpCommand): IssuedSession {
-        val outcome = transactions.execute { completeInTransaction(command) }!!
-        return when (outcome) {
-            is Outcome.Completed -> outcome.session
-            is Outcome.Rejected -> throw MemberUseCaseException.VerificationFailed(outcome.reason)
-        }
-    }
-
-    private fun completeInTransaction(command: CompleteEmailSignUpCommand): Outcome {
-        val attempt = attempts.findById(command.attemptId) ?: return Outcome.Rejected(Reason.EXPIRED)
-
-        when (attempt.verify(command.code, clock.instant())) {
-            CodeVerification.VERIFIED -> Unit
-            CodeVerification.MISMATCH -> { attempts.save(attempt); return Outcome.Rejected(Reason.MISMATCH) }
-            CodeVerification.LOCKED -> { attempts.save(attempt); return Outcome.Rejected(Reason.LOCKED) }
-            CodeVerification.EXPIRED -> { attempts.delete(attempt); return Outcome.Rejected(Reason.EXPIRED) }
-        }
+    override fun complete(command: CompleteEmailSignUpCommand): IssuedSession = transactions.runCodeChecked {
+        val attempt = attempts.findById(command.attemptId) ?: return@runCodeChecked CodeChecked.Rejected(Reason.EXPIRED)
+        attempt.verify(command.code, clock.instant())
+            .recordOn(attempt, attempts::save, attempts::delete)
+            ?.let { return@runCodeChecked CodeChecked.Rejected(it) }
 
         rejectIfRegistered(attempt.email)
         val account = accounts.save(Account.registerWithPassword(attempt.email, passwordHasher.hash(command.rawPassword)))
         profiles.createFor(account.id)
         attempts.delete(attempt)
-        return Outcome.Completed(sessions.startFor(account))
+        CodeChecked.Done(sessions.startFor(account))
     }
 
     private fun rejectIfRegistered(email: String) {
         val existing = accounts.findByEmail(email) ?: return
         throw MemberUseCaseException.EmailAlreadyRegistered(existing.credentials.map { it.provider.name }.toSet())
-    }
-
-    private sealed interface Outcome {
-        class Completed(val session: IssuedSession) : Outcome
-        class Rejected(val reason: Reason) : Outcome
     }
 }

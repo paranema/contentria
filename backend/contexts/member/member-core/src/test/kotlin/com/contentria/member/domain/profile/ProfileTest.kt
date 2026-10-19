@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.time.Instant
 import java.util.UUID
 
 class ProfileTest {
@@ -126,6 +127,36 @@ class ProfileTest {
 
             profile.changePicture(null)
             assertThat(profile.pictureUrl).isNull()
+        }
+    }
+
+    @Nested
+    @DisplayName("탈퇴 표시")
+    inner class Withdrawal {
+
+        private val at = Instant.parse("2026-10-19T00:00:00Z")
+
+        @Test
+        @DisplayName("탈퇴해도 이름과 사진은 남고 탈퇴 시각만 붙는다")
+        fun `keeps the name and picture`() {
+            val profile = Profile.create(UUID.randomUUID(), "남은 이름", "https://img.contentria.com/a.png")
+
+            profile.markWithdrawn(at)
+
+            assertThat(profile.isWithdrawn).isTrue()
+            assertThat(profile.withdrawnAt).isEqualTo(at)
+            assertThat(profile.displayName).isEqualTo("남은 이름")
+            assertThat(profile.pictureUrl).isEqualTo("https://img.contentria.com/a.png")
+        }
+
+        @Test
+        @DisplayName("두 번 표시해도 처음 시각을 유지한다")
+        fun `marking twice keeps the first time`() {
+            val profile = Profile.create(UUID.randomUUID(), "남은 이름")
+            profile.markWithdrawn(at)
+            profile.markWithdrawn(at.plusSeconds(60))
+
+            assertThat(profile.withdrawnAt).isEqualTo(at)
         }
     }
 }

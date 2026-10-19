@@ -2,10 +2,13 @@ package com.contentria.member.adapter.required.persistence
 
 import com.contentria.member.domain.account.Account
 import com.contentria.member.domain.account.Credential
+import com.contentria.member.domain.emailchange.EmailChangeAttempt
 import com.contentria.member.domain.login.LoginAttempt
+import com.contentria.member.domain.password.PasswordToken
 import com.contentria.member.domain.profile.Profile
 import com.contentria.member.domain.session.RefreshToken
 import com.contentria.member.domain.signup.SignUpAttempt
+import com.contentria.member.domain.withdrawal.WithdrawalAttempt
 import org.assertj.core.api.Assertions.assertThat
 import org.hibernate.boot.MetadataSources
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder
@@ -37,6 +40,9 @@ class SchemaMappingTest {
             "create table member.signup_attempts",
             "create table member.login_attempts",
             "create table member.refresh_tokens",
+            "create table member.password_tokens",
+            "create table member.email_change_attempts",
+            "create table member.withdrawal_attempts",
         )
     }
 
@@ -103,6 +109,9 @@ class SchemaMappingTest {
             .addAnnotatedClass(SignUpAttempt::class.java)
             .addAnnotatedClass(LoginAttempt::class.java)
             .addAnnotatedClass(RefreshToken::class.java)
+            .addAnnotatedClass(PasswordToken::class.java)
+            .addAnnotatedClass(EmailChangeAttempt::class.java)
+            .addAnnotatedClass(WithdrawalAttempt::class.java)
             .buildMetadata()
             .buildSessionFactory()
             .close()

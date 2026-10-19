@@ -5,8 +5,11 @@ import com.contentria.member.application.provided.CompleteEmailCodeLoginUseCase
 import com.contentria.member.application.provided.CompleteEmailSignUpCommand
 import com.contentria.member.application.provided.CompleteEmailSignUpUseCase
 import com.contentria.member.application.provided.LoginWithPasswordUseCase
+import com.contentria.member.application.provided.LogoutUseCase
 import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.RefreshSessionUseCase
+import com.contentria.member.application.provided.RequestPasswordResetLinkUseCase
+import com.contentria.member.application.provided.ResetPasswordWithLinkUseCase
 import com.contentria.member.application.provided.StartEmailCodeLoginUseCase
 import com.contentria.member.application.provided.StartEmailSignUpUseCase
 import jakarta.validation.Valid
@@ -27,6 +30,9 @@ class AuthController(
     private val startCodeLogin: StartEmailCodeLoginUseCase,
     private val completeCodeLogin: CompleteEmailCodeLoginUseCase,
     private val refreshSession: RefreshSessionUseCase,
+    private val logout: LogoutUseCase,
+    private val requestResetLink: RequestPasswordResetLinkUseCase,
+    private val resetPassword: ResetPasswordWithLinkUseCase,
     private val cookies: SessionCookies,
 ) {
 
@@ -52,6 +58,27 @@ class AuthController(
     @PostMapping("/login/code/complete")
     fun completeCodeLogin(@Valid @RequestBody request: CompleteCodeLoginRequest): ResponseEntity<SessionResponse> =
         cookies.respond(ResponseEntity.ok(), completeCodeLogin.complete(request.attemptId, request.code))
+
+    /** This browser only; other devices stay signed in. Always 204, with both cookies expired. */
+    @PostMapping("/logout")
+    fun logout(
+        @CookieValue(name = SessionCookieNames.REFRESH_TOKEN, required = false) refreshToken: String?,
+    ): ResponseEntity<Void> {
+        logout.logout(refreshToken)
+        return cookies.cleared(ResponseEntity.status(HttpStatus.NO_CONTENT))
+    }
+
+    /** 202 whether or not an account uses the address, as for a code login. */
+    @PostMapping("/password/reset-link")
+    fun requestResetLink(@Valid @RequestBody request: PasswordResetLinkRequest): ResponseEntity<Void> {
+        requestResetLink.requestResetLink(request.email)
+        return ResponseEntity.accepted().build()
+    }
+
+    /** Spends a setup or reset link. The account's other sessions end; this one starts. */
+    @PostMapping("/password/reset")
+    fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest): ResponseEntity<SessionResponse> =
+        cookies.respond(ResponseEntity.ok(), resetPassword.reset(request.token, request.newPassword))
 
     @PostMapping("/refresh")
     fun refresh(

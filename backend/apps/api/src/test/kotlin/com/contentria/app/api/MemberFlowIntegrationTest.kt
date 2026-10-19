@@ -158,6 +158,29 @@ class MemberFlowIntegrationTest {
         assertThat(completed.body()).contains("VERIFICATION_EXPIRED")
     }
 
+    @Test
+    @DisplayName("로그아웃하면 그 브라우저의 세션만 끝나고, 다른 기기는 그대로다")
+    fun `logout ends this browser's session only`() {
+        val email = signUp()
+        val browser = TestBrowser(port)
+        val otherDevice = TestBrowser(port)
+        assertThat(browser.post("/auth/login", login(email, "correct horse battery")).statusCode()).isEqualTo(200)
+        assertThat(otherDevice.post("/auth/login", login(email, "correct horse battery")).statusCode()).isEqualTo(200)
+        val refreshToken = browser.cookie("refreshToken")!!
+
+        val loggedOut = browser.post("/auth/logout", "")
+        assertThat(loggedOut.statusCode()).isEqualTo(204)
+        assertThat(browser.cookie("accessToken")).isNull()
+        assertThat(browser.cookie("refreshToken")).isNull()
+
+        // 쿠키를 지우지 않은 클라이언트가 옛 리프레시 토큰을 다시 내도 통하지 않는다
+        assertThat(TestBrowser(port).postWithCookie("/auth/refresh", "refreshToken=$refreshToken").statusCode()).isEqualTo(401)
+        assertThat(otherDevice.post("/auth/refresh", "").statusCode()).isEqualTo(200)
+
+        // 로그인하지 않은 상태의 로그아웃도 같은 응답이다
+        assertThat(TestBrowser(port).post("/auth/logout", "").statusCode()).isEqualTo(204)
+    }
+
     /** Registers a fresh address through the HTTP flow and returns it. */
     private fun signUp(): String {
         val browser = TestBrowser(port)

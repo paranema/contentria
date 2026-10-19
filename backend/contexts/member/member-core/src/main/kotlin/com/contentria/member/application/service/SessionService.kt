@@ -1,6 +1,7 @@
 package com.contentria.member.application.service
 
 import com.contentria.member.application.provided.IssuedSession
+import com.contentria.member.application.provided.LogoutUseCase
 import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.RefreshSessionUseCase
 import com.contentria.member.application.required.AccessTokenCodec
@@ -11,6 +12,7 @@ import com.contentria.member.domain.session.RefreshToken
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.util.UUID
 
 /**
  * Starts and rotates sessions (docs/conventions/security.md, Refresh Token Rotation).
@@ -27,7 +29,7 @@ class SessionService(
     private val accessTokens: AccessTokenCodec,
     private val policy: SessionPolicy,
     private val clock: Clock,
-) : RefreshSessionUseCase {
+) : RefreshSessionUseCase, LogoutUseCase {
 
     /** Called inside the caller's transaction, after the account has been authenticated. */
     fun startFor(account: Account): IssuedSession {
@@ -42,6 +44,27 @@ class SessionService(
             refreshToken = refresh.rawValue,
             refreshTokenExpiresAt = refresh.token.expiresAt,
         )
+    }
+
+    /**
+     * Ends every session of the account and starts a new one for the caller (01-rules 공통, 세션
+     * 무효화). Access tokens already issued elsewhere still pass until they expire.
+     */
+    fun restartFor(account: Account): IssuedSession {
+        endAllFor(account.id)
+        return startFor(account)
+    }
+
+    /** Every refresh token of the account goes; no device can renew its session. */
+    fun endAllFor(accountId: UUID) {
+        refreshTokens.deleteByAccountId(accountId)
+    }
+
+    /** The access token stays valid until it expires; the browser drops it with the cookies. */
+    @Transactional
+    override fun logout(refreshToken: String?) {
+        refreshToken ?: return
+        refreshTokens.findByTokenHash(RefreshToken.hashOf(refreshToken))?.let(refreshTokens::delete)
     }
 
     @Transactional

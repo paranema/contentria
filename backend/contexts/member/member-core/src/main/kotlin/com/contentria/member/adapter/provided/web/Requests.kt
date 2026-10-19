@@ -35,6 +35,35 @@ data class CompleteCodeLoginRequest(
     @field:Pattern(regexp = "\\d{6}") val code: String,
 )
 
+data class ChangePasswordRequest(
+    @field:NotBlank @field:Size(max = 72) val currentPassword: String,
+    @field:Size(min = 8, max = 72) val newPassword: String,
+)
+
+data class PasswordResetLinkRequest(
+    @field:NotBlank @field:Size(max = 255) val email: String,
+)
+
+data class ResetPasswordRequest(
+    @field:NotBlank @field:Size(max = 100) val token: String,
+    @field:Size(min = 8, max = 72) val newPassword: String,
+)
+
+data class StartEmailChangeRequest(
+    @field:NotBlank @field:Size(max = 255) val newEmail: String,
+)
+
+data class CompleteEmailChangeRequest(
+    @field:NotNull val attemptId: UUID,
+    @field:Pattern(regexp = "\\d{6}") val currentAddressCode: String,
+    @field:Pattern(regexp = "\\d{6}") val newAddressCode: String,
+)
+
+data class CompleteWithdrawalRequest(
+    @field:NotNull val attemptId: UUID,
+    @field:Pattern(regexp = "\\d{6}") val code: String,
+)
+
 data class RenameProfileRequest(
     @field:NotBlank val displayName: String,
 )

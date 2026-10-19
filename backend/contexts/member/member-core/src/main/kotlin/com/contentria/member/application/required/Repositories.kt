@@ -2,10 +2,13 @@ package com.contentria.member.application.required
 
 import com.contentria.member.domain.account.Account
 import com.contentria.member.domain.account.AuthProvider
+import com.contentria.member.domain.emailchange.EmailChangeAttempt
 import com.contentria.member.domain.login.LoginAttempt
+import com.contentria.member.domain.password.PasswordToken
 import com.contentria.member.domain.profile.Profile
 import com.contentria.member.domain.session.RefreshToken
 import com.contentria.member.domain.signup.SignUpAttempt
+import com.contentria.member.domain.withdrawal.WithdrawalAttempt
 import org.springframework.data.repository.Repository
 import java.util.UUID
 
@@ -45,4 +48,25 @@ interface RefreshTokenRepository : Repository<RefreshToken, UUID> {
     fun save(token: RefreshToken): RefreshToken
     fun findByTokenHash(tokenHash: String): RefreshToken?
     fun delete(token: RefreshToken)
+    fun deleteByAccountId(accountId: UUID)
+}
+
+interface PasswordTokenRepository : Repository<PasswordToken, UUID> {
+    fun save(token: PasswordToken): PasswordToken
+    fun findByTokenHash(tokenHash: String): PasswordToken?
+    fun deleteByAccountId(accountId: UUID)
+}
+
+interface EmailChangeAttemptRepository : Repository<EmailChangeAttempt, UUID> {
+    fun save(attempt: EmailChangeAttempt): EmailChangeAttempt
+    fun findById(id: UUID): EmailChangeAttempt?
+    fun deleteByAccountId(accountId: UUID)
+    fun delete(attempt: EmailChangeAttempt)
+}
+
+interface WithdrawalAttemptRepository : Repository<WithdrawalAttempt, UUID> {
+    fun save(attempt: WithdrawalAttempt): WithdrawalAttempt
+    fun findById(id: UUID): WithdrawalAttempt?
+    fun deleteByAccountId(accountId: UUID)
+    fun delete(attempt: WithdrawalAttempt)
 }

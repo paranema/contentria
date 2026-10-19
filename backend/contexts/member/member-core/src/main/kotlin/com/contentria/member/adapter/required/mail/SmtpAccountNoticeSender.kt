@@ -24,6 +24,10 @@ class SmtpAccountNoticeSender(
             is AccountNotice.SocialProviderUnlinked ->
                 "[Contentria] ${label(notice.provider)} 계정 연결이 해제되었습니다" to
                     "${label(notice.provider)} 계정으로는 더 이상 로그인할 수 없습니다."
+            AccountNotice.PasswordChanged ->
+                "[Contentria] 비밀번호가 변경되었습니다" to "다른 기기의 로그인은 모두 끝났습니다."
+            AccountNotice.EmailChanged ->
+                "[Contentria] 계정 이메일이 변경되었습니다" to "이 주소는 더 이상 계정에 연결되어 있지 않습니다. 다른 기기의 로그인은 모두 끝났습니다."
         }
         val message = SimpleMailMessage().apply {
             from = properties.mail.from
