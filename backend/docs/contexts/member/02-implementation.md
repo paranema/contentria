@@ -64,7 +64,7 @@
 
 | 이벤트 | 후속 |
 |---|---|
-| 소셜 연동됨 | 계정 이메일로 안내 메일 |
+| 소셜 연동됨 (자동 연동 포함) | 계정 이메일로 안내 메일 |
 | 소셜 연동 해제됨 | 계정 이메일로 안내 메일 |
 | 비밀번호 변경됨 | 안내 메일, 다른 세션 무효화 |
 | 이메일 변경 요청됨 | 기존 주소로 알림, 새 주소로 확인 코드 |
@@ -72,6 +72,9 @@
 | 계정 탈퇴됨 | 다른 세션 무효화 |
 
 메일 발송이 실패해도 트랜잭션을 되돌리지 않는다. 커밋 후 처리한다.
+
+지금은 같은 프로세스 안에서 처리한다. 서비스가 `AccountNoticeRequested`를 발행하고, `AccountNoticeListener`가 커밋 뒤(`@TransactionalEventListener(AFTER_COMMIT)`) `AccountNoticeSender`로 보낸다.
+커밋과 발송 사이에 프로세스가 죽으면 그 안내는 빠진다. 아웃박스를 만들 때까지 받아들인다. 발송 실패는 로그로 남기고 삼킨다. 알리려는 변경은 이미 일어났기 때문이다.
 
 ## 규칙과 도메인 메서드
 
@@ -103,6 +106,10 @@
 | 비밀번호 로그인 | `LoginWithPasswordUseCase` | `PasswordLoginService` | `POST /auth/login` |
 | 흐름 6의 1, 2번 | `StartEmailCodeLoginUseCase` | `EmailCodeLoginService` | `POST /auth/login/code/start` → 202, 시도 ID |
 | 흐름 6의 3번 | `CompleteEmailCodeLoginUseCase` | `EmailCodeLoginService` | `POST /auth/login/code/complete` → 200, 세션 쿠키 |
+| 흐름 2 소셜 로그인 | `LoginWithSocialProviderUseCase` | `SocialLoginService` | `GET /oauth2/authorization/google` → 구글 → `GET /login/oauth2/code/google` → 프론트엔드로 302, 세션 쿠키 |
+| 흐름 3 수동 연동 | `LinkSocialProviderUseCase` | `SocialCredentialService` | `GET /oauth2/authorization/google?intent=link` → 구글 → 같은 콜백 → 설정 화면으로 302 |
+| 흐름 4 연동 해제 | `UnlinkSocialProviderUseCase` | `SocialCredentialService` | `DELETE /me/credentials/{provider}` → 204 |
+| 설정 화면의 로그인 수단 | `GetMyCredentialsQuery` | `SocialCredentialService` | `GET /me/credentials` |
 | 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
 | 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
 | 요청 인증 | `AuthenticateAccessTokenQuery` (`member-api`) | `AccessTokenAuthenticationService` | `apps/api`의 필터가 호출 |
@@ -124,13 +131,28 @@
 | 비밀번호 길이 | 8자 이상 72자 이하. BCrypt는 72바이트까지만 읽는다 |
 | 코드 발송 | `contentria.member.mail.mode`가 `smtp`면 메일, `log`면 로그(로컬 전용) |
 
+### 소셜 로그인에서 정한 것
+
+| 항목 | 내용 |
+|---|---|
+| 공급자 | 구글만. 다른 공급자는 01의 확인 필요 항목을 푼 뒤 `AuthProvider`와 클라이언트 등록을 추가한다 |
+| 흐름 2의 1번 (서명 검증) | Spring Security OAuth2 로그인이 한다. 상태(state), OIDC nonce, PKCE(S256)를 쓰고, ID 토큰의 서명(JWKS), 발급자, 대상, 만료, nonce를 확인한다 |
+| 읽는 클레임 | ID 토큰의 `sub`, `email`, `email_verified`만 읽는다. userinfo 엔드포인트는 부르지 않는다(`setRetrieveUserInfo { false }`). `email_verified`가 없거나 `true`가 아니면 `false`로 본다 |
+| 진행 중인 인가 요청 | API에 HTTP 세션이 없으므로 HttpOnly 쿠키 `oauth2AuthRequest`(10분)에 담는다. 액세스 토큰 비밀키에서 용도별로 유도한 키로 HMAC-SHA256 서명한다. 서명이 없으면 연동 대상 계정을 바꿔 자기 소셜 신원을 남의 계정에 붙일 수 있다 |
+| 로그인과 연동 구분 | 같은 콜백으로 돌아오므로 인가 요청에 의도를 담는다. `?intent=link`로 시작하면 그 순간 로그인한 계정 ID도 함께 담는다. 로그인하지 않고 시작한 연동은 콜백에서 `SIGN_IN_REQUIRED`로 거부한다 |
+| 돌아갈 주소 | `contentria.member.social.*`에 설정한 주소로만 보낸다. 요청에서 읽지 않는다. 실패는 `?error=<코드>`로 알리고 예외 메시지는 싣지 않는다 |
+| 실패 코드 | `SOCIAL_EMAIL_MISSING`(2의 3번), `SOCIAL_EMAIL_NOT_VERIFIED`(2의 4번), `ACCOUNT_NOT_ACTIVE`(2의 2, 6번), `PROVIDER_ALREADY_LINKED`(3의 2번, 이미 다른 구글 신원이 붙은 계정의 자동 연동), `SOCIAL_IDENTITY_TAKEN`(3의 1번), `SIGN_IN_REQUIRED`, 그 밖은 `SOCIAL_LOGIN_FAILED` |
+| 공급자 토큰 | 로그인 뒤에는 쓰지 않으므로 저장하지 않는다. Spring Security 기본 저장소는 로그인마다 메모리에 쌓는다 |
+| 연동 해제 범위 | 소셜 공급자만. `/me/credentials/email`은 404다. 비밀번호를 지우는 경로는 없다 |
+| 소셜 신원으로 계정 찾기 | `Account`의 named query `Account.findBySocialIdentity`. `(provider, provider_id)` 고유 제약이 신원 하나에 계정 하나를 보증한다 |
+
 ### 아직 없는 것
 
 | 항목 | 하위 단계 |
 |---|---|
-| 소셜 로그인, 자동 연동, 수동 연동과 해제 (흐름 2, 3) | 5c |
 | 비밀번호 설정과 재설정, 이메일 변경, 탈퇴와 프로필 탈퇴 표시 (흐름 4) | 5d |
 | 코드 로그인 응답 시간 차이. 있는 주소만 메일을 보내므로 응답이 늦다 | 범위 밖. 가입이 이미 가입 여부를 알려주므로([01, 가입은 가입 여부를 알려준다](01-rules.md#가입은-가입-여부를-알려준다)) 이것만 막아서는 얻는 것이 없다 |
+| 연동 해제 시 다른 세션 무효화 (이벤트 표) | 범위 밖. 세션 무효화 전체와 함께 정한다 |
 | 속도 제한, reCAPTCHA, 세션 무효화, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
 
 ## 현재 코드와의 차이

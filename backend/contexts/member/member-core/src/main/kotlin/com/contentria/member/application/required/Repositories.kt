@@ -1,6 +1,7 @@
 package com.contentria.member.application.required
 
 import com.contentria.member.domain.account.Account
+import com.contentria.member.domain.account.AuthProvider
 import com.contentria.member.domain.login.LoginAttempt
 import com.contentria.member.domain.profile.Profile
 import com.contentria.member.domain.session.RefreshToken
@@ -15,6 +16,9 @@ interface AccountRepository : Repository<Account, UUID> {
     fun save(account: Account): Account
     fun findById(id: UUID): Account?
     fun findByEmail(email: String): Account?
+
+    /** The account that owns the social identity. The query is [Account]'s named query of the same name. */
+    fun findBySocialIdentity(provider: AuthProvider, providerUserId: String): Account?
 }
 
 interface ProfileRepository : Repository<Profile, UUID> {
