@@ -1,5 +1,6 @@
 package com.contentria.member.domain.account
 
+import com.contentria.member.domain.MemberSchema
 import com.contentria.shared.id.Ids
 import com.contentria.shared.persistence.AuditableEntity
 import jakarta.persistence.Column
@@ -29,6 +30,7 @@ import java.util.UUID
 @Entity
 @Table(
     name = "credentials",
+    schema = MemberSchema.NAME,
     uniqueConstraints = [
         // At most one credential per provider per account. This is the invariant
         // `addCredential` enforces in memory; the constraint is the backstop for two

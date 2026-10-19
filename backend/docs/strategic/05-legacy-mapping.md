@@ -52,7 +52,7 @@
 
 레거시 DB에는 컨텍스트를 넘는 외래키가 8개 있었다. 그중 6개가 `ON DELETE CASCADE`나 `SET NULL`로 다른 컨텍스트의 데이터를 바꿨다.
 새 구조에서 컨텍스트를 넘는 외래키를 두지 않기로 한 근거다([architecture/03-context-integration.md](../architecture/03-context-integration.md)의 "외래키").
-DDL은 [infra/postgresql/tables](https://github.com/seung7642/contentria/tree/legacy-final/infra/postgresql/tables)에 있다.
+레거시 DDL은 저장소에 커밋된 적이 없다(루트 `.gitignore`의 `**/postgresql/` 규칙). 아래 표는 2026-10-18에 로컬 파일 `infra/postgresql/tables/`에서 확인한 내용이다.
 
 | 외래키 | 방향 | 레거시에서의 동작 |
 |---|---|---|

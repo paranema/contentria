@@ -1,5 +1,6 @@
 package com.contentria.member.domain.profile
 
+import com.contentria.member.domain.MemberSchema
 import com.contentria.shared.persistence.AuditableEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -20,7 +21,7 @@ import java.util.UUID
  * Single-entity aggregate. It has no members and no invariants beyond the display name.
  */
 @Entity
-@Table(name = "profiles")
+@Table(name = "profiles", schema = MemberSchema.NAME)
 class Profile private constructor(
     id: UUID,
     displayName: String,
@@ -72,8 +73,9 @@ class Profile private constructor(
 
         /**
          * [accountId] becomes this profile's identifier. The caller is responsible for
-         * creating the account first; nothing here can check that it exists, and a foreign
-         * key from `profiles.id` to `accounts.id` is what enforces it.
+         * creating the account first: nothing here can check that it exists, and there is no
+         * foreign key from `profiles.id` to `accounts.id` either, because the two are separate
+         * aggregates. The sign-up use case creates both in one transaction.
          */
         fun create(
             accountId: UUID,

@@ -21,7 +21,8 @@ backend/
 │       └── member-core/         회원 컨텍스트의 전부
 ├── apps/                        컨텍스트를 묶어 프로세스로 띄우는 조립 모듈
 │   ├── api/                     HTTP API 서버
-│   └── batch/                   배치 잡
+│   ├── batch/                   배치 잡
+│   └── migrator/                컨텍스트별 Flyway 마이그레이션 실행
 └── docs/                        설계 문서
 ```
 
@@ -37,6 +38,7 @@ backend/
 | `contexts:member:member-core` | 라이브러리 | `member-api`, `shared-kernel` |
 | `apps:api` | 실행 (API 서버) | `member-core` |
 | `apps:batch` | 실행 (배치) | 없음 (잡이 생기면 그 컨텍스트의 `-core`) |
+| `apps:migrator` | 실행 (마이그레이션 Job) | 각 컨텍스트의 `-core` (마이그레이션 파일만, runtimeOnly) |
 
 `-core` 모듈끼리는 서로 의존하지 않는다. 다른 컨텍스트에는 `-api`로만 의존한다.
 
@@ -51,3 +53,14 @@ JDK 버전은 `mise.toml`을 따른다.
 ```bash
 ./gradlew :apps:api:bootRun
 ```
+
+일부 테스트(`MigratorIntegrationTest`, `MigrationMatchesMappingTest`)는 Testcontainers로 PostgreSQL을 띄우므로 Docker가 필요하다.
+colima를 쓴다면 Testcontainers가 소켓을 찾도록 환경 변수를 준다.
+
+```bash
+export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+```
+
+## 데이터베이스
+
+새 구조는 `contentria_v2` 데이터베이스를 쓴다. 준비 SQL은 `infra/database/contentria-v2/`에, 스키마 규칙은 [docs/architecture/04-persistence-conventions.md](docs/architecture/04-persistence-conventions.md)에 있다.

@@ -239,13 +239,14 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | 모듈 | 상태 |
 |---|---|
 | `shared-kernel` | 있음. 식별자 생성, 예외 기반, `AuditableEntity` |
-| `contexts/member` | `member-core`에 도메인 모델(계정, 프로필)만 있음. `member-api`는 비어 있음 |
+| `contexts/member` | `member-core`에 도메인 모델(계정, 프로필)과 V1 마이그레이션. `member-api`는 비어 있음 |
 | `contexts/publishing`, `interaction`, `media`, `analytics`, `notification` | 없음 |
 | `platform/messaging` | 없음 |
 | `platform/architecture-rules` | 있음. 헥사고날 규칙과 app 규칙. 레이어드 규칙은 없음 |
 | `apps/api` | 있음. 조립만 함 (member) |
 | `apps/batch` | 있음. 잡 없음 |
-| `apps/worker`, `apps/migrator` | 없음 |
+| `apps/worker` | 없음 |
+| `apps/migrator` | 있음. 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway 실행 |
 
 ## 검증
 
