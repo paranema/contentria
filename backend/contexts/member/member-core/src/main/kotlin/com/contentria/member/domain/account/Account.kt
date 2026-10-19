@@ -153,7 +153,7 @@ class Account private constructor(
     ) {
         if (!emailVerifiedByProvider) throw AccountException.EmailNotVerifiedByProvider(provider)
         if (!status.canAuthenticate) throw AccountException.NotAuthenticatable(status)
-        require(normalizeEmail(providerEmail) == email) {
+        require(EmailAddresses.normalize(providerEmail) == email) {
             "Automatic linking needs the provider's address to be this account's address"
         }
         linkSocialProvider(provider, providerId)
@@ -216,7 +216,7 @@ class Account private constructor(
      * unconfirmed one would let anyone claim another person's social sign-in.
      */
     fun changeToVerifiedEmail(verifiedEmail: String) {
-        email = normalizeEmail(verifiedEmail)
+        email = EmailAddresses.normalize(verifiedEmail)
     }
 
     private fun transitionTo(next: AccountStatus) {
@@ -246,16 +246,10 @@ class Account private constructor(
 
     companion object {
 
-        const val EMAIL_MAX_LENGTH = 255
+        const val EMAIL_MAX_LENGTH = EmailAddresses.MAX_LENGTH
 
         /** `.invalid` is reserved (RFC 2606) and can never be a real mailbox. */
         private const val ANONYMISED_EMAIL_DOMAIN = "deleted.invalid"
-
-        /**
-         * Deliberately loose. Anything stricter rejects addresses that are valid in practice,
-         * and the only proof that an address works is a verification mail reaching it.
-         */
-        private val EMAIL_PATTERN = Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$""")
 
         /**
          * Email sign-up, called after the sign-up code has been confirmed. Active immediately,
@@ -265,7 +259,7 @@ class Account private constructor(
         fun registerWithPassword(email: String, passwordHash: String): Account {
             val account = Account(
                 id = Ids.newId(),
-                email = normalizeEmail(email),
+                email = EmailAddresses.normalize(email),
                 status = AccountStatus.ACTIVE,
             )
             account.roleSet.add(Role.USER)
@@ -288,7 +282,7 @@ class Account private constructor(
 
             val account = Account(
                 id = Ids.newId(),
-                email = normalizeEmail(email),
+                email = EmailAddresses.normalize(email),
                 status = AccountStatus.ACTIVE,
             )
             account.roleSet.add(Role.USER)
@@ -296,19 +290,6 @@ class Account private constructor(
                 Credential.withSocialProvider(account, provider, providerId),
             )
             return account
-        }
-
-        /**
-         * Lower-cases and trims before validating, so `A@x.com` and `a@x.com` cannot both be
-         * registered. Dots and `+` suffixes are kept. The unique constraint on `accounts.email`
-         * only helps if the stored form is canonical.
-         */
-        private fun normalizeEmail(raw: String): String {
-            val normalized = raw.trim().lowercase()
-            if (normalized.length > EMAIL_MAX_LENGTH || !EMAIL_PATTERN.matches(normalized)) {
-                throw AccountException.InvalidEmail(raw)
-            }
-            return normalized
         }
     }
 }
