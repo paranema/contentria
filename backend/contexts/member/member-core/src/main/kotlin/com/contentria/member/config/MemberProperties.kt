@@ -10,6 +10,7 @@ data class MemberProperties(
     val cookie: Cookie = Cookie(),
     val mail: Mail = Mail(),
     val social: Social = Social(),
+    val password: Password = Password(),
 ) {
     /** [secret] is a Base64-encoded key of at least 256 bits. */
     data class AccessToken(val secret: String, val ttl: Duration = Duration.ofMinutes(15))
@@ -27,6 +28,9 @@ data class MemberProperties(
      * Where the browser lands after a social sign-in or link. Configured, never read from the
      * request, so the callback cannot be turned into an open redirect.
      */
+    /** The frontend page that reads `#token=` from a setup or reset link. */
+    data class Password(val linkUrl: String = "http://localhost:3000/password")
+
     data class Social(
         val loginSuccessUrl: String = "http://localhost:3000/login/callback",
         val loginFailureUrl: String = "http://localhost:3000/login",

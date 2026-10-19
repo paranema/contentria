@@ -26,9 +26,9 @@ interface LinkSocialProviderUseCase {
     fun link(accountId: UUID, identity: VerifiedSocialIdentity)
 }
 
-/** 흐름 4. 연동 해제 */
+/** 흐름 4. 연동 해제. Ends every other session and returns a new one for the caller (01-rules 공통). */
 interface UnlinkSocialProviderUseCase {
-    fun unlink(accountId: UUID, provider: AuthProvider)
+    fun unlink(accountId: UUID, provider: AuthProvider): IssuedSession
 }
 
 interface GetMyCredentialsQuery {

@@ -1,6 +1,7 @@
 package com.contentria.member.application.service
 
 import com.contentria.member.application.provided.GetMyCredentialsQuery
+import com.contentria.member.application.provided.IssuedSession
 import com.contentria.member.application.provided.LinkSocialProviderUseCase
 import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.UnlinkSocialProviderUseCase
@@ -18,6 +19,7 @@ import java.util.UUID
 @Service
 class SocialCredentialService(
     private val accounts: AccountRepository,
+    private val sessions: SessionService,
     private val events: ApplicationEventPublisher,
 ) : LinkSocialProviderUseCase, UnlinkSocialProviderUseCase, GetMyCredentialsQuery {
 
@@ -36,12 +38,13 @@ class SocialCredentialService(
 
     /** Social providers only. Removing the password is not what "unlinking" means. */
     @Transactional
-    override fun unlink(accountId: UUID, provider: AuthProvider) {
+    override fun unlink(accountId: UUID, provider: AuthProvider): IssuedSession {
         require(!provider.usesPassword) { "$provider is not a social provider" }
 
         val account = load(accountId)
         account.unlinkProvider(provider)
         events.publishEvent(AccountNoticeRequested(account.email, AccountNotice.SocialProviderUnlinked(provider)))
+        return sessions.restartFor(account)
     }
 
     @Transactional(readOnly = true)

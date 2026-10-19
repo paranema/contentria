@@ -12,9 +12,6 @@ import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import java.net.URI
-import java.net.URLDecoder
-import java.net.URLEncoder
 import java.net.http.HttpResponse
 import java.util.Base64
 import java.util.UUID
@@ -109,7 +106,10 @@ class SocialLoginIntegrationTest {
         socialSignIn(viaGoogle, identity)
         assertThat(viaGoogle.get("/me/profile").field("accountId")).isEqualTo(accountId)
 
-        assertThat(browser.delete("/me/credentials/google").statusCode()).isEqualTo(204)
+        // 해제는 다른 세션을 모두 끝낸다. 해제한 브라우저는 새 세션을 받는다.
+        assertThat(browser.delete("/me/credentials/google").statusCode()).isEqualTo(200)
+        assertThat(viaGoogle.post("/auth/refresh", "").statusCode()).isEqualTo(401)
+        assertThat(browser.post("/auth/refresh", "").statusCode()).isEqualTo(200)
         assertThat(browser.get("/me/credentials").body()).isEqualTo("""{"providers":["EMAIL"]}""")
         assertThat(notices.sentTo(email)).endsWith(AccountNotice.SocialProviderUnlinked(AuthProvider.GOOGLE))
         assertThat(browser.delete("/me/credentials/google").body()).contains("PROVIDER_NOT_LINKED")
@@ -193,32 +193,13 @@ class SocialLoginIntegrationTest {
         assertThat(notices.sentTo(victimEmail)).isEmpty()
     }
 
-    /**
-     * Plays the browser's part: follows the API's redirect to the provider, has the provider issue
-     * a code for [identity], and returns with it to the callback.
-     */
     private fun socialSignIn(
         browser: TestBrowser,
         identity: Identity,
         intent: String? = null,
         forged: Boolean = false,
         beforeCallback: () -> Unit = {},
-    ): HttpResponse<String> {
-        val start = browser.get("/oauth2/authorization/google" + (intent?.let { "?intent=$it" } ?: ""))
-        check(start.statusCode() == 302) { "Expected a redirect to the provider, got ${start.statusCode()}" }
-
-        val authorize = URI.create(start.location())
-        check(authorize.toString().startsWith(google.url("/authorize"))) { "Redirected to $authorize" }
-        val query = authorize.rawQuery.split('&').associate {
-            it.substringBefore('=') to URLDecoder.decode(it.substringAfter('='), Charsets.UTF_8)
-        }
-        check(query["code_challenge_method"] == "S256") { "No PKCE in $authorize" }
-
-        val code = google.issueCode(identity, nonce = query.getValue("nonce"), forged = forged)
-        beforeCallback()
-        val state = URLEncoder.encode(query.getValue("state"), Charsets.UTF_8)
-        return browser.getAbsolute("${query.getValue("redirect_uri")}?code=$code&state=$state")
-    }
+    ): HttpResponse<String> = browser.signInWithGoogle(identity, intent, forged, beforeCallback)
 
     private fun signUpWithEmail(email: String, browser: TestBrowser = TestBrowser(port)): String {
         val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")

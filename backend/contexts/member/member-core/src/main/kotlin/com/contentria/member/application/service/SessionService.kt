@@ -11,6 +11,7 @@ import com.contentria.member.domain.session.RefreshToken
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.util.UUID
 
 /**
  * Starts and rotates sessions (docs/conventions/security.md, Refresh Token Rotation).
@@ -42,6 +43,20 @@ class SessionService(
             refreshToken = refresh.rawValue,
             refreshTokenExpiresAt = refresh.token.expiresAt,
         )
+    }
+
+    /**
+     * Ends every session of the account and starts a new one for the caller (01-rules 공통, 세션
+     * 무효화). Access tokens already issued elsewhere still pass until they expire.
+     */
+    fun restartFor(account: Account): IssuedSession {
+        endAllFor(account.id)
+        return startFor(account)
+    }
+
+    /** Every refresh token of the account goes; no device can renew its session. */
+    fun endAllFor(accountId: UUID) {
+        refreshTokens.deleteByAccountId(accountId)
     }
 
     @Transactional

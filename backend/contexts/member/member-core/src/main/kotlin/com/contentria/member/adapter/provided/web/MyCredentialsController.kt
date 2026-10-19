@@ -21,18 +21,21 @@ import java.util.UUID
 class MyCredentialsController(
     private val credentials: GetMyCredentialsQuery,
     private val unlinkProvider: UnlinkSocialProviderUseCase,
+    private val cookies: SessionCookies,
 ) {
 
     @GetMapping
     fun get(@AuthenticationPrincipal accountId: UUID): MyCredentialsResponse =
         MyCredentialsResponse(credentials.get(accountId).map { it.name }.sorted())
 
-    /** Social providers only; there is no path that removes the password. */
+    /**
+     * Social providers only; there is no path that removes the password. Answers with a new
+     * session, because unlinking ends every other one.
+     */
     @DeleteMapping("/{provider}")
-    fun unlink(@AuthenticationPrincipal accountId: UUID, @PathVariable provider: String): ResponseEntity<Void> {
+    fun unlink(@AuthenticationPrincipal accountId: UUID, @PathVariable provider: String): ResponseEntity<SessionResponse> {
         val social = AuthProvider.entries.firstOrNull { !it.usesPassword && it.name.equals(provider, ignoreCase = true) }
             ?: return ResponseEntity.notFound().build()
-        unlinkProvider.unlink(accountId, social)
-        return ResponseEntity.noContent().build()
+        return cookies.respond(ResponseEntity.ok(), unlinkProvider.unlink(accountId, social))
     }
 }

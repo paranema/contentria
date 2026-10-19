@@ -6,6 +6,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -51,6 +52,23 @@ class Profile private constructor(
     @Column(name = "picture_url", length = PICTURE_URL_MAX_LENGTH)
     var pictureUrl: String? = pictureUrl
         protected set
+
+    /**
+     * When the owner withdrew, or null. The profile outlives the account so that posts and
+     * comments still resolve an author; the name and picture stay (01-rules 흐름 5, 탈퇴한 회원의
+     * 프로필). How a withdrawn author is shown is the screen's decision.
+     */
+    @Column(name = "withdrawn_at")
+    var withdrawnAt: Instant? = null
+        protected set
+
+    val isWithdrawn: Boolean
+        get() = withdrawnAt != null
+
+    /** Idempotent: a second call keeps the first time. */
+    fun markWithdrawn(at: Instant) {
+        if (withdrawnAt == null) withdrawnAt = at
+    }
 
     fun rename(newDisplayName: String) {
         displayName = normalizeDisplayName(newDisplayName)

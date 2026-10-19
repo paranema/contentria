@@ -37,6 +37,8 @@
 두 애그리거트는 가입 유스케이스에서 한 트랜잭션으로 함께 만든다. "한 트랜잭션에는 한 애그리거트"의 예외다.
 그 규칙은 여러 애그리거트를 동시에 **수정**할 때의 경합을 피하려는 것인데, 새로 만드는 두 애그리거트에는 경합할 다른 트랜잭션이 없다. 생성 뒤의 변경은 각각 따로 한다.
 
+탈퇴가 두 번째 예외다. 계정을 닫고 프로필에 탈퇴 표시를 한 트랜잭션에서 한다. 닫힌 계정의 프로필이 탈퇴 표시 없이 남으면 떠난 회원이 있는 것처럼 보인다. 두 애그리거트를 동시에 고치는 다른 흐름은 없어 경합할 상대가 프로필 이름 변경뿐이다.
+
 **가입 시도는 계정 애그리거트가 아니다.** 아직 계정이 아니고 계정 불변식과 무관하다.
 만료가 있는 임시 데이터이므로 캐시여도 되고 테이블이어도 된다.
 
@@ -66,10 +68,13 @@
 |---|---|
 | 소셜 연동됨 (자동 연동 포함) | 계정 이메일로 안내 메일 |
 | 소셜 연동 해제됨 | 계정 이메일로 안내 메일 |
-| 비밀번호 변경됨 | 안내 메일, 다른 세션 무효화 |
-| 이메일 변경 요청됨 | 기존 주소로 알림, 새 주소로 확인 코드 |
-| 이메일 변경 확정됨 | 다른 세션 무효화 |
-| 계정 탈퇴됨 | 다른 세션 무효화 |
+| 비밀번호 설정·변경·재설정됨 | 안내 메일, 다른 세션 무효화 |
+| 이메일 변경 요청됨 | 현재 주소로 확인 코드(알림 겸), 새 주소로 확인 코드 |
+| 이메일 변경 확정됨 | 기존 주소로 안내 메일, 다른 세션 무효화, 기존 주소로 보낸 비밀번호 링크 무효화 |
+| 계정 탈퇴됨 | 모든 세션 무효화 |
+
+세션 무효화는 그 계정의 리프레시 토큰을 모두 지우고, 요청한 브라우저에만 새 세션을 주는 것이다(`SessionService.restartFor`). 다른 기기의 액세스 토큰은 만료(최대 15분)까지 통과한다.
+확인 코드와 비밀번호 링크는 이벤트가 아니라 유스케이스 안에서 바로 보낸다. 받지 못하면 사용자가 다시 요청한다.
 
 메일 발송이 실패해도 트랜잭션을 되돌리지 않는다. 커밋 후 처리한다.
 
@@ -93,6 +98,7 @@
 | 흐름 4 이메일 변경 확정 | `changeToVerifiedEmail(verifiedEmail)` | 확인 절차는 유스케이스. 메서드 이름이 계약을 드러낸다 |
 | 흐름 4 탈퇴 (ACTIVE) | `close()` | `DELETED`로 바꾸고, 자격증명을 모두 지우고, 이메일을 `deleted+<id>@deleted.invalid`로 익명화한다 |
 | 흐름 6의 3번 (코드 로그인) | `authenticateWithEmailCode(confirmedEmail)` | 코드 확인은 유스케이스. 계정 주소와 같은 주소인지, ACTIVE인지만 본다. 비밀번호가 없는 계정도 통과한다 |
+| 흐름 5 탈퇴한 회원의 프로필 | `Profile.markWithdrawn(at)` | 이름과 사진은 남기고 탈퇴 시각만 붙인다. 두 번 불러도 처음 시각이다 |
 | 공통 이메일 정규화 | 가입, 이메일 변경, 자동 연동이 같은 정규화를 쓴다 | 앞뒤 공백 제거와 소문자화. 점과 `+` 이후는 지우지 않는다 |
 
 ## 유스케이스
@@ -108,7 +114,13 @@
 | 흐름 6의 3번 | `CompleteEmailCodeLoginUseCase` | `EmailCodeLoginService` | `POST /auth/login/code/complete` → 200, 세션 쿠키 |
 | 흐름 2 소셜 로그인 | `LoginWithSocialProviderUseCase` | `SocialLoginService` | `GET /oauth2/authorization/google` → 구글 → `GET /login/oauth2/code/google` → 프론트엔드로 302, 세션 쿠키 |
 | 흐름 3 수동 연동 | `LinkSocialProviderUseCase` | `SocialCredentialService` | `GET /oauth2/authorization/google?intent=link` → 구글 → 같은 콜백 → 설정 화면으로 302 |
-| 흐름 4 연동 해제 | `UnlinkSocialProviderUseCase` | `SocialCredentialService` | `DELETE /me/credentials/{provider}` → 204 |
+| 흐름 4 연동 해제 | `UnlinkSocialProviderUseCase` | `SocialCredentialService` | `DELETE /me/credentials/{provider}` → 200, 새 세션 쿠키 |
+| 흐름 4 비밀번호 변경 | `ChangePasswordUseCase` | `PasswordService` | `POST /me/password` → 200, 새 세션 쿠키 |
+| 흐름 4 비밀번호 최초 설정 | `RequestPasswordSetupLinkUseCase` | `PasswordService` | `POST /me/password/setup-link` → 202, 링크 메일 |
+| 흐름 4 비밀번호 분실 | `RequestPasswordResetLinkUseCase` | `PasswordService` | `POST /auth/password/reset-link` → 항상 202 |
+| 링크로 설정·재설정 | `ResetPasswordWithLinkUseCase` | `PasswordService` | `POST /auth/password/reset` → 200, 새 세션 쿠키 |
+| 흐름 4 이메일 변경 | `StartEmailChangeUseCase`, `CompleteEmailChangeUseCase` | `EmailChangeService` | `POST /me/email-change/start` → 202, `/complete` → 200, 새 세션 쿠키 |
+| 흐름 4 탈퇴 | `StartWithdrawalUseCase`, `CompleteWithdrawalUseCase` | `WithdrawalService` | `POST /me/withdrawal/start` → 202, `/complete` → 204, 쿠키 만료 |
 | 설정 화면의 로그인 수단 | `GetMyCredentialsQuery` | `SocialCredentialService` | `GET /me/credentials` |
 | 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
 | 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
@@ -146,14 +158,30 @@
 | 연동 해제 범위 | 소셜 공급자만. `/me/credentials/email`은 404다. 비밀번호를 지우는 경로는 없다 |
 | 소셜 신원으로 계정 찾기 | `Account`의 named query `Account.findBySocialIdentity`. `(provider, provider_id)` 고유 제약이 신원 하나에 계정 하나를 보증한다 |
 
+### 계정 관리에서 정한 것
+
+| 항목 | 내용 |
+|---|---|
+| 코드 확인 공통 | 가입, 코드 로그인, 이메일 변경, 탈퇴가 `runCodeChecked`와 `recordOn`을 함께 쓴다. 틀린 코드는 커밋한 뒤 실패를 알린다 |
+| 비밀번호 링크 토큰 | 32바이트 난수. SHA-256 해시만 `password_tokens`에 저장한다. 30분, 1회용, 계정에 묶인다. 새 링크를 요청하거나 비밀번호가 바뀌면 그 계정의 토큰을 모두 지운다 |
+| 링크 주소 | `contentria.member.password.link-url`의 프론트엔드 페이지에 `#token=`으로 붙인다. 프래그먼트는 서버로 가지 않아 접근 로그와 Referer에 남지 않는다 |
+| 설정 링크와 변경의 구분 | 비밀번호가 없는 계정의 변경은 409 `PASSWORD_NOT_SET`, 있는 계정의 설정 링크 요청은 409 `PASSWORD_ALREADY_SET`이다. 틀린 현재 비밀번호는 400 `CURRENT_PASSWORD_MISMATCH`라서 프론트엔드가 세션 만료(401)와 헷갈리지 않는다 |
+| 분실 링크 | 없는 주소와 ACTIVE가 아닌 계정에는 보내지 않고, 응답은 늘 202다. 링크로 비밀번호를 정하면 그 브라우저에 새 세션을 준다. 코드 로그인과 같은 수준의 증명(주소 통제)이기 때문이다 |
+| 이메일 변경의 두 코드 | 시도 하나에 두 코드를 이어 붙인 값의 해시를 저장한다(`email_change_attempts`, `email`은 새 주소). 둘 중 하나만 틀려도 한 번의 실패이고, 5회 제한이 쌍에 걸린다 |
+| 이메일 변경과 다른 계정 | 시작할 때 다른 계정이 쓰는 주소면 409 `EMAIL_IN_USE`다. 가입과 달리 가입 수단은 알려주지 않는다. 확정할 때 다시 확인하고, 동시에 같은 주소로 바꾸는 경합은 `accounts.email` 고유 제약이 막는다 |
+| 시도의 소유 | 이메일 변경과 탈퇴의 시도는 계정 ID를 담는다. 다른 계정이 그 시도 ID로 완료하면 없는 시도처럼 `VERIFICATION_EXPIRED`다 |
+| 관리 유스케이스의 계정 상태 | 액세스 토큰은 정지 뒤에도 만료까지 통과하므로, 계정을 바꾸는 유스케이스는 상태를 다시 확인한다(`loadActive`). 정지된 계정은 403 `ACCOUNT_NOT_ACTIVE`다 |
+| 탈퇴 뒤 정리 | 탈퇴 시도, 이메일 변경 시도, 옛 주소의 로그인 시도, 비밀번호 토큰, 리프레시 토큰을 모두 지운다. 응답은 두 세션 쿠키를 만료시킨다 |
+
 ### 아직 없는 것
 
-| 항목 | 하위 단계 |
+| 항목 | 상태 |
 |---|---|
-| 비밀번호 설정과 재설정, 이메일 변경, 탈퇴와 프로필 탈퇴 표시 (흐름 4) | 5d |
 | 코드 로그인 응답 시간 차이. 있는 주소만 메일을 보내므로 응답이 늦다 | 범위 밖. 가입이 이미 가입 여부를 알려주므로([01, 가입은 가입 여부를 알려준다](01-rules.md#가입은-가입-여부를-알려준다)) 이것만 막아서는 얻는 것이 없다 |
-| 연동 해제 시 다른 세션 무효화 (이벤트 표) | 범위 밖. 세션 무효화 전체와 함께 정한다 |
-| 속도 제한, reCAPTCHA, 세션 무효화, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
+| 정지와 해제 API, 정지 시 세션 무효화 | 관리자 기능과 함께 정한다. 도메인 메서드(`suspend`, `reinstate`)만 있다 |
+| 무효화 직후의 액세스 토큰 차단 | 범위 밖. 최대 15분을 받아들인다. 막으려면 토큰마다 서버 조회가 필요하다 |
+| 로그아웃 | 범위 밖. 01에 규칙이 없다. 리프레시 토큰 하나를 지우고 쿠키를 만료시키면 된다 |
+| 속도 제한, reCAPTCHA, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
 
 ## 현재 코드와의 차이
 

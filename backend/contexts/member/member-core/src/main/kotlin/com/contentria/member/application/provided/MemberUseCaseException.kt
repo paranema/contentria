@@ -22,6 +22,29 @@ sealed class MemberUseCaseException(message: String) : DomainException(message) 
     class SocialIdentityLinkedElsewhere :
         MemberUseCaseException("This social identity belongs to another account")
 
+    /** 흐름 4 비밀번호 변경: 현재 비밀번호가 틀렸다. 로그인 실패와 달리 세션은 그대로다. */
+    class CurrentPasswordMismatch :
+        MemberUseCaseException("The current password does not match")
+
+    /** 비밀번호가 없는 계정(소셜 전용)의 변경 요청. 설정 링크를 써야 한다. */
+    class PasswordNotSet :
+        MemberUseCaseException("This account has no password yet")
+
+    /** 비밀번호가 있는 계정의 설정 링크 요청. 변경을 써야 한다. */
+    class PasswordAlreadySet :
+        MemberUseCaseException("This account already has a password")
+
+    /** Unknown, expired or already spent link token, or an account it can no longer act on. */
+    class InvalidPasswordToken :
+        MemberUseCaseException("The link is not valid")
+
+    /** 이메일 변경: 다른 계정이 쓰는 주소다. 가입과 달리 가입 수단은 알려주지 않는다. */
+    class EmailInUse :
+        MemberUseCaseException("Another account uses this email address")
+
+    class EmailUnchanged :
+        MemberUseCaseException("The new address is the current one")
+
     class DisplayNameTaken :
         MemberUseCaseException("Another member already uses this display name")
 

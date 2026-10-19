@@ -42,6 +42,18 @@ class MemberWebExceptionHandler {
             error(HttpStatus.BAD_REQUEST, "SOCIAL_EMAIL_MISSING", "The provider did not share an email address.")
         is MemberUseCaseException.SocialIdentityLinkedElsewhere ->
             error(HttpStatus.CONFLICT, "SOCIAL_IDENTITY_TAKEN", "That account is linked to another member.")
+        is MemberUseCaseException.CurrentPasswordMismatch ->
+            error(HttpStatus.BAD_REQUEST, "CURRENT_PASSWORD_MISMATCH", "The current password does not match.")
+        is MemberUseCaseException.PasswordNotSet ->
+            error(HttpStatus.CONFLICT, "PASSWORD_NOT_SET", "This account has no password. Use a setup link.")
+        is MemberUseCaseException.PasswordAlreadySet ->
+            error(HttpStatus.CONFLICT, "PASSWORD_ALREADY_SET", "This account already has a password.")
+        is MemberUseCaseException.InvalidPasswordToken ->
+            error(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD_TOKEN", "The link is not valid. Ask for a new one.")
+        is MemberUseCaseException.EmailInUse ->
+            error(HttpStatus.CONFLICT, "EMAIL_IN_USE", "Another account uses this email address.")
+        is MemberUseCaseException.EmailUnchanged ->
+            error(HttpStatus.BAD_REQUEST, "EMAIL_UNCHANGED", "That is already the account's address.")
         is MemberUseCaseException.DisplayNameTaken ->
             error(HttpStatus.CONFLICT, "DISPLAY_NAME_TAKEN", "Another member already uses this display name.")
         is MemberUseCaseException.InvalidSession ->

@@ -60,6 +60,9 @@ contentria:
       # smtp in every deployed environment. log writes codes to the log and is for local use only.
       mode: ${MEMBER_MAIL_MODE:smtp}
       from: ${MEMBER_MAIL_FROM:no-reply@contentria.com}
+    # The frontend page that reads #token= from a password setup or reset link.
+    password:
+      link-url: ${MEMBER_PASSWORD_LINK_URL:http://localhost:3000/password}
     # Where the browser lands after a social sign-in or link. Never taken from the request.
     social:
       login-success-url: ${MEMBER_SOCIAL_LOGIN_SUCCESS_URL:http://localhost:3000/login/callback}
