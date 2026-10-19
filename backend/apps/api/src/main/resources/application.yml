@@ -33,3 +33,17 @@ logging:
   level:
     root: INFO
     org.hibernate.SQL: DEBUG
+
+contentria:
+  member:
+    access-token:
+      # Base64-encoded key of at least 256 bits. No default: the app must not start without one.
+      secret: ${MEMBER_ACCESS_TOKEN_SECRET}
+      ttl: 15m
+    refresh-token-ttl: 7d
+    cookie:
+      secure: ${MEMBER_COOKIE_SECURE:true}
+    mail:
+      # smtp in every deployed environment. log writes codes to the log and is for local use only.
+      mode: ${MEMBER_MAIL_MODE:smtp}
+      from: ${MEMBER_MAIL_FROM:no-reply@contentria.com}

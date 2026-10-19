@@ -88,6 +88,41 @@
 | 흐름 4 탈퇴 (ACTIVE) | `close()` | `DELETED`로 바꾸고, 자격증명을 모두 지우고, 이메일을 `deleted+<id>@deleted.invalid`로 익명화한다 |
 | 공통 이메일 정규화 | 가입, 이메일 변경, 자동 연동이 같은 정규화를 쓴다 | 앞뒤 공백 제거와 소문자화. 점과 `+` 이후는 지우지 않는다 |
 
+## 유스케이스
+
+`application/provided`의 유스케이스와 그 구현이다. 하위 단계마다 늘어난다.
+
+| 01의 흐름 | 유스케이스 | 구현 | HTTP |
+|---|---|---|---|
+| 흐름 1의 1, 2번 | `StartEmailSignUpUseCase` | `EmailSignUpService` | `POST /auth/sign-up/start` → 202, 시도 ID |
+| 흐름 1의 3번 | `CompleteEmailSignUpUseCase` | `EmailSignUpService` | `POST /auth/sign-up/complete` → 201, 세션 쿠키 |
+| 비밀번호 로그인 | `LoginWithPasswordUseCase` | `PasswordLoginService` | `POST /auth/login` |
+| 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
+| 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
+| 요청 인증 | `AuthenticateAccessTokenQuery` (`member-api`) | `AccessTokenAuthenticationService` | `apps/api`의 필터가 호출 |
+
+### 구현에서 정한 것
+
+| 항목 | 내용 |
+|---|---|
+| 가입 시도의 세션 묶기 | 시작 응답의 시도 ID를 완료 요청에 함께 내야 한다. ID를 가진 요청자만 코드를 검증할 수 있다 |
+| 실패 횟수 | 틀린 코드의 실패 횟수를 커밋한 뒤 실패를 알린다. 예외로 알리면 트랜잭션과 함께 횟수가 되돌아간다 |
+| 코드와 토큰 저장 | 원값을 저장하지 않는다. 코드는 시도 ID를 섞은 SHA-256, 리프레시 토큰은 SHA-256 |
+| 액세스 토큰 | HS256 JWT, 15분. 정지된 계정의 토큰도 만료 전까지는 통과한다. 리프레시는 거부된다 |
+| 리프레시 토큰 | 사용할 때마다 지우고 새로 발급한다. 같은 토큰으로 동시에 갱신하면 하나만 성공한다(유예 구간 없음) |
+| 표시 이름 생성 | 가입 시 생성기 이름이 이미 쓰이면 다시 뽑는다(5회). 동시에 같은 이름을 뽑은 두 가입 중 하나는 고유 제약에 걸려 실패한다. 확률이 낮아 받아들인다 |
+| 비밀번호 길이 | 8자 이상 72자 이하. BCrypt는 72바이트까지만 읽는다 |
+| 코드 발송 | `contentria.member.mail.mode`가 `smtp`면 메일, `log`면 로그(로컬 전용) |
+
+### 아직 없는 것
+
+| 항목 | 하위 단계 |
+|---|---|
+| 이메일 코드 로그인 (흐름 6) | 5b |
+| 소셜 로그인, 자동 연동, 수동 연동과 해제 (흐름 2, 3) | 5c |
+| 비밀번호 설정과 재설정, 이메일 변경, 탈퇴와 프로필 탈퇴 표시 (흐름 4) | 5d |
+| 속도 제한, reCAPTCHA, 세션 무효화, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
+
 ## 현재 코드와의 차이
 
 없음. 3단계(도메인 정렬)와 4단계(스키마)에서 모두 반영했다.
