@@ -97,6 +97,31 @@ class MemberFlowIntegrationTest {
         assertThat(Browser().get("/me/profile").statusCode()).isEqualTo(401)
     }
 
+    /**
+     * Each wrong code arrives as its own request, so the count only survives if every one of
+     * them is committed. An implementation that throws inside the transaction rolls the count
+     * back, the attempt never locks, and the sixth request below signs up instead of failing.
+     */
+    @Test
+    @DisplayName("틀린 코드가 5번 쌓이면 맞는 코드를 내도 잠겨 있다. 실패 횟수가 요청마다 저장된다")
+    fun `five wrong codes lock the attempt across requests`() {
+        val browser = Browser()
+        val email = "locked-${UUID.randomUUID()}@contentria.com"
+        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+        val code = codes.lastCodeFor(email)
+
+        val failures = (1..MAX_FAILED_ATTEMPTS).map {
+            browser.post("/auth/sign-up/complete", completion(attemptId, wrongCodeFor(code), "correct horse battery"))
+        }
+        assertThat(failures.dropLast(1)).allSatisfy { assertThat(it.body()).contains("VERIFICATION_MISMATCH") }
+        assertThat(failures.last().body()).contains("VERIFICATION_LOCKED")
+
+        val withRightCode = browser.post("/auth/sign-up/complete", completion(attemptId, code, "correct horse battery"))
+        assertThat(withRightCode.statusCode()).isEqualTo(400)
+        assertThat(withRightCode.body()).contains("VERIFICATION_LOCKED")
+        assertThat(browser.cookie("accessToken")).isNull()
+    }
+
     private fun completion(attemptId: String, code: String, password: String) =
         """{"attemptId":"$attemptId","code":"$code","password":"$password"}"""
 
@@ -143,6 +168,8 @@ class MemberFlowIntegrationTest {
     }
 
     companion object {
+        private const val MAX_FAILED_ATTEMPTS = 5
+
         private val postgres = PostgreSQLContainer("postgres:17").apply { start() }
 
         @JvmStatic
