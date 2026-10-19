@@ -1,5 +1,6 @@
 package com.contentria.member.domain.account
 
+import com.contentria.member.domain.MemberSchema
 import com.contentria.shared.id.Ids
 import com.contentria.shared.persistence.AuditableEntity
 import jakarta.persistence.CascadeType
@@ -31,7 +32,7 @@ import java.util.UUID
  * layer is `도메인`.
  */
 @Entity
-@Table(name = "accounts")
+@Table(name = "accounts", schema = MemberSchema.NAME)
 class Account private constructor(
     id: UUID,
     email: String,
@@ -77,6 +78,7 @@ class Account private constructor(
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "account_roles",
+        schema = MemberSchema.NAME,
         joinColumns = [JoinColumn(name = "account_id")],
     )
     @Enumerated(EnumType.STRING)

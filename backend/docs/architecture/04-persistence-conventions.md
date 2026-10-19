@@ -5,10 +5,12 @@
 
 ## 데이터베이스
 
-새 구조는 레거시와 같은 PostgreSQL 인스턴스에 **새 데이터베이스** `contentria`를 만들어 쓴다.
-레거시가 쓰는 데이터베이스(`postgres`)의 `contentria` 스키마와 레거시 롤은 쓰지 않는다.
+새 구조는 레거시와 같은 PostgreSQL 인스턴스에 **새 데이터베이스** `contentria_v2`를 만들어 쓴다. 이름은 확정 전이다.
+레거시는 같은 인스턴스의 `contentria` 데이터베이스와 그 안의 `contentria` 스키마, `contentria` 롤을 쓴다(`infra/gitops/02-platform/postgres/cluster/base/cluster.yaml`의 initdb). 새 구조는 이것들을 쓰지 않는다.
 레거시 데이터를 옮길지는 정하지 않았다. 옮기더라도 새 구조로 넘어가는 시점에 한 번 실행하는 작업이며, 지금의 스키마 설계에는 영향을 주지 않는다.
 레거시를 정리할 때는 레거시 쪽 데이터베이스 객체만 지우면 된다.
+
+준비 SQL은 `infra/database/contentria-v2/`에 있다. 슈퍼유저가 `01-database-and-roles.sql`(데이터베이스와 롤), `02-schemas-and-grants.sql`(스키마와 권한) 순서로 한 번 실행한다. 클러스터에 배포할 때 롤을 CNPG의 managed roles로 옮길지 정한다.
 
 ## 스키마
 
@@ -28,7 +30,7 @@
 ### 금지
 
 - 다른 컨텍스트의 스키마를 SQL로 참조한다 (JOIN, 서브쿼리, 쓰기 모두).
-- 컨텍스트를 넘는 외래키를 만든다.
+- 애그리거트를 넘는 외래키를 만든다. 같은 컨텍스트 안이어도 마찬가지다([03-context-integration.md](03-context-integration.md)의 "외래키").
 - 엔티티의 `@Table(schema = ...)`에 자기 컨텍스트가 아닌 스키마를 쓴다.
 - 다른 컨텍스트의 테이블을 감싸는 뷰를 만든다.
 
@@ -71,6 +73,8 @@ WHERE con.contype = 'f'
 
 ## DB 롤
 
+지금 만든 롤은 `member_migrator`와 `api_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
+
 | 롤 | 쓰는 곳 | 권한 |
 |---|---|---|
 | `<컨텍스트>_migrator` (6개) | 그 컨텍스트의 마이그레이션 | 자기 스키마의 소유자. 다른 스키마에는 권한 없음 |
@@ -109,6 +113,25 @@ Flyway를 쓴다.
 
 마이그레이션은 `apps/migrator`가 실행한다([01-module-structure.md](01-module-structure.md)).
 `apps/migrator`는 모든 `<컨텍스트>-core`의 마이그레이션 파일을 가져와, 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway를 실행한다.
+
+`apps/migrator`는 Spring을 띄우지 않는 일반 `main`이다. 마이그레이션 파일을 가져오려고 각 컨텍스트의 `-core`를 `runtimeOnly`로 두는데, Spring을 띄우면 그 모듈의 JPA 자동 설정까지 따라오기 때문이다.
+
+| 항목 | 값 |
+|---|---|
+| 환경 변수 | `MIGRATION_DATABASE_URL`, `<컨텍스트>_MIGRATOR_USERNAME`, `<컨텍스트>_MIGRATOR_PASSWORD` |
+| `createSchemas` | 끈다. 스키마는 준비 SQL이 소유자와 함께 만든다. 스키마를 만들 수 있는 롤은 다른 컨텍스트의 스키마도 만들 수 있다 |
+| 컨텍스트 목록 | `Migrator.CONTEXTS`. 컨텍스트에 첫 마이그레이션이 생기면 추가한다 |
+
+`flyway_schema_history`도 마이그레이션 롤이 만들므로, 기본 권한에 따라 런타임 롤이 이 테이블에도 DML을 가지게 된다. 런타임 롤이 이력을 고칠 수 있다는 뜻이지만 지금은 받아들인다. 기본 권한의 동작에서 추론한 것이며 테스트로 확인하지는 않았다.
+
+### 검증
+
+| 테스트 | 확인하는 것 |
+|---|---|
+| `apps/migrator`의 `MigratorIntegrationTest` | PostgreSQL 17 컨테이너에 준비 SQL을 실행하고 마이그레이션 롤로 마이그레이션한다. 다시 실행하면 적용할 것이 없다. 스키마를 넘는 외래키가 없다. `api_app`은 DML만 되고 DDL은 안 된다. `member_migrator`는 다른 스키마를 참조하는 외래키를 만들 수 없다 |
+| `member-core`의 `MigrationMatchesMappingTest` | 마이그레이션으로 만든 스키마가 엔티티 매핑과 일치한다 (Hibernate `validate`) |
+
+두 테스트는 Testcontainers를 쓰므로 Docker가 필요하다.
 
 ## 아웃박스와 인박스 테이블
 

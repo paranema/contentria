@@ -27,10 +27,10 @@ class SchemaMappingTest {
         val script = generateSchema(tempDir.resolve("schema.sql"))
 
         assertThat(script).contains(
-            "create table accounts",
-            "create table credentials",
-            "create table profiles",
-            "create table account_roles",
+            "create table member.accounts",
+            "create table member.credentials",
+            "create table member.profiles",
+            "create table member.account_roles",
         )
     }
 

@@ -7,20 +7,17 @@ spring:
   application:
     name: contentria-api
 
+  # The new structure's database, not the legacy `contentria` one (docs/architecture/04-persistence-conventions.md).
+  # api_app has DML on the context schemas and no DDL; apps/migrator applies the schema.
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria}
-    username: ${DATABASE_USERNAME:contentria}
-    password: ${DATABASE_PASSWORD:contentria}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+    username: ${DATABASE_USERNAME:api_app}
+    password: ${DATABASE_PASSWORD}
 
   jpa:
     hibernate:
-      # `update` adds what is missing and never removes or alters what is already there.
-      # During the migration, entity fields and constraints change often, and a renamed
-      # column leaves the old one behind — still NOT NULL, so the next insert fails.
-      # Run locally with JPA_DDL_AUTO=create-drop so the schema always matches the entities.
-      # Once this reaches a real environment, switch to `validate` and manage the schema
-      # with Flyway.
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      # Flyway owns the schema. Hibernate only checks at start-up that the entities match it.
+      ddl-auto: validate
     # Releases the connection when the transaction ends instead of holding it for the whole
     # request. Lazy associations must therefore be resolved inside the service layer.
     open-in-view: false
