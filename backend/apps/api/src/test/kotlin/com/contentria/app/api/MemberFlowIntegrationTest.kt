@@ -1,5 +1,6 @@
 package com.contentria.app.api
 
+import com.contentria.member.application.required.CodePurpose
 import com.contentria.member.application.required.VerificationCodeSender
 import org.assertj.core.api.Assertions.assertThat
 import org.flywaydb.core.Flyway
@@ -25,7 +26,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * The member flows of 5a end to end: HTTP in, PostgreSQL behind, cookies carried by the client
+ * The member flows end to end: HTTP in, PostgreSQL behind, cookies carried by the client
  * the way a browser would.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -122,6 +123,65 @@ class MemberFlowIntegrationTest {
         assertThat(browser.cookie("accessToken")).isNull()
     }
 
+    @Test
+    @DisplayName("이메일 코드로 로그인한다. 다시 요청하면 이전 코드는 무효다")
+    fun `code login`() {
+        val email = signUp()
+        val browser = Browser()
+
+        // 재발송: 첫 시도는 더 이상 쓸 수 없다
+        val first = browser.post("/auth/login/code/start", """{"email":"$email"}""")
+        assertThat(first.statusCode()).isEqualTo(202)
+        val firstCode = codes.lastCodeFor(email, CodePurpose.LOGIN)
+        val attemptId = browser.post("/auth/login/code/start", """{"email":"${email.uppercase()}"}""").field("attemptId")
+        val code = codes.lastCodeFor(email, CodePurpose.LOGIN)
+        val stale = browser.post("/auth/login/code/complete", codeLogin(first.field("attemptId"), firstCode))
+        assertThat(stale.body()).contains("VERIFICATION_EXPIRED")
+
+        val wrong = browser.post("/auth/login/code/complete", codeLogin(attemptId, wrongCodeFor(code)))
+        assertThat(wrong.statusCode()).isEqualTo(400)
+        assertThat(wrong.body()).contains("VERIFICATION_MISMATCH")
+
+        val completed = browser.post("/auth/login/code/complete", codeLogin(attemptId, code))
+        assertThat(completed.statusCode()).isEqualTo(200)
+        assertThat(browser.cookie("accessToken")).isNotNull()
+        assertThat(browser.get("/me/profile").field("email")).isEqualTo(email)
+
+        // 한 번 쓴 시도는 다시 쓸 수 없다
+        assertThat(Browser().post("/auth/login/code/complete", codeLogin(attemptId, code)).body()).contains("VERIFICATION_EXPIRED")
+    }
+
+    @Test
+    @DisplayName("없는 주소로 코드 로그인을 요청하면 코드를 보내지 않고, 있는 주소와 같은 모양으로 답한다")
+    fun `code login does not reveal whether an address is registered`() {
+        val registered = signUp()
+        val unknown = "nobody-${UUID.randomUUID()}@contentria.com"
+
+        val forRegistered = Browser().post("/auth/login/code/start", """{"email":"$registered"}""")
+        val forUnknown = Browser().post("/auth/login/code/start", """{"email":"$unknown"}""")
+
+        assertThat(forUnknown.statusCode()).isEqualTo(forRegistered.statusCode())
+        assertThat(forUnknown.body().replace(UUID_PATTERN, "<id>")).isEqualTo(forRegistered.body().replace(UUID_PATTERN, "<id>"))
+        assertThat(codes.sentAnyTo(unknown)).isFalse()
+
+        // 받은 ID로 아무 코드나 내면 만료된 시도와 같은 실패다
+        val completed = Browser().post("/auth/login/code/complete", codeLogin(forUnknown.field("attemptId"), "123456"))
+        assertThat(completed.statusCode()).isEqualTo(400)
+        assertThat(completed.body()).contains("VERIFICATION_EXPIRED")
+    }
+
+    /** Registers a fresh address through the HTTP flow and returns it. */
+    private fun signUp(): String {
+        val browser = Browser()
+        val email = "member-${UUID.randomUUID()}@contentria.com"
+        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+        val completed = browser.post("/auth/sign-up/complete", completion(attemptId, codes.lastCodeFor(email), "correct horse battery"))
+        check(completed.statusCode() == 201) { "Sign-up failed: ${completed.body()}" }
+        return email
+    }
+
+    private fun codeLogin(attemptId: String, code: String) = """{"attemptId":"$attemptId","code":"$code"}"""
+
     private fun completion(attemptId: String, code: String, password: String) =
         """{"attemptId":"$attemptId","code":"$code","password":"$password"}"""
 
@@ -155,9 +215,11 @@ class MemberFlowIntegrationTest {
 
     /** Captures codes instead of mailing them. */
     class RecordingCodeSender : VerificationCodeSender {
-        private val codes = ConcurrentHashMap<String, String>()
-        override fun send(email: String, code: String) { codes[email] = code }
-        fun lastCodeFor(email: String): String = codes[email] ?: error("No code was sent to $email")
+        private val codes = ConcurrentHashMap<Pair<String, CodePurpose>, String>()
+        override fun send(email: String, code: String, purpose: CodePurpose) { codes[email to purpose] = code }
+        fun lastCodeFor(email: String, purpose: CodePurpose = CodePurpose.SIGN_UP): String =
+            codes[email to purpose] ?: error("No $purpose code was sent to $email")
+        fun sentAnyTo(email: String): Boolean = codes.keys.any { it.first == email }
     }
 
     @TestConfiguration
@@ -169,6 +231,8 @@ class MemberFlowIntegrationTest {
 
     companion object {
         private const val MAX_FAILED_ATTEMPTS = 5
+
+        private val UUID_PATTERN = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
         private val postgres = PostgreSQLContainer("postgres:17").apply { start() }
 

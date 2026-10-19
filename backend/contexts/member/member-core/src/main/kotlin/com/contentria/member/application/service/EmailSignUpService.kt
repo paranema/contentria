@@ -7,14 +7,15 @@ import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.MemberUseCaseException.VerificationFailed.Reason
 import com.contentria.member.application.provided.StartEmailSignUpUseCase
 import com.contentria.member.application.required.AccountRepository
+import com.contentria.member.application.required.CodePurpose
 import com.contentria.member.application.required.SignUpAttemptRepository
 import com.contentria.member.application.required.VerificationCodeGenerator
 import com.contentria.member.application.required.VerificationCodeSender
 import com.contentria.member.domain.account.Account
 import com.contentria.member.domain.account.EmailAddresses
 import com.contentria.member.domain.account.PasswordHasher
-import com.contentria.member.domain.signup.CodeVerification
 import com.contentria.member.domain.signup.SignUpAttempt
+import com.contentria.member.domain.verification.CodeVerification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
@@ -46,7 +47,7 @@ class EmailSignUpService(
 
         val code = codes.generate()
         val attempt = attempts.save(SignUpAttempt.start(normalized, code, clock.instant()))
-        codeSender.send(normalized, code)
+        codeSender.send(normalized, code, CodePurpose.SIGN_UP)
         return attempt.id
     }
 

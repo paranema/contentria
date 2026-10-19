@@ -1,4 +1,4 @@
-package com.contentria.member.domain.signup
+package com.contentria.member.domain.verification
 
 enum class CodeVerification {
     VERIFIED,

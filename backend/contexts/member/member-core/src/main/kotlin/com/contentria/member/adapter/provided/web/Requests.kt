@@ -11,7 +11,8 @@ data class StartSignUpRequest(
     @field:NotBlank @field:Size(max = 255) val email: String,
 )
 
-data class StartSignUpResponse(val attemptId: UUID)
+/** Answer to every request that sends a code: the id to present with the code. */
+data class CodeSentResponse(val attemptId: UUID)
 
 data class CompleteSignUpRequest(
     @field:NotNull val attemptId: UUID,
@@ -23,6 +24,15 @@ data class CompleteSignUpRequest(
 data class LoginRequest(
     @field:NotBlank @field:Size(max = 255) val email: String,
     @field:NotBlank @field:Size(max = 72) val password: String,
+)
+
+data class StartCodeLoginRequest(
+    @field:NotBlank @field:Size(max = 255) val email: String,
+)
+
+data class CompleteCodeLoginRequest(
+    @field:NotNull val attemptId: UUID,
+    @field:Pattern(regexp = "\\d{6}") val code: String,
 )
 
 data class RenameProfileRequest(
