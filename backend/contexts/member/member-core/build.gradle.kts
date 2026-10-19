@@ -15,6 +15,12 @@ dependencies {
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.springframework.security:spring-security-core")
 
+    // adapter/provided/web/social: OIDC 로그인 콜백. ID 토큰 서명 검증은 jose(Nimbus)가 한다
+    implementation("org.springframework.security:spring-security-config")
+    implementation("org.springframework.security:spring-security-web")
+    implementation("org.springframework.security:spring-security-oauth2-client")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+
     // adapter/required
     implementation("org.springframework.security:spring-security-crypto")
     implementation("org.springframework.boot:spring-boot-starter-mail")

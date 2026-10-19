@@ -1,6 +1,7 @@
 package com.contentria.app.api.security
 
 import com.contentria.member.api.AuthenticateAccessTokenQuery
+import com.contentria.member.config.MemberSocialLogin
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
@@ -20,7 +21,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfiguration {
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity, accessTokens: AuthenticateAccessTokenQuery): SecurityFilterChain =
+    fun securityFilterChain(
+        http: HttpSecurity,
+        accessTokens: AuthenticateAccessTokenQuery,
+        socialLogin: MemberSocialLogin,
+    ): SecurityFilterChain =
         http
             .csrf { it.disable() }
             .httpBasic { it.disable() }
@@ -32,5 +37,7 @@ class SecurityConfiguration {
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .addFilterBefore(AccessTokenAuthenticationFilter(accessTokens), UsernamePasswordAuthenticationFilter::class.java)
+            // /oauth2/authorization/{provider} and /login/oauth2/code/{provider}, answered by their own filters
+            .also(socialLogin::applyTo)
             .build()
 }

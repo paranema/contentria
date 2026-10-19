@@ -13,6 +13,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.util.UUID
@@ -33,6 +34,12 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "accounts", schema = MemberSchema.NAME)
+// Spring Data runs this for AccountRepository.findBySocialIdentity, matching the method by name.
+// Positional parameters, so the repository needs no Spring Data annotation to name them.
+@NamedQuery(
+    name = "Account.findBySocialIdentity",
+    query = "select c.account from Credential c where c.provider = ?1 and c.providerId = ?2",
+)
 class Account private constructor(
     id: UUID,
     email: String,

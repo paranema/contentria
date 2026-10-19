@@ -1,5 +1,6 @@
 package com.contentria.member.application.required
 
+import com.contentria.member.domain.account.AuthProvider
 import com.contentria.member.domain.account.Role
 import java.time.Instant
 import java.util.UUID
@@ -14,6 +15,21 @@ interface VerificationCodeSender {
  * login code they did not ask for knows not to hand it over.
  */
 enum class CodePurpose { SIGN_UP, LOGIN }
+
+/**
+ * Tells an account's owner, at the account's address, that a way into the account was added or
+ * removed (docs/contexts/member/02-implementation.md, 이벤트). Sent after commit: a failed send
+ * does not undo the change.
+ */
+interface AccountNoticeSender {
+    fun send(email: String, notice: AccountNotice)
+}
+
+sealed interface AccountNotice {
+    /** [automatic] is a link made during a social sign-in because the addresses matched (흐름 2의 7번). */
+    data class SocialProviderLinked(val provider: AuthProvider, val automatic: Boolean) : AccountNotice
+    data class SocialProviderUnlinked(val provider: AuthProvider) : AccountNotice
+}
 
 /** Produces verification codes from a cryptographically secure source. */
 interface VerificationCodeGenerator {

@@ -14,6 +14,14 @@ sealed class MemberUseCaseException(message: String) : DomainException(message) 
         enum class Reason { MISMATCH, LOCKED, EXPIRED }
     }
 
+    /** 01-rules 흐름 2의 3번: 공급자가 이메일 클레임을 주지 않았다. 공급자 화면에서 동의하도록 안내한다. */
+    class SocialEmailMissing :
+        MemberUseCaseException("The provider did not share an email address")
+
+    /** 01-rules 흐름 3의 1번: 그 소셜 신원은 다른 계정 소유다. 계정을 합치지 않는다. */
+    class SocialIdentityLinkedElsewhere :
+        MemberUseCaseException("This social identity belongs to another account")
+
     class DisplayNameTaken :
         MemberUseCaseException("Another member already uses this display name")
 

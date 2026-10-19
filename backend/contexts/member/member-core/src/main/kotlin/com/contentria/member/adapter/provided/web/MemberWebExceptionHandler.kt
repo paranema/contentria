@@ -22,6 +22,8 @@ class MemberWebExceptionHandler {
         is AccountException.InvalidCredentials -> error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email or password does not match.")
         is AccountException.NotAuthenticatable -> error(HttpStatus.FORBIDDEN, "ACCOUNT_NOT_ACTIVE", "This account cannot sign in.")
         is AccountException.InvalidEmail -> error(HttpStatus.BAD_REQUEST, "INVALID_EMAIL", "Not a usable email address.")
+        is AccountException.LastCredentialRemoval -> error(HttpStatus.CONFLICT, "LAST_CREDENTIAL", "The account would have no way to sign in.")
+        is AccountException.ProviderNotLinked -> error(HttpStatus.NOT_FOUND, "PROVIDER_NOT_LINKED", "That provider is not linked.")
         else -> error(HttpStatus.BAD_REQUEST, "ACCOUNT_RULE_VIOLATED", "The request breaks an account rule.")
     }
 
@@ -35,6 +37,11 @@ class MemberWebExceptionHandler {
             .body(ErrorResponse("EMAIL_ALREADY_REGISTERED", "An account already uses this email address.", e.providers))
         is MemberUseCaseException.VerificationFailed ->
             error(HttpStatus.BAD_REQUEST, "VERIFICATION_${e.reason}", "The code could not be verified.")
+        // Social failures normally arrive as a redirect from the callback; these cover a direct call.
+        is MemberUseCaseException.SocialEmailMissing ->
+            error(HttpStatus.BAD_REQUEST, "SOCIAL_EMAIL_MISSING", "The provider did not share an email address.")
+        is MemberUseCaseException.SocialIdentityLinkedElsewhere ->
+            error(HttpStatus.CONFLICT, "SOCIAL_IDENTITY_TAKEN", "That account is linked to another member.")
         is MemberUseCaseException.DisplayNameTaken ->
             error(HttpStatus.CONFLICT, "DISPLAY_NAME_TAKEN", "Another member already uses this display name.")
         is MemberUseCaseException.InvalidSession ->

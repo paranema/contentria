@@ -42,4 +42,6 @@ data class RenameProfileRequest(
 /** Token values travel only in cookies; the body says who signed in and until when. */
 data class SessionResponse(val accountId: UUID, val accessTokenExpiresAt: Instant)
 
+data class MyCredentialsResponse(val providers: List<String>)
+
 data class ErrorResponse(val code: String, val message: String, val providers: Set<String>? = null)

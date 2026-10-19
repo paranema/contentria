@@ -43,7 +43,7 @@
 | | 레이어드 | 헥사고날 |
 |---|---|---|
 | 리포지토리 인터페이스 위치 | `domain/` | `application/required/` |
-| 리포지토리 구현 | Spring Data가 생성. 복잡한 조회만 `infra/persistence/` | Spring Data가 생성. 복잡한 조회만 `adapter/required/persistence/` |
+| 리포지토리 구현 | Spring Data가 생성. 복잡한 조회는 엔티티의 named query | Spring Data가 생성. 복잡한 조회는 엔티티의 named query |
 | 리포지토리 외의 외부 의존 (다른 컨텍스트, 메일 등) | application이 `infra/`를 직접 쓴다 | `application/required/`의 포트를 `adapter/required/`가 구현한다 |
 | 진입점이 호출하는 것 | application의 서비스 | `application/provided/`의 유스케이스 인터페이스 |
 
@@ -54,39 +54,41 @@
 두 구조에 공통이다.
 
 리포지토리 인터페이스는 Spring Data의 `Repository` 마커를 상속하고, 필요한 메서드만 선언한다. 구현은 Spring Data가 실행 시점에 만든다.
-메서드 이름만으로 표현할 수 없는 조회는 fragment 인터페이스로 분리하고, 그 구현만 직접 작성한다.
+메서드 이름만으로 표현할 수 없는 조회는 엔티티의 `@NamedQuery`로 쓰고, 리포지토리에는 같은 이름의 메서드만 선언한다.
 
 ```kotlin
-// 리포지토리: 필요한 메서드만 선언한다
-interface CommentRepository : Repository<Comment, UUID>, CommentQueries {
+// 엔티티: 매핑 옆에 쿼리 문장을 둔다. 위치 파라미터라 리포지토리에 이름을 붙일 애노테이션이 필요 없다
+@Entity
+@NamedQuery(
+    name = "Comment.findThread",
+    query = "select c from Comment c where c.postId = ?1 order by c.createdAt",
+)
+class Comment
+
+// 리포지토리: 필요한 메서드만 선언한다. findThread는 Comment.findThread를 실행한다
+interface CommentRepository : Repository<Comment, UUID> {
     fun save(comment: Comment): Comment
     fun findById(id: UUID): Comment?
     fun existsByPostIdAndAuthorId(postId: UUID, authorId: UUID): Boolean
-}
-
-// fragment: 시그니처는 리포지토리와 같은 계층에 둔다
-interface CommentQueries {
-    fun findThread(postId: UUID, limit: Int): List<Comment>
-}
-
-// fragment 구현: 쿼리 문장은 저장 기술 계층에만 둔다.
-// 이름 규칙(<fragment 이름>Impl)으로 Spring Data가 찾아 리포지토리에 붙인다.
-class CommentQueriesImpl(private val em: EntityManager) : CommentQueries {
-    override fun findThread(postId: UUID, limit: Int): List<Comment> =
-        em.createQuery("select c from Comment c where c.postId = :postId order by c.createdAt", Comment::class.java)
-            .setParameter("postId", postId)
-            .setMaxResults(limit)
-            .resultList
+    fun findThread(postId: UUID): List<Comment>
 }
 ```
 
 | 규칙 | 이유 |
 |---|---|
 | `JpaRepository`, `CrudRepository`가 아니라 `Repository`를 상속한다 | 선언하지 않은 메서드(`deleteAll`, `findAll` 등)가 생기지 않게 한다 |
-| 리포지토리 인터페이스에 `@Query`, `@Lock`, `@EntityGraph`를 쓰지 않는다. 필요하면 fragment로 옮긴다 | 쿼리 문장과 잠금 방식은 저장 기술의 세부다 |
+| 리포지토리 인터페이스에 `@Query`, `@Lock`, `@EntityGraph`, `@Param`을 쓰지 않는다. 쿼리 문장은 엔티티의 `@NamedQuery`로 옮긴다 | 쿼리 문장과 잠금 방식은 저장 기술의 세부다. 매핑이 이미 엔티티에 있으므로 같은 자리에 둔다 |
 | `Page`, `Pageable`, `Sort`, `Specification` 같은 Spring Data 타입을 시그니처에 쓰지 않는다 | 기술 의존을 마커 하나로 묶어 둔다 |
-| 메서드 이름이 도메인이나 유스케이스의 언어와 맞지 않으면 fragment로 옮긴다 | Spring Data의 이름 규칙에 언어가 끌려가지 않게 한다 |
+| 메서드 이름이 도메인이나 유스케이스의 언어와 맞지 않으면 named query로 옮긴다 | Spring Data의 이름 규칙에 언어가 끌려가지 않게 한다 |
 | 애그리거트 하나에 리포지토리 하나 | 애그리거트 단위로 저장하고 꺼낸다 |
+
+### fragment를 쓰지 않는 이유
+
+Spring Data의 fragment(`<인터페이스>Impl`)로 쿼리를 저장 기술 계층(`adapter/required/persistence`, `infra/persistence`)에 두려 했지만 동작하지 않는다.
+Spring Data는 fragment 구현을 **리포지토리 인터페이스가 있는 패키지와 그 하위에서만** 찾는다(spring-data-commons 4.1의 `DefaultRepositoryConfiguration.getImplementationBasePackages()`가 인터페이스의 패키지 하나만 돌려준다).
+리포지토리는 `application/required`나 `domain`에 있으므로, 구현도 그 아래에 두어야 한다. 그러면 쿼리 문장이 저장 기술 계층 밖으로 나간다.
+
+문장 하나로 쓸 수 없는 동적 조회가 필요해지면 그때 다시 정한다.
 
 ### 이 규칙을 쓰지 않는 경우
 
@@ -99,7 +101,7 @@ Spring Data는 엔티티를 다룬다. 도메인 모델이 곧 JPA 엔티티일 
 ### 테스트
 
 `Repository` 마커에는 메서드가 없다. 애플리케이션 테스트에서는 리포지토리 인터페이스를 인메모리 가짜 구현으로 바꿔 쓸 수 있다.
-fragment의 쿼리는 실제 DB(Testcontainers)로 검증한다.
+named query는 실제 DB(Testcontainers)로 검증한다. 문장이 틀리면 애플리케이션이 뜨지 않으므로, 컨텍스트를 띄우는 통합 테스트가 먼저 잡는다.
 
 ## 헥사고날
 
@@ -120,7 +122,6 @@ com.contentria.<컨텍스트>/
 │   │   ├── batch/               배치 잡
 │   │   └── queue/               외부 큐 소비자 (media만)
 │   └── required/                나가는 쪽. application/required의 구현
-│       ├── persistence/         리포지토리 fragment 구현
 │       ├── messaging/           아웃박스 기록
 │       ├── <상대 컨텍스트>/       번역 계층. 상대의 -api를 호출한다
 │       └── <외부 시스템>/         R2, 메일, 소셜 공급자 등
@@ -185,7 +186,6 @@ com.contentria.<컨텍스트>/
 ├── application/                 유스케이스, 트랜잭션 경계. <컨텍스트>-api의 조회 포트 구현
 ├── domain/                      엔티티, 도메인 규칙, 리포지토리 인터페이스(Spring Data 마커)
 ├── infra/
-│   ├── persistence/             리포지토리 fragment 구현
 │   ├── client/                  번역 계층. 다른 컨텍스트의 -api를 호출한다
 │   └── external/                외부 시스템 연동 (메일 발송 등)
 └── config/                      채널별 설정 클래스
@@ -199,9 +199,8 @@ com.contentria.interaction/
 │   ├── web/         SubscriptionController, CommentController, LikeController
 │   └── messaging/   PostDeletedConsumer
 ├── application/     SubscriptionService, CommentService, LikeService
-├── domain/          Subscription, Comment, Like, CommentRepository, CommentQueries
+├── domain/          Subscription, Comment, Like, CommentRepository
 ├── infra/
-│   ├── persistence/ CommentQueriesImpl
 │   └── client/      PublishingClient (publishing-api → 자기 타입), MemberClient
 └── config/          InteractionWebConfiguration, InteractionMessagingConfiguration
 ```
@@ -209,7 +208,7 @@ com.contentria.interaction/
 ### 의존 방향
 
 ```
-presentation ─→ application ─→ domain ←─ infra/persistence
+presentation ─→ application ─→ domain
                     │
                     └─→ infra/client, infra/external
 ```
@@ -359,7 +358,7 @@ MSA 대비에 필요한 것은 바깥 계약이고, 바깥 계약은 내부 구�
 | 선택지 | 의존 역전 | 저장소 계층의 기술 의존 | 애그리거트당 파일 |
 |---|---|---|---|
 | 순수 인터페이스 + 구현 클래스 + Spring Data 인터페이스 (레거시 `blog-api` 방식) | 됨 | 없음 | 3개 |
-| **Spring Data `Repository` 마커를 상속한 인터페이스** | 됨 | 마커 하나 | 1개 (복잡한 조회가 있으면 2~3개) |
+| **Spring Data `Repository` 마커를 상속한 인터페이스** | 됨 | 마커 하나 | 1개 (복잡한 조회는 엔티티의 named query) |
 | 리포지토리를 저장 기술 계층에만 두고 application이 직접 사용 | 안 됨 | 없음 | 1개 |
 
 레거시 방식의 구현 클래스는 대부분 Spring Data 인터페이스에 한 줄씩 위임하는 코드다.
@@ -371,6 +370,6 @@ MSA 대비에 필요한 것은 바깥 계약이고, 바깥 계약은 내부 구�
 
 ### 레이어드의 진입점과 외부 연동을 `presentation/`, `infra/`로 묶는다
 
-진입점(`web`, `messaging`, `batch`)과 외부 연동(`persistence`, `client`, `external`)을 각각 한 계층으로 묶어, 계층 하나가 패키지 하나가 되게 했다.
+진입점(`web`, `messaging`, `batch`)과 외부 연동(`client`, `external`)을 각각 한 계층으로 묶어, 계층 하나가 패키지 하나가 되게 했다.
 널리 알려진 이름이라 설명 없이 읽히고, 헥사고날의 `adapter/provided`, `adapter/required`와 짝이 맞는다.
 `presentation`에는 화면이 아닌 진입점(Kafka 소비자, 배치 잡)도 들어간다. DDD 문헌에서 `interfaces`라고 부르는 계층이지만, 더 익숙한 이름을 골랐다.

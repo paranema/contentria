@@ -14,6 +14,19 @@ spring:
     username: ${DATABASE_USERNAME:api_app}
     password: ${DATABASE_PASSWORD}
 
+  # Google only for now (docs/contexts/member/01-rules.md, 확인 필요). Boot fills in Google's
+  # endpoints. The redirect URI must match one registered with Google; behind a proxy, set it
+  # explicitly instead of letting {baseUrl} come from the request.
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: openid,email
+            redirect-uri: ${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+
   jpa:
     hibernate:
       # Flyway owns the schema. Hibernate only checks at start-up that the entities match it.
@@ -47,3 +60,8 @@ contentria:
       # smtp in every deployed environment. log writes codes to the log and is for local use only.
       mode: ${MEMBER_MAIL_MODE:smtp}
       from: ${MEMBER_MAIL_FROM:no-reply@contentria.com}
+    # Where the browser lands after a social sign-in or link. Never taken from the request.
+    social:
+      login-success-url: ${MEMBER_SOCIAL_LOGIN_SUCCESS_URL:http://localhost:3000/login/callback}
+      login-failure-url: ${MEMBER_SOCIAL_LOGIN_FAILURE_URL:http://localhost:3000/login}
+      link-result-url: ${MEMBER_SOCIAL_LINK_RESULT_URL:http://localhost:3000/settings/account}
