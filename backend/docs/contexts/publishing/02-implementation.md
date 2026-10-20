@@ -98,6 +98,32 @@
 | slug 만들기, 접미사 | `Slugs.from(text, fallback, maxLength)`, `Slugs.nextAvailable(base, taken, maxLength)` | 순수 함수. 무엇이 쓰였는지(`taken`)는 유스케이스가 조회해 넘긴다 |
 | 요약 | `PostSummary.written(text)`, `PostSummary.derived(text)` | 도메인은 300자 제한과 작성자가 썼는지만 안다. 본문에서 뽑는 일은 앱이 마크다운 파서로 한다(P4). 레거시도 commonmark로 했다(`post/application/MarkdownService.kt`) |
 
+## 유스케이스
+
+`application/provided`의 유스케이스와 그 구현이다. 하위 단계마다 늘어난다.
+
+| 01의 흐름 | 유스케이스 | 구현 | HTTP |
+|---|---|---|---|
+| 흐름 1 블로그 만들기 | `CreateBlogUseCase` | `BlogService` | `POST /blogs` → 201 |
+| 블로그 설정 | `ChangeBlogSettingsUseCase` | `BlogService` | `PATCH /blogs/{slug}` (소유자) |
+| 블로그 조회 | `GetBlogQuery` | `BlogService` | `GET /blogs/{slug}`(공개), `GET /me/blogs` |
+| 흐름 2 카테고리 조회 | `GetCategoryTreeQuery` | `CategoryTreeService` | `GET /blogs/{slug}/categories`(공개). 트리와 버전 |
+| 흐름 2 카테고리 편집 | `EditCategoryTreeUseCase` | `CategoryTreeService` | `PUT /blogs/{slug}/categories` (소유자). 트리 전체와 편집을 연 때의 버전 |
+
+`apps/api`의 필터 체인은 `/blogs/` 아래의 GET을 누구에게나 열고, 나머지는 세션을 요구한다.
+
+### 구현에서 정한 것
+
+| 항목 | 내용 |
+|---|---|
+| 검사 순서 | 01의 표 순서대로 검사해 처음 걸리는 규칙을 알린다. 블로그 만들기는 계정 상태(트랜잭션 밖), 블로그 수, 형식과 예약어, 중복 순이다. 카테고리 편집은 소유, 트리 규칙(2~4번), 글이 있는 삭제(5번) 순이다 |
+| slug 경합 | 같은 주소를 동시에 만들면 고유 제약이 둘째를 막는다. 그 실패는 `BLOG_SLUG_TAKEN`으로 알린다 |
+| 트리 버전 | 편집을 연 때의 버전을 받아 지금 버전과 다르면 409 `CATEGORY_TREE_CHANGED`다. 편집용으로 읽을 때 `OPTIMISTIC_FORCE_INCREMENT`로 읽어 저장마다 버전을 올린다. 카테고리는 연관의 역방향이라, 이름만 바뀌거나 카테고리가 더해져도 Hibernate는 트리의 버전을 올리지 않는다. 잠금 방식은 리포지토리가 아니라 `CategoryTree`의 named query에 둔다 |
+| 편집 응답 | 커밋한 뒤 트리를 다시 읽어 돌려준다. 버전은 커밋하면서 오르기 때문이다 |
+| 요약 | commonmark의 문법 트리에서 읽히는 글자만 모은다. 링크 주소, 이미지, 코드 블록, HTML은 뺀다. 레거시가 쓴 `TextContentRenderer`는 링크를 `"글" (주소)`로, 취소선을 `/글/`로 써서 요약에 섞였다 |
+| 샘플 본문 | `publishing-core`의 `samples/*.md`. 제목은 따로 있으므로 본문에 다시 쓰지 않는다 |
+| 정지된 계정 | 쓰기 전에 회원에게 묻는다. 액세스 토큰은 정지 뒤에도 만료까지 통과하므로 토큰만 믿지 않는다 |
+
 ## 단계
 
 member 이전과 같이 단계마다 PR을 하나씩 낸다.
@@ -115,7 +141,7 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 유스케이스, 웹 | P4부터. P3까지 도메인, 아키텍처 규칙, 스키마, 회원 번역 계층을 만들었다. `apps/api`가 출판 설정을 불러온다 |
+| 글 쓰기, 발행, 삭제, 공개 조회, 옛 slug 리디렉션 | P4b, P4c. P4a에서 블로그와 카테고리를 만들었다 |
 | 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
 | 글 목록 정렬과 페이지 크기 | P4에서 정한다 |
