@@ -9,6 +9,8 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
+import jakarta.persistence.LockModeType
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import jakarta.persistence.Version
@@ -27,6 +29,14 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "category_trees", schema = PublishingSchema.NAME)
+// Loading a tree to edit it raises its version on commit, whatever changed. Without this a save
+// that only renames or adds categories leaves the version alone: the categories are the inverse
+// side of the association, and Hibernate versions the root only for its own columns.
+@NamedQuery(
+    name = "CategoryTree.findForEdit",
+    query = "select t from CategoryTree t where t.id = ?1",
+    lockMode = LockModeType.OPTIMISTIC_FORCE_INCREMENT,
+)
 class CategoryTree private constructor(id: UUID) : AuditableEntity() {
 
     @Id
@@ -36,10 +46,13 @@ class CategoryTree private constructor(id: UUID) : AuditableEntity() {
     val blogId: UUID
         get() = id
 
-    /** Two editors saving the same tree: the second save fails instead of silently undoing the first. */
+    /**
+     * Two editors saving the same tree: the second save fails instead of silently undoing the first.
+     * Null until first stored, which is also how Spring Data tells a new tree from a stored one.
+     */
     @Version
     @Column(name = "version", nullable = false)
-    var version: Long = 0
+    var version: Long? = null
         protected set
 
     @OneToMany(mappedBy = "tree", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.LAZY)
@@ -64,6 +77,11 @@ class CategoryTree private constructor(id: UUID) : AuditableEntity() {
     fun categoryIdsRemovedBy(edit: CategoryTreeEdit): Set<UUID> {
         val kept = edit.nodes.mapNotNull { existingIdOf(it.key) }.toSet()
         return categoryList.map { it.id }.filterNot { it in kept }.toSet()
+    }
+
+    /** Checks [edit] against 01-rules 흐름 2의 2~4번 without changing anything. */
+    fun validate(edit: CategoryTreeEdit) {
+        plan(edit)
     }
 
     /**

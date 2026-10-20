@@ -45,6 +45,16 @@ object ApiTestEnvironment {
             }
         }
 
+    /** Runs [sql] as the superuser. For state no API can produce yet, such as a suspended account. */
+    fun execute(sql: String, vararg args: Any) {
+        DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                args.forEachIndexed { i, arg -> statement.setObject(i + 1, arg) }
+                statement.executeUpdate()
+            }
+        }
+    }
+
     fun register(registry: DynamicPropertyRegistry) {
         registry.add("spring.datasource.url") { postgres.jdbcUrl }
         registry.add("spring.datasource.username") { postgres.username }

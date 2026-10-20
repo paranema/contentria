@@ -12,6 +12,17 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // adapter/provided/web
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("tools.jackson.module:jackson-module-kotlin")
+    implementation("org.springframework.security:spring-security-core")
+
+    // adapter/required/markdown: 본문에서 요약을 뽑는다
+    implementation(libs.commonmark)
+    implementation(libs.commonmark.ext.gfm.tables)
+    implementation(libs.commonmark.ext.gfm.strikethrough)
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(project(":platform:architecture-rules"))
     testImplementation(libs.archunit.junit5)
