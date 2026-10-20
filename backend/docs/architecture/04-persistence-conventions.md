@@ -73,7 +73,7 @@ WHERE con.contype = 'f'
 
 ## DB 롤
 
-지금 만든 롤은 `member_migrator`와 `api_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
+지금 만든 롤은 `member_migrator`, `publishing_migrator`, `api_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
 
 | 롤 | 쓰는 곳 | 권한 |
 |---|---|---|
@@ -128,7 +128,7 @@ Flyway를 쓴다.
 
 | 테스트 | 확인하는 것 |
 |---|---|
-| `apps/migrator`의 `MigratorIntegrationTest` | PostgreSQL 17 컨테이너에 준비 SQL을 실행하고 마이그레이션 롤로 마이그레이션한다. 다시 실행하면 적용할 것이 없다. 스키마를 넘는 외래키가 없다. `api_app`은 DML만 되고 DDL은 안 된다. `member_migrator`는 다른 스키마를 참조하는 외래키를 만들 수 없다 |
+| `apps/migrator`의 `MigratorIntegrationTest` | PostgreSQL 17 컨테이너에 준비 SQL을 실행하고 마이그레이션 롤로 마이그레이션한다. 다시 실행하면 적용할 것이 없다. 스키마를 넘는 외래키가 없다. `api_app`은 DML만 되고 DDL은 안 된다. `member_migrator`는 다른 스키마를 참조하는 외래키를 만들 수 없다. `publishing_migrator`는 member 스키마에서 테이블을 만들지도 읽지도 못한다 |
 | `member-core`의 `MigrationMatchesMappingTest` | 마이그레이션으로 만든 스키마가 엔티티 매핑과 일치한다 (Hibernate `validate`) |
 
 두 테스트는 Testcontainers를 쓰므로 Docker가 필요하다.

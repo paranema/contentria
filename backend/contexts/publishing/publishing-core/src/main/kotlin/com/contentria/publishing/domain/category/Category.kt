@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import com.contentria.publishing.domain.PublishingSchema
 import java.util.UUID
 
@@ -19,7 +20,13 @@ import java.util.UUID
  * loads all of its categories at once anyway.
  */
 @Entity
-@Table(name = "categories", schema = PublishingSchema.NAME)
+@Table(
+    name = "categories",
+    schema = PublishingSchema.NAME,
+    // Checked at commit in the migration (DEFERRABLE): a whole-tree save can insert a slug before
+    // deleting the category that held it.
+    uniqueConstraints = [UniqueConstraint(name = "uq_categories_tree_slug", columnNames = ["tree_id", "slug"])],
+)
 class Category internal constructor(
     id: UUID,
     tree: CategoryTree,

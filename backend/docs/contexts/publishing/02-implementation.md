@@ -40,7 +40,7 @@
 | `categories(tree_id, parent_id, name)`는 두지 않음 | 이름 비교는 대소문자를 가리지 않는다. 트리가 지킨다 |
 | `post_slugs(blog_id, slug)` UNIQUE | 글의 현재 slug와 옛 slug는 블로그 안에서 모두 합쳐 고유 |
 
-카테고리 slug 제약을 커밋 시점에 검사하는 이유: Hibernate는 한 번의 flush에서 삽입을 삭제보다 먼저 실행한다. 트리를 한 번에 저장하면서 `x`를 지우고 새 `x`를 만들면, 즉시 검사하는 제약은 커밋 전에 실패한다.
+카테고리 slug 제약과 부모 외래키를 커밋 시점에 검사하는 이유: Hibernate는 한 번의 flush에서 삽입을 삭제보다 먼저 실행하고, 같은 엔티티끼리는 추가된 순서대로 넣는다. 트리를 한 번에 저장하면서 `x`를 지우고 새 `x`를 만들거나, 새 하위를 새 상위보다 먼저 넣으면 즉시 검사하는 제약은 커밋 전에 실패한다. `MigrationMatchesMappingTest`가 두 경우를 검증한다.
 
 외래키는 애그리거트 안에만 둔다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "외래키").
 
@@ -114,7 +114,7 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 스키마, 유스케이스, 웹 | P2부터. P1에서는 도메인과 아키텍처 규칙만 만들었다 |
+| 유스케이스, 웹 | P3부터. P2까지 도메인, 아키텍처 규칙, 스키마(`V1__create_publishing_tables.sql`)를 만들었다 |
 | 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
 | 글 목록 정렬과 페이지 크기 | P4에서 정한다 |

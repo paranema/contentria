@@ -10,6 +10,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.util.UUID
 
 /**
@@ -19,7 +20,11 @@ import java.util.UUID
  * slugs apart across every post of the blog (02-implementation, DB 제약).
  */
 @Entity
-@Table(name = "post_slugs", schema = PublishingSchema.NAME)
+@Table(
+    name = "post_slugs",
+    schema = PublishingSchema.NAME,
+    uniqueConstraints = [UniqueConstraint(name = "uq_post_slugs_blog_slug", columnNames = ["blog_id", "slug"])],
+)
 class PostSlug internal constructor(
     post: Post,
     value: String,

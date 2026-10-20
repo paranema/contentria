@@ -80,6 +80,33 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("api_app은 publishing 테이블도 읽고 쓸 수 있다")
+    fun `the runtime role has DML on publishing tables`() {
+        connect("api_app", APP_PASSWORD).use { connection ->
+            val id = UUID.randomUUID()
+            connection.prepareStatement(
+                "INSERT INTO publishing.blogs (id, owner_id, slug, title, created_at, updated_at) VALUES (?, ?, ?, '제목', now(), now())",
+            ).use { it.setObject(1, id); it.setObject(2, UUID.randomUUID()); it.setString(3, "probe-${id.toString().take(8)}"); it.executeUpdate() }
+
+            connection.prepareStatement("DELETE FROM publishing.blogs WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+        }
+    }
+
+    @Test
+    @DisplayName("마이그레이션 롤은 다른 컨텍스트의 스키마에 손댈 수 없다")
+    fun `a migration role cannot touch another context's schema`() {
+        connect("publishing_migrator", MIGRATOR_PASSWORD).use { connection ->
+            assertThatThrownBy { connection.createStatement().execute("CREATE TABLE member.forbidden (id int)") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+            assertThatThrownBy { connection.createStatement().executeQuery("SELECT count(*) FROM member.accounts") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+        }
+    }
+
+    @Test
     @DisplayName("api_app은 테이블을 만들거나 바꿀 수 없다")
     fun `the runtime role has no DDL`() {
         connect("api_app", APP_PASSWORD).use { connection ->
@@ -115,6 +142,7 @@ class MigratorIntegrationTest {
             "psql", "-v", "ON_ERROR_STOP=1",
             "-U", postgres.username, "-d", database,
             "-v", "member_migrator_password=$MIGRATOR_PASSWORD",
+            "-v", "publishing_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
             "-f", target,
         )

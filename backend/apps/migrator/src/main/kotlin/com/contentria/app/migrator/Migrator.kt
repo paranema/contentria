@@ -46,7 +46,7 @@ class Migrator(
 
     companion object {
         /** Every context with a schema. Add a context here when it gets its first migration. */
-        val CONTEXTS = listOf(ContextSchema("member"))
+        val CONTEXTS = listOf(ContextSchema("member"), ContextSchema("publishing"))
     }
 }
 
