@@ -121,7 +121,7 @@ class InteractionSubscriptionLikeIntegrationTest {
 
         assertThat(counts.statusCode()).isEqualTo(200)
         assertThat(counts.body()).contains("\"$liked\":2", "\"$quiet\":0", "\"$unknown\":0", "\"${blog.id}\":1")
-        assertThat(anyone.get("/interactions/counts").body()).isEqualTo("""{"likes":{},"subscribers":{}}""")
+        assertThat(anyone.get("/interactions/counts").body()).isEqualTo("""{"likes":{},"comments":{},"subscribers":{}}""")
 
         val tooMany = (1..101).joinToString(",") { UUID.randomUUID().toString() }
         val refused = anyone.get("/interactions/counts?postIds=$tooMany")

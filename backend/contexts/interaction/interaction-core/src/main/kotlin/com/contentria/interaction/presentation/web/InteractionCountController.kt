@@ -7,8 +7,9 @@ import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
 /**
- * Counts anyone may see (01-rules, 공개 범위), by id batch so a list asks once. Open to readers who
- * are not signed in; the host's filter chain allows `GET /interactions/counts`.
+ * Like, comment and subscriber counts anyone may see (01-rules, 공개 범위), by id batch so a list
+ * asks once. Open to readers who are not signed in; the host's filter chain allows
+ * `GET /interactions/counts`.
  */
 @RestController
 class InteractionCountController(private val counts: GetInteractionCountsQuery) {
@@ -19,11 +20,12 @@ class InteractionCountController(private val counts: GetInteractionCountsQuery) 
         @RequestParam(required = false, defaultValue = "") blogIds: Set<UUID>,
     ): InteractionCounts = InteractionCounts(
         likes = counts.likeCounts(postIds.limited()),
+        comments = counts.commentCounts(postIds),
         subscribers = counts.subscriberCounts(blogIds.limited()),
     )
 }
 
-data class InteractionCounts(val likes: Map<UUID, Long>, val subscribers: Map<UUID, Long>)
+data class InteractionCounts(val likes: Map<UUID, Long>, val comments: Map<UUID, Long>, val subscribers: Map<UUID, Long>)
 
 /** One list page asks for at most this many ids at once. */
 internal const val MAX_IDS = 100

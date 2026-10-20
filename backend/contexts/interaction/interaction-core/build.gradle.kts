@@ -13,6 +13,9 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // infra/messaging: 아웃박스 기록
+    implementation(project(":platform:messaging"))
+
     // presentation/web
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("tools.jackson.module:jackson-module-kotlin")

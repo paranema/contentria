@@ -23,4 +23,14 @@ sealed class InteractionException(message: String) : DomainException(message) {
     /** 01-rules 흐름 2의 3번 */
     class OwnPost :
         InteractionException("A post's owner does not like it")
+
+    class CommentNotFound :
+        InteractionException("No such comment")
+
+    /** 01-rules 흐름 3의 3번: the comment replied to is not on this post, or not there at all. */
+    class InvalidParent :
+        InteractionException("The comment replied to is not on this post")
+
+    class InvalidCursor :
+        InteractionException("Not a page cursor")
 }

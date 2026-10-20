@@ -9,5 +9,9 @@ import java.util.UUID
  */
 interface GetInteractionCountsQuery {
     fun likeCounts(postIds: Set<UUID>): Map<UUID, Long>
+
+    /** Comments and replies, without the places of deleted comments (01-rules, 공개 범위). */
+    fun commentCounts(postIds: Set<UUID>): Map<UUID, Long>
+
     fun subscriberCounts(blogIds: Set<UUID>): Map<UUID, Long>
 }
