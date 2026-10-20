@@ -39,8 +39,9 @@
 | 1 | 계정이 ACTIVE가 아님 | 거부 | 앱 |
 | 2 | 그 회원의 블로그가 이미 3개 | 거부 ([왜](#회원당-블로그-수에-상한을-둔다)) | 앱 |
 | 3 | slug 형식이 틀림 | 거부 | 도메인 |
-| 4 | 같은 slug의 블로그가 있음 | 거부 | 앱 + DB |
-| 5 | 그 외 | 블로그, 샘플 카테고리, 샘플 글을 함께 만든다 | 앱 → 도메인 |
+| 4 | 예약된 slug | 거부 ([예약 slug](#예약-slug)) | 도메인 |
+| 5 | 같은 slug의 블로그가 있음 | 거부 | 앱 + DB |
+| 6 | 그 외 | 블로그, 샘플 카테고리, 샘플 글을 함께 만든다 | 앱 → 도메인 |
 
 ### 블로그
 
@@ -52,14 +53,28 @@
 | 소유자 | 만든 회원. 바뀌지 않는다 | 도메인 |
 | 삭제 | 아직 없다 | |
 
+### 예약 slug
+
+회원이 가질 수 없는 블로그 주소다. 운영자의 공식 블로그나 플랫폼의 말처럼 읽히는 주소를 회원이 선점하지 못하게 한다 ([왜](#블로그-slug를-예약해-둔다)).
+
+| 분류 | slug |
+|---|---|
+| 운영과 공식 | admin, administrator, root, system, staff, official, team, moderator, notice, notices, announcement, announcements, news, event, events, support, help, faq, contact, security, abuse, report, feedback |
+| 서비스 경로와 계정 | api, www, app, auth, login, logout, signin, signup, register, account, settings, me, profile, dashboard, search, explore, home, about, terms, privacy, policy, status, blog, blogs, post, posts, mail, email, static, assets, cdn, media |
+| 값처럼 보이는 말 | null, undefined, anonymous |
+| 플랫폼 이름 | `contentria`가 들어간 모든 slug (`contentria-official`, `my-contentria` 등) |
+
+정확히 같은 slug만 막는다. `admin-kim`, `my-notice-board`처럼 예약어를 포함하기만 한 slug는 쓸 수 있다. 플랫폼 이름만 예외로 어디에 들어가도 막는다.
+예약 slug로 블로그를 만드는 일은 관리자 기능에서 한다. 아직 없다.
+
 ### 샘플
 
 블로그를 만들면 빈 블로그 대신 구성 예시를 보여준다. 레거시와 같다.
 
 | 항목 | 내용 |
 |---|---|
-| 카테고리 | `기술`(하위 `백엔드`), `일상` |
-| 글 | `백엔드`와 `일상`에 하나씩. 임시저장(DRAFT) 상태 ([왜](#샘플-글은-임시저장으로-만든다)) |
+| 카테고리 | `기록`(하위 `독서`), `일상` ([왜](#샘플-카테고리는-누구에게나-해당하는-주제로-한다)) |
+| 글 | `독서`와 `일상`에 하나씩. 임시저장(DRAFT) 상태 ([왜](#샘플-글은-임시저장으로-만든다)) |
 | 지우기 | 일반 카테고리, 일반 글과 같다. 샘플이라는 표시는 남기지 않는다 |
 
 ## 흐름 2. 카테고리 편집
@@ -157,6 +172,16 @@
 블로그 slug는 플랫폼 전체에서 고유하다. 상한이 없으면 한 사람이 좋은 이름을 얼마든지 선점할 수 있다.
 여러 블로그를 갖는 목적(주제별로 나누기)에는 3개면 충분하다고 봤다.
 
+### 블로그 slug를 예약해 둔다
+
+블로그 주소는 바꿀 수 없고 플랫폼 전체에서 하나뿐이다. `@admin`, `@notice` 같은 주소를 회원이 먼저 가지면, 그 주소의 글이 운영자의 공지처럼 읽히고 나중에 되찾을 방법도 없다.
+정확히 같은 slug만 막는 이유: 포함까지 막으면 `admin-kim`처럼 평범한 이름도 걸리고, 목록이 길어질수록 막히는 이름을 예측하기 어려워진다. 플랫폼 이름은 어디에 들어가도 사칭으로 읽히므로 예외로 둔다.
+
+### 샘플 카테고리는 누구에게나 해당하는 주제로 한다
+
+샘플은 처음 블로그를 만든 사람에게 2단계 트리와 글이 어떻게 생겼는지 보여주는 것이다. 레거시의 `기술 > 백엔드`는 개발자가 아니면 자기 블로그와 무관해 보인다.
+`기록 > 독서`와 `일상`은 주제와 상관없이 누구나 쓸 법한 분류다.
+
 ### 샘플 글은 임시저장으로 만든다
 
 샘플 글을 발행 상태로 만들면, 블로그를 만들 때마다 같은 샘플 글 두 개가 홈 화면의 "최근 발행된 글"에 올라간다. 레거시가 그랬다(`post/application/PostService.kt`의 `createSamplePosts`).
@@ -208,6 +233,8 @@ DRAFT는 "한 번도 공개된 적 없다"는 뜻이다. 발행 전에만 slug�
 | 블로그 제목 | 만들 때 받지 않음 | 만들 때 받는다 | `blog/controller/dto/CreateBlogRequest.kt` |
 | 메타 제목, 메타 설명, 대표 이미지 | 글에 있음 | 지금은 없다. 대표 이미지는 미디어와 함께 정한다 | `post/domain/Post.kt` |
 | 샘플 글 상태 | 발행(PUBLISHED) | 임시저장(DRAFT) | `post/application/PostService.kt` |
+| 샘플 카테고리 | `기술 > 백엔드`, `일상` | `기록 > 독서`, `일상` | `category/application/CategoryService.kt` |
+| 예약 slug | 없음 | 운영, 서비스 경로, 플랫폼 이름 | `blog/controller/dto/CreateBlogRequest.kt` |
 
 근거의 경로는 태그 `legacy-final`의 `backend/blog-api/src/main/kotlin/com/contentria/api/` 아래다.
 
