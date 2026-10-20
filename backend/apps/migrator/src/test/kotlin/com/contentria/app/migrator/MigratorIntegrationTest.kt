@@ -94,6 +94,20 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("api_app은 interaction 테이블도 읽고 쓸 수 있다")
+    fun `the runtime role has DML on interaction tables`() {
+        connect("api_app", APP_PASSWORD).use { connection ->
+            val id = UUID.randomUUID()
+            connection.prepareStatement(
+                "INSERT INTO interaction.subscriptions (id, subscriber_id, blog_id, created_at, updated_at) VALUES (?, ?, ?, now(), now())",
+            ).use { it.setObject(1, id); it.setObject(2, UUID.randomUUID()); it.setObject(3, UUID.randomUUID()); it.executeUpdate() }
+
+            connection.prepareStatement("DELETE FROM interaction.subscriptions WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+        }
+    }
+
+    @Test
     @DisplayName("마이그레이션 롤은 다른 컨텍스트의 스키마에 손댈 수 없다")
     fun `a migration role cannot touch another context's schema`() {
         connect("publishing_migrator", MIGRATOR_PASSWORD).use { connection ->
@@ -143,6 +157,7 @@ class MigratorIntegrationTest {
             "-U", postgres.username, "-d", database,
             "-v", "member_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "publishing_migrator_password=$MIGRATOR_PASSWORD",
+            "-v", "interaction_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
             "-f", target,
         )
