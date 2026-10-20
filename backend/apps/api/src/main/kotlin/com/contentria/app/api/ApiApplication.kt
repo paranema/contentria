@@ -1,10 +1,12 @@
 package com.contentria.app.api
 
 import com.contentria.interaction.config.InteractionCoreConfiguration
+import com.contentria.interaction.config.InteractionMessagingConfiguration
 import com.contentria.interaction.config.InteractionWebConfiguration
 import com.contentria.member.config.MemberCoreConfiguration
 import com.contentria.member.config.MemberWebConfiguration
 import com.contentria.publishing.config.PublishingCoreConfiguration
+import com.contentria.platform.messaging.MessagingConfiguration
 import com.contentria.publishing.config.PublishingWebConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -20,6 +22,8 @@ import java.time.Clock
     PublishingWebConfiguration::class,
     InteractionCoreConfiguration::class,
     InteractionWebConfiguration::class,
+    InteractionMessagingConfiguration::class,
+    MessagingConfiguration::class,
 )
 class ApiApplication {
 

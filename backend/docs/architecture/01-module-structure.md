@@ -41,8 +41,8 @@ backend/
 
 | 모듈 | 담는 것 | 담지 않는 것 |
 |---|---|---|
-| `shared-kernel` | 식별자 생성, 예외 기반 타입, 영속성 기반 클래스, 이벤트 봉투 | 도메인 개념. 특정 컨텍스트만 쓰는 코드 |
-| `platform/*` | 여러 컨텍스트가 쓰는 기술 구현 (아웃박스 기록, 릴레이, 인박스). 테스트 전용 아키텍처 규칙 | 도메인 개념 |
+| `shared-kernel` | 식별자 생성, 예외 기반 타입, 영속성 기반 클래스 | 도메인 개념. 특정 컨텍스트만 쓰는 코드. 기술 의존성 |
+| `platform/*` | 여러 컨텍스트가 쓰는 기술 구현 (이벤트 봉투, 아웃박스 기록, 릴레이, 인박스). 테스트 전용 아키텍처 규칙 | 도메인 개념 |
 | `<컨텍스트>-api` | 다른 컨텍스트에 공개하는 조회 포트, 그 입출력 DTO, 이벤트 | 구현. Spring 의존 |
 | `<컨텍스트>-core` | 그 컨텍스트의 전부. 도메인, 유스케이스, 진입점(웹, 메시지 소비, 배치 잡), 저장소, 외부 연동, 마이그레이션 | 다른 컨텍스트의 구현 |
 | `apps/*` | 프로세스 기동, 조립, 요청 인증, 화면 조합 | 도메인 로직 |
@@ -61,7 +61,7 @@ platform은 기술 구현이다. Kafka 클라이언트처럼 자주 바뀔 수 �
 | `platform/*` | `shared-kernel` |
 | `<컨텍스트>-api` | `shared-kernel` |
 | `<컨텍스트>-core` | 자기 `-api`, 허용된 상대의 `-api`, `shared-kernel`, `platform/*` |
-| `apps/*` | 띄울 컨텍스트의 `-core`, `shared-kernel` |
+| `apps/*` | 띄울 컨텍스트의 `-core`, `shared-kernel`, 릴레이를 돌리는 앱은 `platform/messaging` |
 
 허용된 상대는 [03-context-integration.md](03-context-integration.md)의 "허용하는 의존" 표를 따른다.
 다른 컨텍스트의 `-core`는 의존성에 넣을 수 없다. 넣지 않았으므로 그 컨텍스트의 도메인 클래스를 import하면 컴파일이 실패한다.
@@ -240,10 +240,12 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 |---|---|
 | `shared-kernel` | 있음. 식별자 생성, 예외 기반, `AuditableEntity` |
 | `contexts/member` | 도메인, 이메일 가입과 비밀번호 로그인, 세션, 내 프로필 유스케이스, 웹 어댑터, V1·V2 마이그레이션. `member-api`에 액세스 토큰 인증 조회 |
-| `contexts/publishing`, `interaction`, `media`, `analytics`, `notification` | 없음 |
-| `platform/messaging` | 없음 |
-| `platform/architecture-rules` | 있음. 헥사고날 규칙과 app 규칙. 레이어드 규칙은 없음 |
-| `apps/api` | 있음. member 조립, 요청 인증(Spring Security, 액세스 토큰 필터) |
+| `contexts/publishing` | P0~P5. 블로그, 카테고리, 글, 공개 조회, `PostPublished`·`PostDeleted` 아웃박스 |
+| `contexts/interaction` | I0~I6. 구독, 좋아요, 댓글, 수 조회, `CommentAdded` 아웃박스, `PostDeleted` 소비 |
+| `contexts/media`, `analytics`, `notification` | 없음 |
+| `platform/messaging` | 있음. 이벤트 봉투, 아웃박스 기록, 릴레이, 인박스, 소비 실패 처리(재시도와 DLT) |
+| `platform/architecture-rules` | 있음. 헥사고날, 레이어드, app 규칙 |
+| `apps/api` | 있음. member, publishing, interaction 조립, 요청 인증(Spring Security, 액세스 토큰 필터), 아웃박스 릴레이 |
 | `apps/batch` | 있음. 잡 없음 |
 | `apps/worker` | 없음 |
 | `apps/migrator` | 있음. 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway 실행 |

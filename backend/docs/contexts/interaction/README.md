@@ -9,7 +9,7 @@
 | `Comment` | 없음 | 공개 글의 댓글은 누구나 |
 
 **내부 구조: 레이어드.** 규칙이 작고, 외부 연동이 출판과 회원 조회, 이벤트뿐이다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/interaction/`(`interaction-api`, `interaction-core`)다. 지금은 도메인, 아키텍처 규칙, 스키마, 번역 계층, 구독과 좋아요와 댓글의 유스케이스와 HTTP, 수 조회, `CommentAdded` 아웃박스 기록이 있다(I5). 릴레이와 `PostDeleted` 소비는 I6이다.
+코드 위치는 `backend/contexts/interaction/`(`interaction-api`, `interaction-core`)다. I0~I6을 마쳤다. 구독, 좋아요, 댓글의 유스케이스와 HTTP, 수 조회, `CommentAdded` 발행, `PostDeleted` 소비가 있다.
 
 ## 문서 목록
 

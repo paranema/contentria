@@ -133,7 +133,7 @@ class PostDetailQuery(
 |---|---|
 | 위치 | 발행 컨텍스트 스키마의 `outbox_event` 테이블 ([04-persistence-conventions.md](04-persistence-conventions.md)) |
 | 기록 | 애그리거트를 저장하는 트랜잭션 안에서 기록한다. Kafka에 직접 보내지 않는다 |
-| 기록하는 코드 | 헥사고날은 `application/required`의 이벤트 발행 포트를 `adapter/required/messaging`이 구현한다. 레이어드는 `application`이 `platform/messaging`의 기록기를 직접 쓴다 |
+| 기록하는 코드 | 헥사고날은 `application/required`의 이벤트 발행 포트를 `adapter/required/messaging`이 구현한다. 레이어드는 `infra/messaging`이 `platform/messaging`의 기록기(`OutboxWriter`)를 감싸고 `application`이 부른다 |
 
 ```kotlin
 // publishing-core: application/service/PostCommandService.kt
@@ -152,8 +152,11 @@ fun publish(command: PublishPostCommand) {
 |---|---|
 | 위치 | `platform/messaging`. 발행 컨텍스트를 띄우는 프로세스(현재 `apps/api`)에서 돈다 |
 | 동작 | 보낸 시각이 비어 있는 행을 발생 순서대로 읽어 Kafka로 보낸다 |
-| 실행 개수 | 프로세스 레플리카가 여럿이어도 릴레이는 하나만 돈다. 여럿이 돌면 같은 애그리거트의 이벤트 순서가 뒤바뀔 수 있다 |
-| 보낸 행 정리 | 보존 기간이 지나면 지운다. 기간은 구현 시 정한다 |
+| 대상 | 각 컨텍스트가 core 설정에 빈으로 둔 `OutboxSource(스키마)` 전부 |
+| 주기 | 앞 차례가 끝나고 `contentria.messaging.relay.interval`(기본 1초) 뒤. 한 차례에 아웃박스마다 100건 |
+| 실행 개수 | 프로세스 레플리카가 여럿이어도 아웃박스마다 릴레이는 하나만 돈다. 한 차례를 PostgreSQL 트랜잭션 advisory lock(`outbox-relay:<스키마>`) 안에서 돌고, 잠금을 얻지 못한 레플리카는 그 차례를 건너뛴다. 여럿이 돌면 같은 애그리거트의 이벤트 순서가 뒤바뀔 수 있다 |
+| 보내기 실패 | 그때까지 보낸 행의 표시는 남기고 멈춘다. 나머지는 다음 차례에 같은 순서로 보낸다 |
+| 보낸 행 정리 | 보낸 지 7일이 지나면 매시간 지운다. 보내지 않은 행은 오래되어도 남긴다 |
 
 나중에 릴레이를 DB 변경 로그 기반 도구(CDC)로 바꿀 수 있다. 발행 측과 소비 측 코드는 바뀌지 않는다.
 
@@ -170,7 +173,7 @@ fun publish(command: PublishPostCommand) {
 
 ### 메시지 형식
 
-봉투는 `shared-kernel`에 있다. 본문(payload)은 발행 측 `-api`의 이벤트 클래스다.
+봉투는 `platform/messaging`의 `EventEnvelope`다. JSON 라이브러리에 기대므로 공유 커널에 두지 않는다([01-module-structure.md](01-module-structure.md)의 "shared-kernel과 platform을 나누는 이유"). 본문(payload)은 발행 측 `-api`의 이벤트 클래스다.
 
 ```json
 {
@@ -199,20 +202,21 @@ fun publish(command: PublishPostCommand) {
 | 소비자 그룹 | `<소비 컨텍스트>.<소비자 이름>` | `interaction.post-deleted` |
 | 중복 제거 | 처리와 같은 트랜잭션에서 소비 컨텍스트 스키마의 `inbox_event`에 `(eventId, 소비자)`를 기록한다. 이미 있으면 처리하지 않고 넘어간다 | |
 | 오프셋 커밋 | 처리 트랜잭션이 커밋된 뒤 | |
-| 실패 | 간격을 늘려 가며 재시도한 뒤 DLT(dead letter topic)로 보낸다. 메시지 하나 때문에 파티션이 막히지 않게 한다 | |
-| 거르기 | 같은 토픽의 다른 이벤트 종류는 `type`을 보고 무시한다 | |
+| 실패 | 1초부터 두 배씩 간격을 늘려 1분까지 재시도한 뒤 DLT(dead letter topic)로 보낸다. 메시지 하나 때문에 파티션이 막히지 않게 한다. 봉투로 읽히지 않는 메시지는 재시도하지 않고 바로 보낸다 | `publishing.post-dlt` |
+| 거르기 | 같은 토픽의 다른 이벤트 종류, 모르는 버전은 `type`과 `version`을 보고 무시한다. 버전을 바꾸는 동안 두 버전이 함께 오기 때문이다 | |
 
 ```kotlin
 // interaction-core: presentation/messaging/PostDeletedConsumer.kt (레이어드)
 @Component
 class PostDeletedConsumer(
     private val inbox: Inbox,                                   // platform/messaging
-    private val cleanup: PostInteractionCleanupService,
+    private val cleanup: PostCleanupService,
 ) {
-    @KafkaListener(topics = [PublishingTopics.POST], groupId = "interaction.post-deleted")
-    fun on(envelope: EventEnvelope) {
-        if (envelope.type != PostDeleted.TYPE) return
-        inbox.processOnce(envelope.eventId, consumer = "interaction.post-deleted") {
+    @KafkaListener(topics = [PublishingTopics.POST], groupId = CONSUMER)
+    fun on(message: String) {
+        val envelope = EventEnvelope.parse(message)
+        if (envelope.type != PostDeleted.TYPE || envelope.version != PostDeleted.VERSION) return
+        inbox.processOnce(envelope.eventId, CONSUMER) {
             cleanup.removeAllFor(envelope.payloadAs<PostDeleted>().postId)  // inbox 기록과 같은 트랜잭션
         }
     }

@@ -8,6 +8,7 @@ interface LikeRepository : Repository<Like, UUID> {
     fun save(like: Like): Like
     fun existsByAccountIdAndPostId(accountId: UUID, postId: UUID): Boolean
     fun deleteByAccountIdAndPostId(accountId: UUID, postId: UUID)
+    fun deleteByPostId(postId: UUID)
 
     /** [Like]'s named queries of the same names. */
     fun countByPosts(postIds: Collection<UUID>): List<CountRow>

@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component
 import java.time.Clock
 
 /**
- * Writes post events to `publishing.outbox_event`. The relay that sends them to Kafka, on topic
- * `publishing.post` keyed by the post id, comes with the first consumer.
+ * Writes post events to `publishing.outbox_event`. The relay in platform/messaging sends them on
+ * topic `publishing.post`, keyed by the post id.
  */
 @Component
 class OutboxPostEvents(jdbc: JdbcTemplate, private val clock: Clock) : PostEvents {

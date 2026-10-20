@@ -250,7 +250,7 @@ class MemberArchitectureTest {
 |---|---|---|
 | 헥사고날 domain | 웹, 저장소, 보안 기술을 금지하는 목록 | 허용 목록. `java`, `kotlin`, `org.jetbrains.annotations`, `jakarta.persistence`, `com.contentria.shared`, 자기 `domain`만 허용한다 |
 | app | `-api`와 설정 클래스만 사용 | 위에 더해 `@Entity` 금지 |
-| 레이어드 규칙 | 있음 | 아직 없다. 첫 레이어드 컨텍스트를 만들 때 자체 검증 테스트와 함께 추가한다 |
+| 레이어드 규칙 | 있음 | 있음(`ContextRules.forLayered`). 자체 검증 테스트의 예시 패키지는 `gamma`다 |
 | 빈 대상 | | 모든 규칙이 대상 클래스가 없어도 통과한다. 컨텍스트는 계층이 하나씩 늘어나기 때문이다 |
 
 ### 모든 컨텍스트
