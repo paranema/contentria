@@ -35,6 +35,47 @@ import java.util.UUID
     name = "Post.findSlugsTakenInBlog",
     query = "select s.value from PostSlug s where s.blogId = ?1 and s.value like ?2 and s.post.id <> ?3",
 )
+// The post a slug of the blog leads to, current or old.
+@NamedQuery(
+    name = "Post.findBySlugInBlog",
+    query = "select s.post from PostSlug s where s.blogId = ?1 and s.value = ?2",
+)
+// Lists, newest first, 20 a page and one more to tell whether another page follows. A page starts
+// after the cursor: earlier, or as early with a smaller id, so posts sharing a time are not lost.
+// Columns for a list only; the body (up to 100,000 characters) is not read.
+@NamedQuery(
+    name = "Post.findPublishedInBlog",
+    query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
+        "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
+        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
+        "p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED and (p.publishedAt < ?2 or " +
+        "(p.publishedAt = ?2 and p.id < ?3)) order by p.publishedAt desc, p.id desc limit 21",
+)
+@NamedQuery(
+    name = "Post.findPublishedInCategories",
+    query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
+        "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
+        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
+        "p.categoryId in ?4 and p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED and " +
+        "(p.publishedAt < ?2 or (p.publishedAt = ?2 and p.id < ?3)) order by p.publishedAt desc, p.id " +
+        "desc limit 21",
+)
+@NamedQuery(
+    name = "Post.findRecentPublished",
+    query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
+        "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
+        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.status = " +
+        "com.contentria.publishing.domain.post.PostStatus.PUBLISHED and (p.publishedAt < ?1 or " +
+        "(p.publishedAt = ?1 and p.id < ?2)) order by p.publishedAt desc, p.id desc limit 21",
+)
+@NamedQuery(
+    name = "Post.findInBlogByUpdate",
+    query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
+        "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
+        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
+        "(p.updatedAt < ?2 or (p.updatedAt = ?2 and p.id < ?3)) order by p.updatedAt desc, p.id desc " +
+        "limit 21",
+)
 class Post private constructor(
     id: UUID,
     blogId: UUID,

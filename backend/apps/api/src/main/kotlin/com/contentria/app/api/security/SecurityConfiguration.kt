@@ -36,6 +36,8 @@ class SecurityConfiguration {
                 it.requestMatchers("/auth/**").permitAll()
                 // Blogs and their categories are public; changing them needs a session.
                 it.requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
+                // The home page's latest posts across blogs
+                it.requestMatchers(HttpMethod.GET, "/posts").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }

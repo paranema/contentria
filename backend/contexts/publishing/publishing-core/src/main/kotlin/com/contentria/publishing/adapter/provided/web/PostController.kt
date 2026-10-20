@@ -4,7 +4,7 @@ import com.contentria.publishing.application.provided.ChangePostSlugUseCase
 import com.contentria.publishing.application.provided.ChangePostStatusUseCase
 import com.contentria.publishing.application.provided.DeletePostUseCase
 import com.contentria.publishing.application.provided.GetMyPostsQuery
-import com.contentria.publishing.application.provided.PostListItem
+import com.contentria.publishing.application.provided.PostPage
 import com.contentria.publishing.application.provided.PostView
 import com.contentria.publishing.application.provided.RevisePostCommand
 import com.contentria.publishing.application.provided.RevisePostUseCase
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
@@ -69,5 +70,6 @@ class PostController(
     fun mine(@AuthenticationPrincipal accountId: UUID, @PathVariable id: UUID): PostView = myPosts.get(accountId, id)
 
     @GetMapping("/me/blogs/{slug}/posts")
-    fun myList(@AuthenticationPrincipal accountId: UUID, @PathVariable slug: String): List<PostListItem> = myPosts.list(accountId, slug)
+    fun myList(@AuthenticationPrincipal accountId: UUID, @PathVariable slug: String, @RequestParam(required = false) cursor: String?): PostPage =
+        myPosts.list(accountId, slug, cursor)
 }
