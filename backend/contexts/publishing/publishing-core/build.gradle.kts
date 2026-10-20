@@ -10,6 +10,9 @@ dependencies {
     // adapter/required/member만 쓴다 (ArchUnit이 강제)
     implementation(project(":contexts:member:member-api"))
 
+    // adapter/required/messaging: 아웃박스 기록
+    implementation(project(":platform:messaging"))
+
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
     // adapter/provided/web
