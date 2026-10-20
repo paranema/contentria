@@ -1,5 +1,7 @@
 package com.contentria.publishing.application.service
 
+import com.contentria.publishing.api.event.PostDeleted
+import com.contentria.publishing.api.event.PostPublished
 import com.contentria.publishing.application.provided.ChangePostSlugUseCase
 import com.contentria.publishing.application.provided.ChangePostStatusUseCase
 import com.contentria.publishing.application.provided.DeletePostUseCase
@@ -14,6 +16,7 @@ import com.contentria.publishing.application.provided.WritePostUseCase
 import com.contentria.publishing.application.required.BlogRepository
 import com.contentria.publishing.application.required.BloggerStatusPort
 import com.contentria.publishing.application.required.CategoryTreeRepository
+import com.contentria.publishing.application.required.PostEvents
 import com.contentria.publishing.application.required.PostRepository
 import com.contentria.publishing.domain.blog.Blog
 import com.contentria.publishing.domain.post.Post
@@ -33,6 +36,7 @@ class PostService(
     private val trees: CategoryTreeRepository,
     private val posts: PostRepository,
     private val bloggers: BloggerStatusPort,
+    private val events: PostEvents,
     private val summaries: PostSummaries,
     private val transactions: TransactionTemplate,
     private val clock: Clock,
@@ -78,17 +82,24 @@ class PostService(
         post.view()
     }
 
-    override fun publish(requesterId: UUID, postId: UUID): PostView = changeStatus(requesterId, postId) { it.publish(clock.instant()) }
+    /** Always a first publication, so always a PostPublished, in the same transaction (02-implementation, 이벤트). */
+    override fun publish(requesterId: UUID, postId: UUID): PostView = asBlogger(requesterId) {
+        val (post, blog) = ownedPost(requesterId, postId)
+        post.publish(clock.instant())
+        events.published(PostPublished(post.id, blog.id, blog.ownerId, post.publishedAt!!))
+        post.view()
+    }
 
     override fun hide(requesterId: UUID, postId: UUID): PostView = changeStatus(requesterId, postId, Post::hide)
 
     override fun republish(requesterId: UUID, postId: UUID): PostView = changeStatus(requesterId, postId, Post::republish)
 
-    /** 흐름 5. The post's slugs, current and old, go with it. */
+    /** 흐름 5. The post's slugs, current and old, go with it; PostDeleted is recorded with the deletion. */
     override fun delete(requesterId: UUID, postId: UUID) {
         asBlogger(requesterId) {
-            val (post, _) = ownedPost(requesterId, postId)
+            val (post, blog) = ownedPost(requesterId, postId)
             posts.delete(post)
+            events.deleted(PostDeleted(post.id, blog.id))
         }
     }
 

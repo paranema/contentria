@@ -169,6 +169,58 @@ class PublishingPostIntegrationTest {
         assertThat(owner.post("/posts/$id/publish", "").body()).contains("ACCOUNT_NOT_ACTIVE")
     }
 
+    @Test
+    @DisplayName("처음 발행할 때와 지울 때만 이벤트를 아웃박스에 남긴다. 다시 공개, 거부된 요청, 샘플 글은 남기지 않는다")
+    fun `post events in the outbox`() {
+        val owner = TestBrowser(port)
+        val ownerId = owner.signUpAsNewMember(codes)
+        val slug = newSlug()
+        val blogId = owner.post("/blogs", """{"slug":"$slug","title":"제목"}""").field("blogId")
+        assertThat(eventsOfBlog(blogId)).isZero()
+
+        val id = owner.post("/blogs/$slug/posts", post("이벤트 글", "본문")).field("postId")
+        owner.post("/posts/$id/publish", "")
+        owner.post("/posts/$id/hide", "")
+        owner.post("/posts/$id/republish", "")
+        assertThat(owner.post("/posts/$id/publish", "").statusCode()).isEqualTo(409)
+        assertThat(owner.delete("/posts/$id").statusCode()).isEqualTo(204)
+
+        val events = ApiTestEnvironment.row(
+            "select string_agg(event_type, ',' order by occurred_at, id) as types, count(distinct aggregate_type) as kinds " +
+                "from publishing.outbox_event where aggregate_id = ?",
+            UUID.fromString(id),
+        )!!
+        assertThat(events["types"]).isEqualTo("PostPublished,PostDeleted")
+        assertThat(events["kinds"]).isEqualTo(1L)
+
+        val published = ApiTestEnvironment.row(
+            "select payload->>'ownerId' as owner, payload->>'blogId' as blog, event_version as version, published_at as sent " +
+                "from publishing.outbox_event where aggregate_id = ? and event_type = 'PostPublished'",
+            UUID.fromString(id),
+        )!!
+        assertThat(published["owner"]).isEqualTo(ownerId.toString())
+        assertThat(published["blog"]).isEqualTo(blogId)
+        assertThat(published["version"]).isEqualTo(1)
+        assertThat(published["sent"]).isNull()
+    }
+
+    @Test
+    @DisplayName("정지된 계정의 발행은 거부되고 이벤트도 없다")
+    fun `a refused publication leaves no event`() {
+        val owner = TestBrowser(port)
+        val ownerId = owner.signUpAsNewMember(codes)
+        val slug = newSlug()
+        val blogId = owner.post("/blogs", """{"slug":"$slug","title":"제목"}""").field("blogId")
+        val id = owner.post("/blogs/$slug/posts", post("글", "본문")).field("postId")
+        ApiTestEnvironment.execute("update member.accounts set status = 'SUSPENDED' where id = ?", ownerId)
+
+        assertThat(owner.post("/posts/$id/publish", "").statusCode()).isEqualTo(403)
+        assertThat(eventsOfBlog(blogId)).isZero()
+    }
+
+    private fun eventsOfBlog(blogId: String): Long =
+        ApiTestEnvironment.row("select count(*) as n from publishing.outbox_event where payload->>'blogId' = ?", blogId)!!["n"] as Long
+
     /** A signed-in member who owns a fresh blog. */
     private fun blogger(): Pair<TestBrowser, String> {
         val browser = TestBrowser(port).also { it.signUpAsNewMember(codes) }

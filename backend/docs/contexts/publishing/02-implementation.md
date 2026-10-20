@@ -67,8 +67,16 @@
 | `PostPublished` | 글을 처음 발행할 때. 다시 공개할 때는 아니다 | 알림 | 글 ID, 블로그 ID, 블로그 소유자 ID, 발행 시각 |
 | `PostDeleted` | 글을 지울 때 | 상호작용 | 글 ID, 블로그 ID |
 
-이벤트는 상태를 바꾸는 트랜잭션 안에서 `publishing` 스키마의 아웃박스 테이블에 기록한다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)).
+이벤트는 상태를 바꾸는 트랜잭션 안에서 `publishing.outbox_event`에 기록한다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)).
 트랜잭션이 롤백되면 이벤트도 남지 않는다. 아웃박스에서 Kafka로 보내는 릴레이는 첫 소비자(상호작용)를 만들 때 함께 만든다.
+
+| 항목 | 구현 |
+|---|---|
+| 포트와 어댑터 | `application/required/PostEvents`를 `adapter/required/messaging/OutboxPostEvents`가 구현한다 |
+| 기록기 | `platform/messaging`의 `OutboxWriter`. 스키마마다 하나를 만들고, 진행 중인 트랜잭션이 없으면 기록을 거부한다. JPA 트랜잭션이 쓰는 JDBC 연결을 함께 쓴다 |
+| 이벤트 타입 | `publishing-api`의 `event/PublishingEvents.kt`(`PublishingTopics.POST`, `PostPublished`, `PostDeleted`). 소비 측이 같은 타입을 읽는다 |
+| 행 | `aggregate_type`은 `post`(스키마와 함께 토픽 `publishing.post`), `aggregate_id`는 글 ID(메시지 키), 본문은 JSON |
+| 발생 시각 | `PostPublished`는 글의 발행 시각, `PostDeleted`는 지운 시각 |
 
 `PostPublished`가 블로그 소유자 ID를 담는 이유: 알림이 "누구의 블로그인가"를 출판에 다시 묻지 않게 한다. 출판은 발행할 때 이미 블로그를 읽었다.
 
@@ -160,7 +168,6 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 이벤트 기록(아웃박스) | P5. P4c까지 블로그, 카테고리, 글 쓰기와 발행, 공개 조회를 만들었다 |
 | 카테고리별 글 수 | 블로그 레이아웃의 카테고리 옆 숫자. 화면이 필요로 할 때 만든다 |
-| 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
+| 아웃박스 릴레이와 Kafka, 보낸 행 정리 | 상호작용을 만들 때. 지금은 행이 쌓이기만 한다 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
