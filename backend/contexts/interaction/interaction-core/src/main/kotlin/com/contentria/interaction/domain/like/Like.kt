@@ -6,6 +6,7 @@ import com.contentria.shared.persistence.AuditableEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.util.UUID
@@ -16,6 +17,14 @@ import java.util.UUID
  * publishing again (02-implementation, 애그리거트 경계).
  */
 @Entity
+@NamedQuery(
+    name = "Like.countByPosts",
+    query = "select l.postId as id, count(l) as total from Like l where l.postId in ?1 group by l.postId",
+)
+@NamedQuery(
+    name = "Like.findPostsLikedBy",
+    query = "select l.postId from Like l where l.accountId = ?1 and l.postId in ?2",
+)
 @Table(
     name = "likes",
     schema = InteractionSchema.NAME,

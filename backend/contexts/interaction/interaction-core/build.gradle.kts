@@ -13,6 +13,11 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // presentation/web
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("tools.jackson.module:jackson-module-kotlin")
+    implementation("org.springframework.security:spring-security-core")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(project(":platform:architecture-rules"))
     testImplementation(libs.archunit.junit5)

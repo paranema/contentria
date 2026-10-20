@@ -8,5 +8,5 @@ import java.util.UUID
  */
 data class TargetPost(val postId: UUID, val blogId: UUID, val ownerId: UUID)
 
-/** A blog as interaction sees it. */
-data class TargetBlog(val blogId: UUID, val ownerId: UUID)
+/** A blog as interaction sees it. [slug] is its current address, for lists that link to it. */
+data class TargetBlog(val blogId: UUID, val ownerId: UUID, val slug: String)

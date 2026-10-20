@@ -71,6 +71,32 @@
 | 좋아요 수, 댓글 수(글 ID 묶음), 구독자 수(블로그 ID 묶음) | `interaction-api`에 공개한다. 글 목록과 상세를 조합하는 진입점이 쓴다 |
 | 내가 좋아요했는지, 내가 구독했는지 | HTTP |
 
+`interaction-api`의 `GetInteractionCountsQuery`(`likeCounts`, `subscriberCounts`)는 묻는 ID마다 값을 돌려준다. 아무도 누르지 않은 ID는 0이다. 댓글 수는 I5에서 더한다.
+
+## HTTP
+
+| 요청 | 응답 | 01 |
+|---|---|---|
+| `PUT /blogs/{slug}/subscription` | 204. 이미 구독했어도 204 | 흐름 1 |
+| `DELETE /blogs/{slug}/subscription` | 204. 구독하지 않았거나 없는 블로그여도 204 | 흐름 1 |
+| `GET /me/subscriptions` | 구독한 블로그(ID, slug, 구독 시각), 최근 구독 순 | 공개 범위 |
+| `GET /me/subscriptions/{slug}` | `{"subscribed": true}` | 공개 범위 |
+| `PUT /posts/{id}/like` | 204. 이미 눌렀어도 204 | 흐름 2 |
+| `DELETE /posts/{id}/like` | 204. 누르지 않았어도, 글이 숨겨졌어도 204 | 흐름 2 |
+| `GET /me/likes?postIds=` | 그중 내가 좋아요한 글 ID | 공개 범위 |
+| `GET /interactions/counts?postIds=&blogIds=` | 좋아요 수와 구독자 수. 로그인하지 않아도 된다 | 공개 범위 |
+
+ID 묶음은 한 번에 100개까지 받는다. 넘으면 400 `TOO_MANY_IDS`다.
+
+| 실패 | 응답 |
+|---|---|
+| 계정이 ACTIVE가 아님 | 403 `ACCOUNT_NOT_ACTIVE` |
+| 블로그가 없음 | 404 `BLOG_NOT_FOUND` |
+| 글이 없거나 발행 상태가 아님 | 404 `POST_NOT_FOUND` |
+| 자기 블로그, 자기 글 | 409 `OWN_BLOG`, `OWN_POST` |
+
+같은 구독이나 좋아요가 동시에 두 번 오면 하나는 유니크 제약에 걸린다. 유스케이스는 이를 "이미 있음"과 같게 보고 성공으로 답한다.
+
 ## 도메인 메서드
 
 | 01의 규칙 | 메서드 | 비고 |
