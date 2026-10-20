@@ -16,6 +16,7 @@ dependencies {
 
     // 마이그레이션 파일(src/main/resources/db/migration/<컨텍스트>)만 쓴다
     runtimeOnly(project(":contexts:member:member-core"))
+    runtimeOnly(project(":contexts:publishing:publishing-core"))
 
     testImplementation("org.assertj:assertj-core")
     testImplementation("org.testcontainers:testcontainers-postgresql")

@@ -9,7 +9,7 @@
 | `Post` | `PostSlug` (현재 slug와 옛 slug) | 발행된 글은 누구나, 나머지는 블로그 소유자만 |
 
 **내부 구조: 헥사고날.** 발행 상태, slug, 카테고리 트리, 소유권처럼 규칙이 가장 많은 컨텍스트다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/publishing/`(`publishing-api`, `publishing-core`)다. 지금은 도메인만 있다(P1).
+코드 위치는 `backend/contexts/publishing/`(`publishing-api`, `publishing-core`)다. 지금은 도메인과 스키마가 있다(P2).
 
 ## 문서 목록
 
