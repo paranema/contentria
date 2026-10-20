@@ -10,6 +10,7 @@ interface CommentRepository : Repository<Comment, UUID> {
     fun findById(id: UUID): Comment?
     fun delete(comment: Comment)
     fun existsById(id: UUID): Boolean
+    fun deleteByPostId(postId: UUID)
     fun existsByParentId(parentId: UUID): Boolean
     fun findByParentIdInOrderByCreatedAtAscIdAsc(parentIds: Collection<UUID>): List<Comment>
 

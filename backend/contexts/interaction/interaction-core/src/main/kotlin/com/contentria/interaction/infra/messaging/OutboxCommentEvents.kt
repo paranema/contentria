@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component
 
 /**
  * Writes comment events to `interaction.outbox_event`, in the transaction that writes the comment.
- * The relay sends them on topic `interaction.comment`, keyed by the comment id (I6).
+ * The relay in platform/messaging sends them on topic `interaction.comment`, keyed by the comment id.
  */
 @Component
 class OutboxCommentEvents(jdbc: JdbcTemplate) {

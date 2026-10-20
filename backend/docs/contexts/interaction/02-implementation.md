@@ -71,13 +71,22 @@
 
 `CommentAdded`가 담는 것: 댓글 ID, 글 ID, 블로그 ID, 블로그 소유자 ID, 작성자 ID, 부모 댓글의 작성자 ID(답글일 때). 알림이 누구에게 보낼지 다시 묻지 않게 한다.
 
-상호작용이 Kafka를 처음 쓰는 컨텍스트다. 이 단계에서 다음을 함께 만든다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "이벤트").
+상호작용이 Kafka를 처음 쓰는 컨텍스트라서, 릴레이와 인박스를 I6에서 함께 만들었다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "이벤트").
 
-| 만들 것 | 위치 |
+| 만든 것 | 위치 |
 |---|---|
-| 아웃박스 릴레이 | `platform/messaging`. 보내지 않은 행을 발생 순서대로 Kafka로 보내고 보낸 시각을 남긴다. 프로세스에 레플리카가 여럿이어도 하나만 돈다 |
-| 인박스 | `platform/messaging`의 `Inbox.processOnce`와 `interaction.inbox_event`. 처리와 같은 트랜잭션에서 `(eventId, 소비자)`를 기록해 중복을 거른다 |
-| 소비자 | `presentation/messaging/PostDeletedConsumer` |
+| 아웃박스 릴레이 | `platform/messaging`의 `OutboxRelay`. 출판과 상호작용의 아웃박스를 비운다 |
+| 인박스 | `platform/messaging`의 `Inbox.processOnce`와 `interaction.inbox_event`. 빈은 `config/InteractionMessagingConfiguration` |
+| 소비자 | `presentation/messaging/PostDeletedConsumer`. `application/PostCleanupService`가 그 글의 댓글과 좋아요를 지운다 |
+| 아웃박스 기록 | `infra/messaging/OutboxCommentEvents` |
+
+글을 지운 정리는 댓글과 좋아요 여러 애그리거트를 한 트랜잭션에서 지운다. 글이 이미 없으니 지킬 불변식이 없고, 인박스 기록과 같은 트랜잭션이어야 다시 와도 한 번만 처리된다.
+`PostDeleted`가 오기 전까지 지운 글의 댓글과 좋아요는 남아 있지만, 글이 없으므로 보이지 않는다(01 "다른 컨텍스트의 일로 생기는 것").
+
+| 확인하지 않은 것 | 사유 |
+|---|---|
+| 운영 환경의 토픽 생성(파티션 수, 복제 수, DLT) | 지금은 브로커의 자동 생성에 맡긴다. 인프라 작업 때 정한다 |
+| 인박스 행의 보존 기간 | 지금은 지우지 않는다. 다시 올 수 있는 기간(토픽 보존 기간)보다 길어야 한다 |
 
 ## 공개 조회
 

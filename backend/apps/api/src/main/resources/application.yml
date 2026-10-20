@@ -27,6 +27,17 @@ spring:
             scope: openid,email
             redirect-uri: ${GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
 
+  # Events between contexts (docs/architecture/03-context-integration.md, 이벤트). Keys and values
+  # are strings: the key is the aggregate id, the value the JSON envelope.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      # The relay marks an event sent only once every in-sync replica has it.
+      acks: all
+    consumer:
+      # A new consumer group starts from the oldest event it can still read, so none is missed.
+      auto-offset-reset: earliest
+
   jpa:
     hibernate:
       # Flyway owns the schema. Hibernate only checks at start-up that the entities match it.

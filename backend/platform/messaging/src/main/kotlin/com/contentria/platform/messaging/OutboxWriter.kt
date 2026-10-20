@@ -3,8 +3,6 @@ package com.contentria.platform.messaging
 import com.contentria.shared.id.Ids
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.support.TransactionSynchronizationManager
-import tools.jackson.databind.json.JsonMapper
-import tools.jackson.module.kotlin.KotlinModule
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
@@ -38,14 +36,11 @@ class OutboxWriter(
         // Outside a transaction the event would commit on its own, whatever happens to the change it reports.
         check(TransactionSynchronizationManager.isActualTransactionActive()) { "An outbox event is recorded inside the transaction that makes the change" }
         val eventId = Ids.newId()
-        jdbc.update(insert, eventId, aggregateType, aggregateId, eventType, eventVersion, json.writeValueAsString(payload), Timestamp.from(occurredAt))
+        jdbc.update(insert, eventId, aggregateType, aggregateId, eventType, eventVersion, MessagingJson.mapper.writeValueAsString(payload), Timestamp.from(occurredAt))
         return eventId
     }
 
     private companion object {
         val SCHEMA = Regex("^[a-z][a-z_]*$")
-
-        /** Instants as ISO-8601 text: Jackson 3 writes dates as text by default. */
-        val json: JsonMapper = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
     }
 }

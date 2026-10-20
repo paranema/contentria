@@ -2,13 +2,14 @@ package com.contentria.app.api
 
 import org.flywaydb.core.Flyway
 import org.springframework.test.context.DynamicPropertyRegistry
+import org.testcontainers.kafka.KafkaContainer
 import org.testcontainers.postgresql.PostgreSQLContainer
 import java.sql.DriverManager
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.UUID
 
-/** One PostgreSQL and one fake Google for every API integration test in this JVM. */
+/** One PostgreSQL, one Kafka and one fake Google for every API integration test in this JVM. */
 object ApiTestEnvironment {
 
     const val LOGIN_SUCCESS_URL = "http://frontend.test/login/callback"
@@ -30,6 +31,9 @@ object ApiTestEnvironment {
     }
 
     val google = FakeOidcProvider().apply { start() }
+
+    /** Topics are created as they are first used, as in local development. */
+    val kafka = KafkaContainer("apache/kafka:4.1.0").apply { start() }
 
     private val accessTokenSecret = Base64.getEncoder().encodeToString(ByteArray(32).also(SecureRandom()::nextBytes))
 
@@ -59,6 +63,9 @@ object ApiTestEnvironment {
         registry.add("spring.datasource.url") { postgres.jdbcUrl }
         registry.add("spring.datasource.username") { postgres.username }
         registry.add("spring.datasource.password") { postgres.password }
+
+        registry.add("spring.kafka.bootstrap-servers") { kafka.bootstrapServers }
+        registry.add("contentria.messaging.relay.interval") { "100ms" }
 
         registry.add("contentria.member.access-token.secret") { accessTokenSecret }
         registry.add("contentria.member.cookie.secure") { false }
