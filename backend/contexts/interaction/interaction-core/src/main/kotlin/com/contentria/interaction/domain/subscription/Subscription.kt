@@ -7,6 +7,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.util.UUID
 
 /**
@@ -17,7 +18,11 @@ import java.util.UUID
  * creating one. One subscription per member and blog is the unique constraint's.
  */
 @Entity
-@Table(name = "subscriptions", schema = InteractionSchema.NAME)
+@Table(
+    name = "subscriptions",
+    schema = InteractionSchema.NAME,
+    uniqueConstraints = [UniqueConstraint(name = "uq_subscriptions_subscriber_blog", columnNames = ["subscriber_id", "blog_id"])],
+)
 class Subscription private constructor(id: UUID, subscriberId: UUID, blogId: UUID) : AuditableEntity() {
 
     @Id

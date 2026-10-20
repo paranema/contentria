@@ -7,6 +7,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.util.UUID
 
 /**
@@ -15,7 +16,11 @@ import java.util.UUID
  * publishing again (02-implementation, 애그리거트 경계).
  */
 @Entity
-@Table(name = "likes", schema = InteractionSchema.NAME)
+@Table(
+    name = "likes",
+    schema = InteractionSchema.NAME,
+    uniqueConstraints = [UniqueConstraint(name = "uq_likes_account_post", columnNames = ["account_id", "post_id"])],
+)
 class Like private constructor(id: UUID, accountId: UUID, postId: UUID, blogId: UUID) : AuditableEntity() {
 
     @Id

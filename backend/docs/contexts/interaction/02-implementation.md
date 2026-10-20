@@ -26,6 +26,9 @@
 | `likes(account_id, post_id)` UNIQUE | 한 회원이 한 글에 한 번만 좋아요 |
 | `comments(post_id, created_at)` 인덱스 | 글의 댓글을 시간순으로 |
 | `comments(parent_id)` 인덱스 | 답글이 있는지, 답글 목록 |
+| `comments` CHECK `removed = (body = '')` | 지운 자리만 본문이 비어 있다 |
+| `comments` CHECK `NOT removed OR parent_id IS NULL` | 답글은 지운 자리가 되지 않는다. 실제로 지운다 |
+| `outbox_event`, `inbox_event` | 아웃박스는 출판과 같은 형태. 인박스는 `(event_id, consumer)` 기본키 |
 
 외래키는 없다. 세 애그리거트 모두 다른 애그리거트와 다른 컨텍스트를 ID로만 참조한다. 답글의 부모도 다른 애그리거트다.
 

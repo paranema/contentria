@@ -5,6 +5,7 @@
 --   psql -d postgres \
 --     -v member_migrator_password=... \
 --     -v publishing_migrator_password=... \
+--     -v interaction_migrator_password=... \
 --     -v api_app_password=... \
 --     -f 01-database-and-roles.sql
 
@@ -13,6 +14,7 @@ CREATE DATABASE contentria_v2;
 -- 마이그레이션 롤: 자기 컨텍스트 스키마의 소유자. 다른 스키마에는 권한이 없다.
 CREATE ROLE member_migrator LOGIN PASSWORD :'member_migrator_password';
 CREATE ROLE publishing_migrator LOGIN PASSWORD :'publishing_migrator_password';
+CREATE ROLE interaction_migrator LOGIN PASSWORD :'interaction_migrator_password';
 
 -- 런타임 롤: 프로세스마다 하나. DML만 가진다.
 CREATE ROLE api_app LOGIN PASSWORD :'api_app_password';

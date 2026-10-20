@@ -9,7 +9,7 @@
 | `Comment` | 없음 | 공개 글의 댓글은 누구나 |
 
 **내부 구조: 레이어드.** 규칙이 작고, 외부 연동이 출판과 회원 조회, 이벤트뿐이다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/interaction/`(`interaction-api`, `interaction-core`)다. 지금은 도메인과 아키텍처 규칙만 있다(I1).
+코드 위치는 `backend/contexts/interaction/`(`interaction-api`, `interaction-core`)다. 지금은 도메인, 아키텍처 규칙, 스키마가 있다(I2).
 
 ## 문서 목록
 
