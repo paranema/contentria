@@ -18,6 +18,7 @@ import java.util.UUID
 interface AccountRepository : Repository<Account, UUID> {
     fun save(account: Account): Account
     fun findById(id: UUID): Account?
+    fun findByIdIn(ids: Collection<UUID>): List<Account>
     fun findByEmail(email: String): Account?
 
     /** The account that owns the social identity. The query is [Account]'s named query of the same name. */
