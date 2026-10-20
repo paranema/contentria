@@ -6,6 +6,7 @@ import com.tngtech.archunit.core.domain.properties.HasName.Predicates.name
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
+import com.tngtech.archunit.library.Architectures.layeredArchitecture
 
 /**
  * The rules of docs/architecture/02-internal-architecture.md, parameterised by context name.
@@ -41,6 +42,47 @@ object ContextRules {
             innerLayersDoNotKnowAdapters(context),
             providedAdaptersDoNotKnowServiceImplementations(context),
         )
+
+    /** Rules for a layered context, including the ones every context follows. */
+    fun forLayered(context: String): List<ArchRule> =
+        forEveryContext(context, InternalStructure.LAYERED) + listOf(
+            layersDependInOneDirection(context),
+            layeredDomainDependsOnlyOnAllowedPackages(context),
+        )
+
+    /**
+     * presentation → application → infra, and domain under all three (architecture/02, 레이어드).
+     * Presentation may reach domain for value types such as ids; using a repository from there is
+     * left to review. Layers are optional so a context can grow one at a time.
+     */
+    fun layersDependInOneDirection(context: String): ArchRule =
+        layeredArchitecture().consideringOnlyDependenciesInLayers()
+            .withOptionalLayers(true)
+            .layer("Presentation").definedBy(ContextPackages.of(context, "presentation"))
+            .layer("Application").definedBy(ContextPackages.of(context, "application"))
+            .layer("Domain").definedBy(ContextPackages.of(context, "domain"))
+            .layer("Infra").definedBy(ContextPackages.of(context, "infra"))
+            .whereLayer("Presentation").mayNotBeAccessedByAnyLayer()
+            .whereLayer("Application").mayOnlyBeAccessedByLayers("Presentation")
+            .whereLayer("Infra").mayOnlyBeAccessedByLayers("Application")
+            .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infra", "Presentation")
+            .because("레이어드 컨텍스트의 계층은 한 방향으로만 의존한다 (architecture/02)")
+
+    /** Like the hexagonal domain, plus the Spring Data marker: a layered domain declares its repositories. */
+    fun layeredDomainDependsOnlyOnAllowedPackages(context: String): ArchRule =
+        classes()
+            .that().resideInAPackage(ContextPackages.of(context, "domain"))
+            .should().onlyDependOnClassesThat().resideInAnyPackage(
+                "java..",
+                "kotlin..",
+                "org.jetbrains.annotations..",
+                "jakarta.persistence..",
+                "org.springframework.data.repository..",
+                "com.contentria.shared..",
+                ContextPackages.of(context, "domain"),
+            )
+            .because("레이어드의 domain은 JPA 애노테이션, Spring Data 마커, 공유 커널 외에 아무것도 의존하지 않는다 (architecture/02)")
+            .allowEmptyShould(true)
 
     fun otherContextApisOnlyFromTranslationLayer(context: String, structure: InternalStructure): ArchRule =
         noClasses()
