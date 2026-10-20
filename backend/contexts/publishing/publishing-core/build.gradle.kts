@@ -7,6 +7,9 @@ dependencies {
     api(project(":contexts:publishing:publishing-api"))
     implementation(project(":shared-kernel"))
 
+    // adapter/required/member만 쓴다 (ArchUnit이 강제)
+    implementation(project(":contexts:member:member-api"))
+
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

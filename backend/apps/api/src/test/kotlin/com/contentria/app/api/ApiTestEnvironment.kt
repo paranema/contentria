@@ -15,15 +15,18 @@ object ApiTestEnvironment {
     const val LOGIN_FAILURE_URL = "http://frontend.test/login"
     const val LINK_RESULT_URL = "http://frontend.test/settings/account"
 
+    /** One Flyway per context, as the migrator runs them. */
     private val postgres = PostgreSQLContainer("postgres:17").apply {
         start()
-        Flyway.configure()
-            .dataSource(jdbcUrl, username, password)
-            .schemas("member")
-            .defaultSchema("member")
-            .locations("classpath:db/migration/member")
-            .load()
-            .migrate()
+        listOf("member", "publishing").forEach { context ->
+            Flyway.configure()
+                .dataSource(jdbcUrl, username, password)
+                .schemas(context)
+                .defaultSchema(context)
+                .locations("classpath:db/migration/$context")
+                .load()
+                .migrate()
+        }
     }
 
     val google = FakeOidcProvider().apply { start() }

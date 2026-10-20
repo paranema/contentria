@@ -79,7 +79,8 @@
 | 회원: 계정이 ACTIVE인가 | 출판의 포트 `BloggerStatusPort.canPublish(bloggerId)`를 번역 계층 `adapter/required/member`가 구현한다. 그 안에서만 `member-api`의 `GetAccountStatusQuery`를 부른다 | 쓰기 트랜잭션을 열기 **전에** 조회한다. 회원 조회가 원격 호출이 되어도 트랜잭션이 그동안 DB 연결을 붙잡지 않는다 |
 
 이름과 구조는 [architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "예시: 출판이 계정 상태를 확인한다"를 따른다.
-회원은 아직 `GetAccountStatusQuery`를 공개하지 않는다. P3에서 `member-api`에 추가한다.
+`GetAccountStatusQuery`는 ID 묶음 조회(`getAll`)와 단건 조회(`get`)를 공개하고, 회원의 도메인 상태 대신 공개용 상태(`ACTIVE`, `SUSPENDED`, `CLOSED`)를 돌려준다. 회원이 모르는 ID는 결과에 없고, 출판은 그 계정을 "쓸 수 없음"으로 본다.
+회원이 별도 서비스가 되어 응답하지 않으면 그때도 "쓸 수 없음"으로 본다. 거부한 쓰기는 다시 시도하면 되지만, 정지된 블로거의 쓰기를 통과시키면 되돌릴 수 없다.
 미디어 연결은 같은 문서의 "예: 글 저장과 첨부 승격"을 미디어를 만들 때 확정한다.
 
 ## 규칙과 도메인 메서드
@@ -114,7 +115,7 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 유스케이스, 웹 | P3부터. P2까지 도메인, 아키텍처 규칙, 스키마(`V1__create_publishing_tables.sql`)를 만들었다 |
+| 유스케이스, 웹 | P4부터. P3까지 도메인, 아키텍처 규칙, 스키마, 회원 번역 계층을 만들었다. `apps/api`가 출판 설정을 불러온다 |
 | 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
 | 글 목록 정렬과 페이지 크기 | P4에서 정한다 |

@@ -1,6 +1,8 @@
 package com.contentria.app.api
 
 import com.contentria.app.api.FakeOidcProvider.Identity
+import com.contentria.member.api.AccountStatusView
+import com.contentria.member.api.GetAccountStatusQuery
 import com.contentria.member.application.required.AccountNotice
 import com.contentria.member.application.required.CodePurpose
 import com.contentria.member.application.required.PasswordLinkPurpose
@@ -34,6 +36,9 @@ class AccountManagementIntegrationTest {
 
     @Autowired
     private lateinit var notices: RecordingNoticeSender
+
+    @Autowired
+    private lateinit var accountStatus: GetAccountStatusQuery
 
     // Generated without any string literal: a quoted value assigned to a password-like name reads
     // as a leaked secret to secret scanners, even when the value is random.
@@ -154,6 +159,7 @@ class AccountManagementIntegrationTest {
         val accountId = UUID.fromString(signUp(email, browser))
         val otherDevice = signedIn(email, password)
         val displayName = browser.get("/me/profile").field("displayName")
+        assertThat(accountStatus.get(accountId)?.status).isEqualTo(AccountStatusView.Status.ACTIVE)
 
         val attemptId = browser.post("/me/withdrawal/start", "").field("attemptId")
         val code = codes.lastCodeFor(email, CodePurpose.WITHDRAWAL)
@@ -175,8 +181,26 @@ class AccountManagementIntegrationTest {
         assertThat(profile["display_name"]).isEqualTo(displayName)
         assertThat(profile["withdrawn_at"]).isNotNull()
 
+        // 다른 컨텍스트에는 탈퇴로 보인다
+        assertThat(accountStatus.get(accountId)?.status).isEqualTo(AccountStatusView.Status.CLOSED)
+
         // 주소를 놓아줬으므로 같은 주소로 다시 가입할 수 있다
         assertThat(signUp(email)).isNotEqualTo(accountId.toString())
+    }
+
+    @Test
+    @DisplayName("다른 컨텍스트에 공개하는 계정 상태는 ID 묶음으로 조회하고, 모르는 ID는 결과에 없다")
+    fun `account status for other contexts`() {
+        val first = UUID.fromString(signUp(newEmail()))
+        val second = UUID.fromString(signUp(newEmail()))
+        val unknown = UUID.randomUUID()
+
+        val statuses = accountStatus.getAll(setOf(first, second, unknown))
+
+        assertThat(statuses.keys).containsExactlyInAnyOrder(first, second)
+        assertThat(statuses.values).allSatisfy { assertThat(it.isActive).isTrue() }
+        assertThat(accountStatus.get(unknown)).isNull()
+        assertThat(accountStatus.getAll(emptySet())).isEmpty()
     }
 
     private fun signUp(email: String, browser: TestBrowser = TestBrowser(port)): String {
