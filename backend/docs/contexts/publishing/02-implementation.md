@@ -114,9 +114,12 @@
 | 글 slug 바꾸기 | `ChangePostSlugUseCase` | `PostService` | `PUT /posts/{id}/slug`. `slug`가 없으면 제목에서 다시 만든다 |
 | 흐름 4 발행, 비공개, 다시 공개 | `ChangePostStatusUseCase` | `PostService` | `POST /posts/{id}/publish`, `/hide`, `/republish` |
 | 흐름 5 글 삭제 | `DeletePostUseCase` | `PostService` | `DELETE /posts/{id}` → 204 |
-| 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts` (임시저장 포함, 최근 수정 순) |
+| 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts?cursor=` (임시저장 포함, 최근 수정 순) |
+| 공개 글 목록 | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&cursor=` |
+| 홈의 최근 글 | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?cursor=` |
+| 공개 글 상세, 옛 slug | `GetPublishedPostsQuery.find` | `PublishedPostService` | `GET /blogs/{slug}/posts/{postSlug}` → 200, 옛 slug면 301 |
 
-`apps/api`의 필터 체인은 `/blogs/` 아래의 GET을 누구에게나 열고, 나머지는 세션을 요구한다.
+`apps/api`의 필터 체인은 `/blogs/` 아래의 GET과 `GET /posts`를 누구에게나 열고, 나머지는 세션을 요구한다. 이 경로의 조회는 발행된 글만 돌려준다.
 
 ### 구현에서 정한 것
 
@@ -133,7 +136,11 @@
 | slug가 쓰였는지 | 그 블로그의 `post_slugs`에서 같은 접두어로 시작하는 slug를 조회한다(`Post`의 named query `findSlugsTakenInBlog`). 그 글 자신의 slug는 빼서 자기 옛 slug로 돌아갈 수 있게 한다. slug에는 LIKE 와일드카드 문자가 올 수 없어 접두어를 그대로 쓴다 |
 | 임시저장 글의 slug | 제목이 바뀐 때만 다시 만든다. 본문만 고치면 작성자가 직접 정한 slug가 그대로 남는다 |
 | 새 글의 slug | 글의 ID를 알아야 자기 slug를 뺄 수 있으므로, 임시 slug로 만든 뒤 저장 전에 제목의 slug로 바꾼다 |
-| 소유자의 글 목록 | 아직 페이지를 나누지 않는다. 공개 목록(P4c)에서 정렬과 페이지 크기를 정할 때 함께 바꾼다 |
+| 목록의 페이지 | 20개씩, 커서(키셋) 방식이다. 커서는 마지막 글의 시각과 ID를 담은 불투명한 문자열이다. 다음 페이지는 "시각이 더 이르거나, 같으면 ID가 더 작은 글"이라 같은 시각의 글이 빠지거나 겹치지 않는다. 21개를 읽어 다음 페이지가 있는지 안다 |
+| 목록의 정렬 | 공개 목록과 홈은 발행 시각 최신순, 소유자 목록은 최근 수정 순. 둘 다 같은 시각이면 ID 역순 |
+| 목록이 읽는 열 | 본문을 읽지 않는다. `Post`의 named query가 목록에 필요한 열만 별칭으로 고르고, `PostRow` 프로젝션으로 받는다. 페이지 크기는 쿼리의 `limit 21`에 있다. Spring Data의 `Limit`, `Pageable`을 시그니처에 쓰지 않는 규약 때문이다 |
+| 옛 slug 응답 | 301과 `Location`(현재 주소). 본문에도 블로그 slug와 현재 slug를 담아, 스스로 라우팅하는 프론트엔드가 쓸 수 있게 한다 |
+| 공개 조회에서 숨기는 것 | 임시저장, 비공개 글은 상세와 목록 모두에서 없는 글과 같다(404, 목록에서 빠짐) |
 | 동시 수정 | 같은 글을 동시에 고치면 나중 것이 남는다. 1인 블로그라 버전을 두지 않았다 |
 
 ## 단계
@@ -153,7 +160,7 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 공개 조회, 옛 slug 리디렉션 | P4c. P4b까지 블로그, 카테고리, 글 쓰기와 발행, 삭제를 만들었다 |
+| 이벤트 기록(아웃박스) | P5. P4c까지 블로그, 카테고리, 글 쓰기와 발행, 공개 조회를 만들었다 |
+| 카테고리별 글 수 | 블로그 레이아웃의 카테고리 옆 숫자. 화면이 필요로 할 때 만든다 |
 | 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
-| 글 목록 정렬과 페이지 크기 | P4에서 정한다 |

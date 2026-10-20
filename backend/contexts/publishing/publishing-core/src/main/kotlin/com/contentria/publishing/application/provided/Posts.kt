@@ -51,10 +51,12 @@ interface DeletePostUseCase {
     fun delete(requesterId: UUID, postId: UUID)
 }
 
-/** The owner's view of their own posts, drafts included. Public reading comes later (P4c). */
+/** The owner's view of their own posts, drafts included. Readers use [GetPublishedPostsQuery]. */
 interface GetMyPostsQuery {
     fun get(requesterId: UUID, postId: UUID): PostView
-    fun list(requesterId: UUID, blogSlug: String): List<PostListItem>
+
+    /** Every status, most recently changed first, a [PostPage.SIZE] at a time. */
+    fun list(requesterId: UUID, blogSlug: String, cursor: String?): PostPage
 }
 
 data class PostView(
@@ -73,6 +75,7 @@ data class PostView(
 
 data class PostListItem(
     val postId: UUID,
+    val blogSlug: String,
     val categoryId: UUID?,
     val title: String,
     val summary: String,

@@ -4,7 +4,7 @@ import com.contentria.publishing.application.provided.ChangePostSlugUseCase
 import com.contentria.publishing.application.provided.ChangePostStatusUseCase
 import com.contentria.publishing.application.provided.DeletePostUseCase
 import com.contentria.publishing.application.provided.GetMyPostsQuery
-import com.contentria.publishing.application.provided.PostListItem
+import com.contentria.publishing.application.provided.PostPage
 import com.contentria.publishing.application.provided.PostView
 import com.contentria.publishing.application.provided.PublishingUseCaseException
 import com.contentria.publishing.application.provided.RevisePostCommand
@@ -95,12 +95,11 @@ class PostService(
     override fun get(requesterId: UUID, postId: UUID): PostView =
         transactions.execute { ownedPost(requesterId, postId).first.view() }!!
 
-    override fun list(requesterId: UUID, blogSlug: String): List<PostListItem> = transactions.execute {
+    override fun list(requesterId: UUID, blogSlug: String, cursor: String?): PostPage = transactions.execute {
         val blog = blogs.findBySlug(blogSlug) ?: throw PublishingUseCaseException.BlogNotFound()
         if (!blog.isOwnedBy(requesterId)) throw PublishingUseCaseException.NotBlogOwner()
-        posts.findByBlogIdOrderByUpdatedAtDesc(blog.id).map {
-            PostListItem(it.id, it.categoryId, it.title, it.summary, it.status, it.publishedAt, it.slug, it.updatedAt)
-        }
+        val after = PageCursor.decode(cursor)
+        PageCursor.page(posts.findInBlogByUpdate(blog.id, after.at, after.id)) { it.updatedAt }
     }!!
 
     private fun changeStatus(requesterId: UUID, postId: UUID, change: (Post) -> Unit): PostView = asBlogger(requesterId) {
