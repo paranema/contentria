@@ -11,6 +11,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.time.Instant
@@ -28,6 +29,12 @@ import java.util.UUID
  */
 @Entity
 @Table(name = "posts", schema = PublishingSchema.NAME)
+// Every slug in the blog that starts with a base, other than the post's own (current and old):
+// what a new slug must not collide with. Slugs hold no LIKE wildcards, so the base is safe in a pattern.
+@NamedQuery(
+    name = "Post.findSlugsTakenInBlog",
+    query = "select s.value from PostSlug s where s.blogId = ?1 and s.value like ?2 and s.post.id <> ?3",
+)
 class Post private constructor(
     id: UUID,
     blogId: UUID,

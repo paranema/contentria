@@ -30,4 +30,15 @@ data class CategoryNodeRequest(
     @field:Size(max = 100) val parentKey: String? = null,
 )
 
+/** Sizes stop absurd input; the post's own limits are the domain's (01-rules, 처음 정하는 값). */
+data class PostRequest(
+    @field:NotNull @field:Size(max = 1000) val title: String,
+    @field:NotNull @field:Size(max = 200_000) val body: String,
+    @field:Size(max = 2000) val summary: String? = null,
+    val categoryId: java.util.UUID? = null,
+)
+
+/** Null or blank: make the slug from the title again. */
+data class ChangePostSlugRequest(@field:Size(max = 200) val slug: String? = null)
+
 data class ErrorResponse(val code: String, val message: String)

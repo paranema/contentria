@@ -23,6 +23,9 @@ class PublishingWebExceptionHandler {
         is PublishingUseCaseException.BlogLimitReached -> error(HttpStatus.CONFLICT, "BLOG_LIMIT_REACHED", "A member has at most three blogs.")
         is PublishingUseCaseException.CategoriesInUse -> error(HttpStatus.CONFLICT, "CATEGORIES_IN_USE", "Move the posts out of the category first.")
         is PublishingUseCaseException.StaleCategoryTree -> error(HttpStatus.CONFLICT, "CATEGORY_TREE_CHANGED", "The categories changed; reload and edit again.")
+        is PublishingUseCaseException.PostNotFound -> error(HttpStatus.NOT_FOUND, "POST_NOT_FOUND", "No such post.")
+        is PublishingUseCaseException.CategoryNotInBlog -> error(HttpStatus.BAD_REQUEST, "CATEGORY_NOT_IN_BLOG", "The category belongs to another blog.")
+        is PublishingUseCaseException.PostSlugTaken -> error(HttpStatus.CONFLICT, "POST_SLUG_TAKEN", "Another post of this blog uses or used this address.")
     }
 
     @ExceptionHandler
@@ -44,8 +47,13 @@ class PublishingWebExceptionHandler {
     }
 
     @ExceptionHandler
-    fun handle(e: PostException): ResponseEntity<ErrorResponse> =
-        error(HttpStatus.BAD_REQUEST, "POST_RULE_VIOLATED", "The request breaks a post rule.")
+    fun handle(e: PostException): ResponseEntity<ErrorResponse> = when (e) {
+        is PostException.InvalidTitle, is PostException.InvalidBody, is PostException.InvalidSummary ->
+            error(HttpStatus.BAD_REQUEST, "INVALID_POST", "The title, body or summary is too long or empty.")
+        is PostException.InvalidSlug -> error(HttpStatus.BAD_REQUEST, "INVALID_POST_SLUG", "Use lowercase letters, digits, Hangul and single hyphens.")
+        is PostException.StatusTransitionNotAllowed -> error(HttpStatus.CONFLICT, "POST_STATUS_NOT_ALLOWED", "The post cannot move to that status from its current one.")
+        is PostException.SlugFollowsTitleOnlyInDraft -> error(HttpStatus.CONFLICT, "POST_SLUG_FIXED", "A published post keeps its address unless you change it.")
+    }
 
     @ExceptionHandler
     fun handle(e: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> =

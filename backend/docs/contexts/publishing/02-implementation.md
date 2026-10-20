@@ -109,6 +109,12 @@
 | 블로그 조회 | `GetBlogQuery` | `BlogService` | `GET /blogs/{slug}`(공개), `GET /me/blogs` |
 | 흐름 2 카테고리 조회 | `GetCategoryTreeQuery` | `CategoryTreeService` | `GET /blogs/{slug}/categories`(공개). 트리와 버전 |
 | 흐름 2 카테고리 편집 | `EditCategoryTreeUseCase` | `CategoryTreeService` | `PUT /blogs/{slug}/categories` (소유자). 트리 전체와 편집을 연 때의 버전 |
+| 흐름 3 글 쓰기 | `WritePostUseCase` | `PostService` | `POST /blogs/{slug}/posts` → 201, 임시저장 |
+| 흐름 3 글 고치기 | `RevisePostUseCase` | `PostService` | `PUT /posts/{id}` |
+| 글 slug 바꾸기 | `ChangePostSlugUseCase` | `PostService` | `PUT /posts/{id}/slug`. `slug`가 없으면 제목에서 다시 만든다 |
+| 흐름 4 발행, 비공개, 다시 공개 | `ChangePostStatusUseCase` | `PostService` | `POST /posts/{id}/publish`, `/hide`, `/republish` |
+| 흐름 5 글 삭제 | `DeletePostUseCase` | `PostService` | `DELETE /posts/{id}` → 204 |
+| 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts` (임시저장 포함, 최근 수정 순) |
 
 `apps/api`의 필터 체인은 `/blogs/` 아래의 GET을 누구에게나 열고, 나머지는 세션을 요구한다.
 
@@ -123,6 +129,12 @@
 | 요약 | commonmark의 문법 트리에서 읽히는 글자만 모은다. 링크 주소, 이미지, 코드 블록, HTML은 뺀다. 레거시가 쓴 `TextContentRenderer`는 링크를 `"글" (주소)`로, 취소선을 `/글/`로 써서 요약에 섞였다 |
 | 샘플 본문 | `publishing-core`의 `samples/*.md`. 제목은 따로 있으므로 본문에 다시 쓰지 않는다 |
 | 정지된 계정 | 쓰기 전에 회원에게 묻는다. 액세스 토큰은 정지 뒤에도 만료까지 통과하므로 토큰만 믿지 않는다 |
+| 남의 글 | 글 ID로 오는 요청은 소유자가 아니면 상태와 상관없이 404 `POST_NOT_FOUND`다. 남의 임시저장 글이 있다는 사실을 알리지 않는다. 블로그는 공개이므로 남의 블로그에 글을 쓰려 하면 403 `NOT_BLOG_OWNER`다 |
+| slug가 쓰였는지 | 그 블로그의 `post_slugs`에서 같은 접두어로 시작하는 slug를 조회한다(`Post`의 named query `findSlugsTakenInBlog`). 그 글 자신의 slug는 빼서 자기 옛 slug로 돌아갈 수 있게 한다. slug에는 LIKE 와일드카드 문자가 올 수 없어 접두어를 그대로 쓴다 |
+| 임시저장 글의 slug | 제목이 바뀐 때만 다시 만든다. 본문만 고치면 작성자가 직접 정한 slug가 그대로 남는다 |
+| 새 글의 slug | 글의 ID를 알아야 자기 slug를 뺄 수 있으므로, 임시 slug로 만든 뒤 저장 전에 제목의 slug로 바꾼다 |
+| 소유자의 글 목록 | 아직 페이지를 나누지 않는다. 공개 목록(P4c)에서 정렬과 페이지 크기를 정할 때 함께 바꾼다 |
+| 동시 수정 | 같은 글을 동시에 고치면 나중 것이 남는다. 1인 블로그라 버전을 두지 않았다 |
 
 ## 단계
 
@@ -141,7 +153,7 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 글 쓰기, 발행, 삭제, 공개 조회, 옛 slug 리디렉션 | P4b, P4c. P4a에서 블로그와 카테고리를 만들었다 |
+| 공개 조회, 옛 slug 리디렉션 | P4c. P4b까지 블로그, 카테고리, 글 쓰기와 발행, 삭제를 만들었다 |
 | 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
 | 글 목록 정렬과 페이지 크기 | P4에서 정한다 |
