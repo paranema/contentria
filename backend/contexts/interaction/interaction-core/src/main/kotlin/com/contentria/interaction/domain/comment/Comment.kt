@@ -6,6 +6,8 @@ import com.contentria.shared.persistence.AuditableEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.LockModeType
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import java.util.UUID
 
@@ -17,6 +19,26 @@ import java.util.UUID
  * the comment and [leaving its place][leavePlaceholder] (02-implementation, 애그리거트 경계).
  */
 @Entity
+// Every change under one top-level comment takes its row lock first, a reply's own row before its
+// parent's: a reply cannot land on a comment being deleted, and two replies deleted at once cannot
+// each leave the other to clear the placeholder (02-implementation, 동시성).
+@NamedQuery(
+    name = "Comment.findForUpdate",
+    query = "select c from Comment c where c.id = ?1",
+    lockMode = LockModeType.PESSIMISTIC_WRITE,
+)
+// Top-level comments, oldest first, 20 a page and one more to tell whether another page follows.
+// A page starts after the cursor: later, or as late with a larger id.
+@NamedQuery(
+    name = "Comment.findTopLevelOnPost",
+    query = "select c from Comment c where c.postId = ?1 and c.parentId is null and " +
+        "(c.createdAt > ?2 or (c.createdAt = ?2 and c.id > ?3)) order by c.createdAt, c.id limit 21",
+)
+// 01-rules 공개 범위: the places of deleted comments are not counted.
+@NamedQuery(
+    name = "Comment.countByPosts",
+    query = "select c.postId as id, count(c) as total from Comment c where c.postId in ?1 and c.removed = false group by c.postId",
+)
 @Table(name = "comments", schema = InteractionSchema.NAME)
 class Comment private constructor(
     id: UUID,

@@ -1,6 +1,7 @@
 package com.contentria.interaction.application
 
 import com.contentria.interaction.api.GetInteractionCountsQuery
+import com.contentria.interaction.domain.comment.CommentRepository
 import com.contentria.interaction.domain.like.LikeRepository
 import com.contentria.interaction.domain.subscription.SubscriptionRepository
 import org.springframework.stereotype.Service
@@ -14,12 +15,17 @@ import java.util.UUID
 @Service
 class InteractionCountService(
     private val likes: LikeRepository,
+    private val comments: CommentRepository,
     private val subscriptions: SubscriptionRepository,
 ) : GetInteractionCountsQuery {
 
     @Transactional(readOnly = true)
     override fun likeCounts(postIds: Set<UUID>): Map<UUID, Long> =
         withZeros(postIds) { likes.countByPosts(it).associate { row -> row.id to row.total } }
+
+    @Transactional(readOnly = true)
+    override fun commentCounts(postIds: Set<UUID>): Map<UUID, Long> =
+        withZeros(postIds) { comments.countByPosts(it).associate { row -> row.id to row.total } }
 
     @Transactional(readOnly = true)
     override fun subscriberCounts(blogIds: Set<UUID>): Map<UUID, Long> =

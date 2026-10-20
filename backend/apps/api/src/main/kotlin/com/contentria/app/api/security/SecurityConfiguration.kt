@@ -40,6 +40,8 @@ class SecurityConfiguration {
                 it.requestMatchers(HttpMethod.GET, "/posts").permitAll()
                 // Like and subscriber counts, which anyone may see
                 it.requestMatchers(HttpMethod.GET, "/interactions/counts").permitAll()
+                // A published post's comments
+                it.requestMatchers(HttpMethod.GET, "/posts/*/comments").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
