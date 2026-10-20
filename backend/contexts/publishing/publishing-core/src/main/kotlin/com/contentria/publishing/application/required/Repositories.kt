@@ -11,6 +11,7 @@ import java.util.UUID
 
 interface BlogRepository : Repository<Blog, UUID> {
     fun save(blog: Blog): Blog
+    fun findById(id: UUID): Blog?
     fun findBySlug(slug: String): Blog?
     fun existsBySlug(slug: String): Boolean
     fun countByOwnerId(ownerId: UUID): Long
@@ -27,5 +28,13 @@ interface CategoryTreeRepository : Repository<CategoryTree, UUID> {
 
 interface PostRepository : Repository<Post, UUID> {
     fun save(post: Post): Post
+    fun findById(id: UUID): Post?
+    fun delete(post: Post)
     fun existsByCategoryIdIn(categoryIds: Collection<UUID>): Boolean
+
+    /** Every post of the blog, drafts included, most recently changed first. For the owner's list. */
+    fun findByBlogIdOrderByUpdatedAtDesc(blogId: UUID): List<Post>
+
+    /** [Post]'s named query of the same name. [pattern] is a LIKE pattern; [exceptPostId] keeps a post's own slugs out. */
+    fun findSlugsTakenInBlog(blogId: UUID, pattern: String, exceptPostId: UUID): List<String>
 }
