@@ -44,7 +44,8 @@
 
 쓰기 트랜잭션을 열기 **전에** 조회한다. 출판이 응답하지 않으면(분리 후) 쓰기를 거부한다. 거두는 일은 출판과 회원에게 묻지 않는다.
 
-출판은 아직 이 조회를 공개하지 않는다. `publishing-api`에 추가한다(I3).
+출판은 `publishing-api`에 `GetPostReferencesQuery.getPosts(글 ID 묶음)`(블로그, 소유자, 공개 여부)와 `GetBlogReferencesQuery`(`getBlogBySlug`, `getBlogs`)를 공개한다. 출판의 읽기 전용 트랜잭션에서 돌고 본문은 읽지 않는다.
+번역 계층은 출판과 회원의 타입을 상호작용의 타입(`domain/target`의 `TargetPost`, `TargetBlog`)으로 바꾼다. 발행되지 않은 글, 출판이 모르는 글, 회원이 모르는 계정은 모두 "할 수 없음"이 된다. 레이어드에서 infra는 domain만 알 수 있으므로 이 타입을 domain에 둔다.
 
 ## 이벤트
 

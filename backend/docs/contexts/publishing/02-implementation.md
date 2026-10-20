@@ -126,6 +126,7 @@
 | 공개 글 목록 | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&cursor=` |
 | 홈의 최근 글 | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?cursor=` |
 | 공개 글 상세, 옛 slug | `GetPublishedPostsQuery.find` | `PublishedPostService` | `GET /blogs/{slug}/posts/{postSlug}` → 200, 옛 slug면 301 |
+| 다른 컨텍스트에 글과 블로그 공개 | `GetPostReferencesQuery`, `GetBlogReferencesQuery` (`publishing-api`) | `ReferenceQueryService` | 상호작용의 번역 계층이 호출. 자기 읽기 전용 트랜잭션, 본문은 읽지 않는다 |
 
 `apps/api`의 필터 체인은 `/blogs/` 아래의 GET과 `GET /posts`를 누구에게나 열고, 나머지는 세션을 요구한다. 이 경로의 조회는 발행된 글만 돌려준다.
 

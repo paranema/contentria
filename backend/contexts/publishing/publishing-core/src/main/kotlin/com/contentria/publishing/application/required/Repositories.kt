@@ -13,6 +13,7 @@ import java.util.UUID
 interface BlogRepository : Repository<Blog, UUID> {
     fun save(blog: Blog): Blog
     fun findById(id: UUID): Blog?
+    fun findByIdIn(ids: Collection<UUID>): List<Blog>
     fun findBySlug(slug: String): Blog?
     fun existsBySlug(slug: String): Boolean
     fun countByOwnerId(ownerId: UUID): Long
@@ -36,6 +37,9 @@ interface PostRepository : Repository<Post, UUID> {
 
     /** [Post]'s named query of the same name. [pattern] is a LIKE pattern; [exceptPostId] keeps a post's own slugs out. */
     fun findSlugsTakenInBlog(blogId: UUID, pattern: String, exceptPostId: UUID): List<String>
+
+    /** [Post]'s named query of the same name, for publishing-api. */
+    fun findReferences(postIds: Collection<UUID>): List<PostReferenceRow>
 
     /** The post [slug] leads to in the blog, whether it is the post's current slug or an old one. */
     fun findBySlugInBlog(blogId: UUID, slug: String): Post?
