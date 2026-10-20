@@ -70,6 +70,29 @@ class Blog private constructor(
         /** Latin letters and digits only, unlike post slugs: the blog address is typed, not derived. */
         private val SLUG = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
 
+        /**
+         * Addresses members cannot take (docs/contexts/publishing/01-rules.md, 예약 slug): the
+         * platform's own accounts, and words a visitor would read as the platform speaking.
+         */
+        val RESERVED_SLUGS: Set<String> = setOf(
+            // 운영과 공식
+            "admin", "administrator", "root", "system", "staff", "official", "team", "moderator",
+            "notice", "notices", "announcement", "announcements", "news", "event", "events",
+            "support", "help", "faq", "contact", "security", "abuse", "report", "feedback",
+            // 서비스 경로와 계정
+            "api", "www", "app", "auth", "login", "logout", "signin", "signup", "register",
+            "account", "settings", "me", "profile", "dashboard", "search", "explore", "home",
+            "about", "terms", "privacy", "policy", "status", "blog", "blogs", "post", "posts",
+            "mail", "email", "static", "assets", "cdn", "media",
+            // 값처럼 보이는 말
+            "null", "undefined", "anonymous",
+        )
+
+        /** Any address naming the platform itself. */
+        private const val PLATFORM_NAME = "contentria"
+
+        fun isReserved(slug: String): Boolean = slug in RESERVED_SLUGS || PLATFORM_NAME in slug
+
         fun create(ownerId: UUID, slug: String, title: String, description: String? = null): Blog =
             Blog(
                 id = Ids.newId(),
@@ -83,6 +106,7 @@ class Blog private constructor(
         fun normalizeSlug(raw: String): String {
             val slug = raw.trim().lowercase(Locale.ROOT)
             if (slug.length !in SLUG_MIN_LENGTH..SLUG_MAX_LENGTH || !SLUG.matches(slug)) throw BlogException.InvalidSlug(raw)
+            if (isReserved(slug)) throw BlogException.ReservedSlug(slug)
             return slug
         }
 
