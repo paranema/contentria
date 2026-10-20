@@ -1,5 +1,9 @@
 package com.contentria.app.api
 
+import com.contentria.publishing.api.BlogReference
+import com.contentria.publishing.api.GetBlogReferencesQuery
+import com.contentria.publishing.api.GetPostReferencesQuery
+import com.contentria.publishing.api.PostReference
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -23,6 +27,12 @@ class PublishingReadingIntegrationTest {
 
     @Autowired
     private lateinit var codes: RecordingCodeSender
+
+    @Autowired
+    private lateinit var postReferences: GetPostReferencesQuery
+
+    @Autowired
+    private lateinit var blogReferences: GetBlogReferencesQuery
 
     private val reader get() = TestBrowser(port)
 
@@ -138,6 +148,29 @@ class PublishingReadingIntegrationTest {
         assertThat(ids(page).first()).isEqualTo(latest)
         assertThat(ids(page)).hasSize(3)
         assertThat(page.body()).contains("\"status\":\"DRAFT\"", "\"nextCursor\":null")
+    }
+
+    @Test
+    @DisplayName("다른 컨텍스트에는 글의 블로그, 소유자, 공개 여부를 ID 묶음으로 알려준다. 모르는 ID는 결과에 없다")
+    fun `references for other contexts`() {
+        val owner = TestBrowser(port)
+        val ownerId = owner.signUpAsNewMember(codes)
+        val blog = "blog-${UUID.randomUUID().toString().take(8)}"
+        val blogId = UUID.fromString(owner.post("/blogs", """{"slug":"$blog","title":"제목"}""").field("blogId"))
+        val published = UUID.fromString(publish(owner, blog, "공개 글"))
+        val draft = UUID.fromString(owner.post("/blogs/$blog/posts", post("임시저장 글")).field("postId"))
+        val unknown = UUID.randomUUID()
+
+        val references = postReferences.getPosts(setOf(published, draft, unknown))
+
+        assertThat(references.keys).containsExactlyInAnyOrder(published, draft)
+        assertThat(references.getValue(published)).isEqualTo(PostReference(published, blogId, ownerId, isPublic = true))
+        assertThat(references.getValue(draft).isPublic).isFalse()
+        assertThat(postReferences.getPosts(emptySet())).isEmpty()
+
+        assertThat(blogReferences.getBlogBySlug(blog)).isEqualTo(BlogReference(blogId, blog, ownerId))
+        assertThat(blogReferences.getBlogs(setOf(blogId, unknown)).keys).containsExactly(blogId)
+        assertThat(blogReferences.getBlogBySlug("no-such-blog")).isNull()
     }
 
     private fun blogger(): Pair<TestBrowser, String> {
