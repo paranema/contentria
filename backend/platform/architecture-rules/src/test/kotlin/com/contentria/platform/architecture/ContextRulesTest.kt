@@ -16,6 +16,15 @@ import com.contentria.alpha.domain.DomainUsingWeb
 import com.contentria.app.api.AppEntity
 import com.contentria.app.api.AppUsingApiAndConfiguration
 import com.contentria.app.api.AppUsingDomain
+import com.contentria.gamma.application.GammaService
+import com.contentria.gamma.application.ServiceUsingController
+import com.contentria.gamma.domain.DomainUsingApplication
+import com.contentria.gamma.domain.DomainUsingWebInLayered
+import com.contentria.gamma.domain.GammaEntity
+import com.contentria.gamma.domain.GammaRepository
+import com.contentria.gamma.infra.client.GammaClient
+import com.contentria.gamma.presentation.web.ControllerUsingInfra
+import com.contentria.gamma.presentation.web.GammaController
 import com.contentria.platform.architecture.ContextRules.InternalStructure.HEXAGONAL
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.ArchRule
@@ -93,6 +102,26 @@ class ContextRulesTest {
         val rule = ContextRules.providedAdaptersDoNotKnowServiceImplementations(context)
 
         assertViolation(rule, ControllerUsingService::class)
+    }
+
+    @Test
+    @DisplayName("레이어드는 presentation, application, infra 순으로만 의존하고 domain은 셋 모두가 쓴다")
+    fun `layers depend in one direction`() {
+        val rule = ContextRules.layersDependInOneDirection("gamma")
+
+        assertViolation(rule, ServiceUsingController::class, GammaController::class)
+        assertViolation(rule, ControllerUsingInfra::class, GammaClient::class)
+        assertViolation(rule, DomainUsingApplication::class, GammaService::class)
+        assertNoViolation(rule, GammaController::class, GammaService::class, GammaClient::class, GammaEntity::class, GammaRepository::class)
+    }
+
+    @Test
+    @DisplayName("레이어드 domain은 JPA, Spring Data 마커, 공유 커널만 의존한다")
+    fun `layered domain depends only on allowed packages`() {
+        val rule = ContextRules.layeredDomainDependsOnlyOnAllowedPackages("gamma")
+
+        assertViolation(rule, DomainUsingWebInLayered::class)
+        assertNoViolation(rule, GammaEntity::class, GammaRepository::class)
     }
 
     @Test

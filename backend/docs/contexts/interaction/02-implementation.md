@@ -67,6 +67,20 @@
 | 좋아요 수, 댓글 수(글 ID 묶음), 구독자 수(블로그 ID 묶음) | `interaction-api`에 공개한다. 글 목록과 상세를 조합하는 진입점이 쓴다 |
 | 내가 좋아요했는지, 내가 구독했는지 | HTTP |
 
+## 도메인 메서드
+
+| 01의 규칙 | 메서드 | 비고 |
+|---|---|---|
+| 흐름 1의 5번 | `Subscription.of(subscriberId, blogId)` | 블로그 존재와 소유자 확인은 유스케이스 |
+| 흐름 2의 5번 | `Like.of(accountId, postId, blogId)` | 위와 같다 |
+| 흐름 3의 7번 (최상위 댓글) | `Comment.write(postId, blogId, commenterId, body)` | |
+| 흐름 3의 4, 5번 (답글) | `parent.reply(commenterId, body)` | 답글의 답글과 지운 자리의 답글을 거부한다 |
+| 흐름 4의 1, 2, 4번 | `Comment.edit(editorId, body)` | 작성자만, 지운 자리는 안 됨, "수정됨" 표시 |
+| 흐름 4의 5번 | `Comment.leavePlaceholder(requesterId)` | 답글이 있는지는 유스케이스가 조회한다 |
+| 흐름 4의 6번 | `Comment.requireChangeableBy(accountId)` 뒤 실제 삭제 | |
+
+레이어드 규칙은 `ContextRules.forLayered`가 강제한다. 계층은 presentation, application, infra 순으로만 의존하고, domain은 셋 모두가 쓴다. domain은 JPA, Spring Data `Repository` 마커, 공유 커널만 의존한다.
+
 ## 단계
 
 | 단계 | 내용 | 완료 조건 |
