@@ -19,7 +19,9 @@
 편집 화면도 트리 전체를 한 번에 저장한다. [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md)의 애그리거트 `Category`는 이 트리를 말한다.
 
 **옛 slug는 글의 멤버다.** 옛 slug는 그 글로 가는 리디렉션이고, 글이 지워지면 함께 지워진다.
-현재 slug와 옛 slug를 같은 테이블(`post_slugs`)에 두고 `(blog_id, slug)`에 고유 제약을 건다. 블로그 안에서 현재와 옛 slug를 합쳐 겹치지 않는다는 규칙을 DB가 보증한다.
+현재 slug는 `posts.slug`에 두고, 그 글이 가진 적 있는 slug는 현재 것까지 모두 `post_slugs`에 둔다. 옛 slug는 `post_slugs`에서 현재 slug를 뺀 것이다.
+`post_slugs(blog_id, slug)`에 고유 제약을 걸어, 블로그 안에서 현재와 옛 slug를 합쳐 겹치지 않는다는 규칙을 DB가 보증한다.
+"현재" 표시 열은 두지 않는다. 옛 slug로 되돌릴 때 두 행의 표시를 맞바꾸면, 갱신 순서에 따라 잠깐 현재가 둘이 되어 부분 고유 인덱스에 걸린다. 표시가 없으면 `posts.slug` 하나만 바꾸면 된다.
 
 **글은 블로그 소유자를 저장하지 않는다.** 블로그 ID만 들고, 소유 확인은 블로그를 읽어서 한다.
 1인 블로그라서 작성자는 언제나 블로그 소유자다. 글에 소유자를 복사하면 두 값이 어긋날 수 있다.
@@ -34,15 +36,18 @@
 | 제약 | 보증하는 것 |
 |---|---|
 | `blogs.slug` UNIQUE | 블로그 slug는 플랫폼 전체에서 고유 |
-| `categories(blog_id, slug)` UNIQUE | 카테고리 slug는 블로그 안에서 고유 |
+| `categories(tree_id, slug)` UNIQUE, `DEFERRABLE INITIALLY DEFERRED` | 카테고리 slug는 블로그 안에서 고유. 트리 ID가 블로그 ID다 |
+| `categories(tree_id, parent_id, name)`는 두지 않음 | 이름 비교는 대소문자를 가리지 않는다. 트리가 지킨다 |
 | `post_slugs(blog_id, slug)` UNIQUE | 글의 현재 slug와 옛 slug는 블로그 안에서 모두 합쳐 고유 |
-| `post_slugs(post_id)` 중 현재 slug 하나 | 글마다 현재 slug는 하나 (부분 고유 인덱스 `WHERE current`) |
+
+카테고리 slug 제약을 커밋 시점에 검사하는 이유: Hibernate는 한 번의 flush에서 삽입을 삭제보다 먼저 실행한다. 트리를 한 번에 저장하면서 `x`를 지우고 새 `x`를 만들면, 즉시 검사하는 제약은 커밋 전에 실패한다.
 
 외래키는 애그리거트 안에만 둔다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "외래키").
 
 | 외래키 | 있음 |
 |---|---|
 | `categories.tree_id → category_trees.id` | 있음. 같은 애그리거트 |
+| `categories.parent_id → categories.id` | 있음. 같은 애그리거트 |
 | `post_slugs.post_id → posts.id` | 있음. 같은 애그리거트 |
 | `posts.blog_id → blogs.id`, `posts.category_id → categories.id`, `category_trees.id → blogs.id` | 없음. 애그리거트 사이 |
 
@@ -86,11 +91,11 @@
 | 카테고리 깊이, 이름 중복, 하위가 남은 삭제 | `CategoryTree.replaceWith(edit)` | 트리 전체를 받아 검증하고 바꾼다. 글이 있는지는 유스케이스가 먼저 확인한다 |
 | 카테고리 slug | `CategoryTree` 안에서 이름으로 만든다 | 트리 안에서 겹치면 접미사 |
 | 새 글은 DRAFT | `Post.draft(blogId, title, body, summary, categoryId, slug)` | slug는 유스케이스가 고유하게 정해 넘긴다 |
-| 발행, 비공개, 다시 공개 | `Post.publish(now)`, `Post.hide()`, `Post.republish()` | 처음 발행인지 돌려준다. 유스케이스가 그때만 `PostPublished`를 기록한다 |
-| 발행 전 slug는 제목을 따라감 | `Post.revise(title, body, summary, categoryId, slugIfDraft)` | 발행 전에만 새 slug를 받는다 |
-| 발행 후 slug 바꾸기, 옛 slug, 되돌리기 | `Post.changeSlug(newSlug)` | 현재 slug를 옛 slug로 내리고, 자기 옛 slug면 그것을 현재로 올린다 |
-| slug 만들기 | `Slugs.fromTitle(title)` | 순수 함수. 접미사는 고르지 않는다 |
-| 요약 | `Summaries.from(markdown)` | 마크다운 문법을 걷어 낸 앞 150자 |
+| 발행, 비공개, 다시 공개 | `Post.publish(now)`, `Post.hide()`, `Post.republish()` | 각각 DRAFT, PUBLISHED, PRIVATE에서만 된다. `publish`는 언제나 처음 발행이므로 유스케이스는 그때만 `PostPublished`를 기록한다 |
+| 발행 전 slug는 제목을 따라감 | `Post.revise(content, categoryId, draftSlug)` | `draftSlug`는 DRAFT일 때만 받는다 |
+| 발행 후 slug 바꾸기, 옛 slug, 되돌리기 | `Post.changeSlug(newSlug)` | 새 slug를 `post_slugs`에 더하고 `posts.slug`를 바꾼다. 자기 옛 slug면 더하지 않는다. DRAFT에서는 옛 slug를 남기지 않는다 |
+| slug 만들기, 접미사 | `Slugs.from(text, fallback, maxLength)`, `Slugs.nextAvailable(base, taken, maxLength)` | 순수 함수. 무엇이 쓰였는지(`taken`)는 유스케이스가 조회해 넘긴다 |
+| 요약 | `PostSummary.written(text)`, `PostSummary.derived(text)` | 도메인은 300자 제한과 작성자가 썼는지만 안다. 본문에서 뽑는 일은 앱이 마크다운 파서로 한다(P4). 레거시도 commonmark로 했다(`post/application/MarkdownService.kt`) |
 
 ## 단계
 
@@ -109,7 +114,7 @@ member 이전과 같이 단계마다 PR을 하나씩 낸다.
 
 | 항목 | 상태 |
 |---|---|
-| 코드 | P1부터 |
+| 스키마, 유스케이스, 웹 | P2부터. P1에서는 도메인과 아키텍처 규칙만 만들었다 |
 | 아웃박스 릴레이와 Kafka | 상호작용을 만들 때 |
 | 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
 | 글 목록 정렬과 페이지 크기 | P4에서 정한다 |
