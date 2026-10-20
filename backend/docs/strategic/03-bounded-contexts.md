@@ -7,7 +7,7 @@
 | 컨텍스트 | 영문 이름 | 책임 | 애그리거트 | 서브도메인 |
 |---|---|---|---|---|
 | 회원 | member | 가입, 인증, 계정 상태, 프로필 | Account (멤버: Credential, Role), Profile | 일반 |
-| 출판 | publishing | 블로그, 카테고리, 글의 작성과 발행 | Blog, Category, Post | 핵심 |
+| 출판 | publishing | 블로그, 카테고리, 글의 작성과 발행 | Blog, CategoryTree (멤버: Category), Post (멤버: PostSlug) | 핵심 |
 | 상호작용 | interaction | 블로그 구독, 댓글, 좋아요 | Subscription, Comment, Like | 지원 |
 | 미디어 | media | 이미지와 영상의 업로드, 정제, 변환, 정리 | Media, Video | 지원 |
 | 분석 | analytics | 방문 기록, 조회수, 통계 집계 | Visit, DailyStatistics | 지원 |
