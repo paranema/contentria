@@ -38,6 +38,8 @@ class SecurityConfiguration {
                 it.requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
                 // The home page's latest posts across blogs
                 it.requestMatchers(HttpMethod.GET, "/posts").permitAll()
+                // Like and subscriber counts, which anyone may see
+                it.requestMatchers(HttpMethod.GET, "/interactions/counts").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }

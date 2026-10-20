@@ -1,6 +1,7 @@
 package com.contentria.app.api
 
 import com.contentria.interaction.config.InteractionCoreConfiguration
+import com.contentria.interaction.config.InteractionWebConfiguration
 import com.contentria.member.config.MemberCoreConfiguration
 import com.contentria.member.config.MemberWebConfiguration
 import com.contentria.publishing.config.PublishingCoreConfiguration
@@ -18,6 +19,7 @@ import java.time.Clock
     PublishingCoreConfiguration::class,
     PublishingWebConfiguration::class,
     InteractionCoreConfiguration::class,
+    InteractionWebConfiguration::class,
 )
 class ApiApplication {
 

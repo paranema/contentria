@@ -46,7 +46,7 @@ class ClientsTest {
     @Test
     @DisplayName("블로그는 slug로 찾아 상호작용의 타입으로 바꾼다")
     fun `blogs by slug`() {
-        assertThat(publishing.blogBySlug("my-blog")).isEqualTo(TargetBlog(blog, owner))
+        assertThat(publishing.blogBySlug("my-blog")).isEqualTo(TargetBlog(blog, owner, "my-blog"))
         assertThat(publishing.blogBySlug("nowhere")).isNull()
     }
 

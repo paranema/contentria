@@ -27,5 +27,8 @@ class PublishingClient(
     fun publicPosts(postIds: Set<UUID>): Map<UUID, TargetPost> =
         posts.getPosts(postIds).values.filter { it.isPublic }.associate { it.postId to TargetPost(it.postId, it.blogId, it.ownerId) }
 
-    fun blogBySlug(slug: String): TargetBlog? = blogs.getBlogBySlug(slug)?.let { TargetBlog(it.blogId, it.ownerId) }
+    fun blogBySlug(slug: String): TargetBlog? = blogs.getBlogBySlug(slug)?.let { TargetBlog(it.blogId, it.ownerId, it.slug) }
+
+    fun blogs(blogIds: Set<UUID>): Map<UUID, TargetBlog> =
+        if (blogIds.isEmpty()) emptyMap() else blogs.getBlogs(blogIds).mapValues { (_, it) -> TargetBlog(it.blogId, it.ownerId, it.slug) }
 }

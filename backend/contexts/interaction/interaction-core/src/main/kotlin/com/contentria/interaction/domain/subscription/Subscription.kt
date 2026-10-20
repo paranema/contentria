@@ -6,6 +6,7 @@ import com.contentria.shared.persistence.AuditableEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.util.UUID
@@ -18,6 +19,10 @@ import java.util.UUID
  * creating one. One subscription per member and blog is the unique constraint's.
  */
 @Entity
+@NamedQuery(
+    name = "Subscription.countByBlogs",
+    query = "select s.blogId as id, count(s) as total from Subscription s where s.blogId in ?1 group by s.blogId",
+)
 @Table(
     name = "subscriptions",
     schema = InteractionSchema.NAME,
