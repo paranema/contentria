@@ -19,6 +19,7 @@ dependencies {
     runtimeOnly(project(":contexts:publishing:publishing-core"))
     runtimeOnly(project(":contexts:interaction:interaction-core"))
     runtimeOnly(project(":contexts:notification:notification-core"))
+    runtimeOnly(project(":contexts:media:media-core"))
 
     testImplementation("org.assertj:assertj-core")
     testImplementation("org.testcontainers:testcontainers-postgresql")

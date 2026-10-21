@@ -107,6 +107,9 @@
 | `media(uploader_id, created_at)` 인덱스 | 오늘 준비한 양 |
 | `media(status, created_at)`, `media(unattached_since)` 인덱스 | 정리 대상 찾기 |
 
+마이그레이션은 `media-core/src/main/resources/db/migration/media/V1__create_media_tables.sql`이다. `media_migrator` 롤이 스키마를 소유하고, `api_app`은 DML만 가진다.
+형식(`ck_media_format`)과 크기(`ck_media_size`, 1바이트~10MB)도 CHECK로 한 번 더 막는다. `media_attachments`는 이미지를 지우면 함께 지워진다(`ON DELETE CASCADE`).
+
 `post_id`는 출판의 글을 가리키지만 외래키를 두지 않는다. 컨텍스트를 넘는 외래키는 없다.
 미디어는 이벤트를 발행하지도 소비하지도 않으므로 `outbox_event`와 `inbox_event`가 없다.
 

@@ -13,6 +13,7 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.time.Instant
 import java.util.UUID
 
@@ -25,7 +26,11 @@ import java.util.UUID
  * by id only.
  */
 @Entity
-@Table(name = "media", schema = MediaSchema.NAME)
+@Table(
+    name = "media",
+    schema = MediaSchema.NAME,
+    uniqueConstraints = [UniqueConstraint(name = "uq_media_stored_key", columnNames = ["stored_key"])],
+)
 class Media private constructor(
     id: UUID,
     uploaderId: UUID,

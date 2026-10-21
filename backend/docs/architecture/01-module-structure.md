@@ -243,7 +243,7 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | `contexts/publishing` | P0~P5. 블로그, 카테고리, 글, 공개 조회, `PostPublished`·`PostDeleted` 아웃박스 |
 | `contexts/interaction` | I0~I6. 구독, 좋아요, 댓글, 수 조회, `CommentAdded` 아웃박스, `PostDeleted` 소비 |
 | `contexts/notification` | N0~N5. 새 글과 댓글 알림(`PostPublished`, `CommentAdded` 소비), 알림함 HTTP, 90일 보존 |
-| `contexts/media` | M1. 모듈 골격, 헥사고날 규칙, 이미지 도메인 |
+| `contexts/media` | M2. 모듈 골격, 헥사고날 규칙, 이미지 도메인, 스키마 |
 | `contexts/analytics` | 없음 |
 | `platform/messaging` | 있음. 이벤트 봉투, 아웃박스 기록, 릴레이, 인박스, 소비 실패 처리(재시도와 DLT) |
 | `platform/architecture-rules` | 있음. 헥사고날, 레이어드, app 규칙 |
