@@ -12,6 +12,7 @@ interface SubscriptionRepository : Repository<Subscription, UUID> {
     fun deleteBySubscriberIdAndBlogId(subscriberId: UUID, blogId: UUID)
     fun findBySubscriberIdOrderByCreatedAtDesc(subscriberId: UUID): List<Subscription>
 
-    /** [Subscription]'s named query of the same name. Blogs without subscribers are absent. */
+    /** [Subscription]'s named queries of the same names. Blogs without subscribers are absent. */
     fun countByBlogs(blogIds: Collection<UUID>): List<CountRow>
+    fun findSubscriberIds(blogId: UUID, after: UUID): List<UUID>
 }
