@@ -21,3 +21,17 @@ interface GetBlogReferencesQuery {
 }
 
 data class BlogReference(val blogId: UUID, val slug: String, val ownerId: UUID)
+
+/**
+ * Titles and counts for a screen that lists posts another context ranked, such as the blog
+ * dashboard's popular posts (docs/contexts/analytics/02-implementation.md, 조회 조합). Any status:
+ * the caller has checked that the reader owns the blog.
+ */
+interface GetPostOverviewsQuery {
+    /** An id publishing does not know, or a post deleted since, is missing from the result. */
+    fun getTitles(postIds: Set<UUID>): Map<UUID, PostTitle>
+
+    fun countPublished(blogId: UUID): Long
+}
+
+data class PostTitle(val postId: UUID, val blogId: UUID, val title: String, val slug: String)

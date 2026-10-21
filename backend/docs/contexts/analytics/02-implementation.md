@@ -56,6 +56,14 @@
 
 분석은 블로그 ID와 글 ID만 안다. 블로그가 누구의 것인지 확인하는 것은 조합하는 쪽이다.
 
+| 구현 | 위치 |
+|---|---|
+| 두 포트 | `application/statistics/TrafficQueryService`. 읽기 전용 트랜잭션 |
+| SQL | `infra/persistence/TrafficSql`. 오늘은 `visits`에서, 오늘 전은 `daily_statistics`에서만 읽어 한 날을 두 번 세지 않는다 |
+| 기간 | `trend(blogId, days)`, `popularPosts(blogId, days, limit)`는 오늘로 끝나는 날 수를 받는다. "오늘"은 분석의 한국 날짜다. 조합하는 쪽이 날짜를 계산하지 않는다 |
+
+인기 글은 그사이 지워진 글이 빠지면 모자랄 수 있어, 조합은 분석에 보여줄 수의 두 배를 묻고 출판에 제목이 있는 것만 남긴다.
+
 ## 조회 조합 (`apps/api`)
 
 블로그 대시보드는 `apps/api`에 처음으로 생기는 조회 조합이다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "예시: 글 상세를 조합한다").
@@ -64,7 +72,13 @@
 |---|---|
 | `GET /me/blogs/{slug}/dashboard?range=2weeks` | 출판에서 블로그와 소유자를 받아 요청자와 맞춰 본다. 분석에서 요약, 추이, 인기 글 ID를 받고, 출판에서 인기 글의 제목과 slug, 발행한 글 수를 받아 한 응답으로 묶는다 |
 
-출판의 `-api`에 새로 공개할 조회: 글 ID 묶음의 제목과 slug, 블로그의 발행한 글 수. 대시보드는 블로그 소유자만 보므로 공개하지 않은 글의 제목도 준다.
+출판의 `-api`에 `GetPostOverviewsQuery`(`getTitles(postIds)`, `countPublished(blogId)`)를 새로 공개했다. 대시보드는 블로그 소유자만 보므로 공개하지 않은 글의 제목도 준다. 기존 `GetPostReferencesQuery`에 더하지 않은 것은 그 포트를 구현한 다른 컨텍스트의 테스트 가짜를 깨지 않기 위해서다.
+
+| 구현 | 위치 |
+|---|---|
+| 조합 | `apps/api`의 `composition/dashboard/BlogDashboard`, `BlogDashboardController` |
+| 기간 | `range`는 `2weeks`(기본), `30days`, `90days`. 다른 값은 400 `INVALID_REQUEST` |
+| 남의 블로그 | 없는 블로그와 같은 404 `BLOG_NOT_FOUND` |
 
 ## HTTP (분석)
 

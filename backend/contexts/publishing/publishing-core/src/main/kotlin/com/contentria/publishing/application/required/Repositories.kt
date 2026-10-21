@@ -3,6 +3,7 @@ package com.contentria.publishing.application.required
 import com.contentria.publishing.domain.blog.Blog
 import com.contentria.publishing.domain.category.CategoryTree
 import com.contentria.publishing.domain.post.Post
+import com.contentria.publishing.domain.post.PostStatus
 import org.springframework.data.repository.Repository
 import java.time.Instant
 import java.util.UUID
@@ -40,6 +41,10 @@ interface PostRepository : Repository<Post, UUID> {
 
     /** [Post]'s named query of the same name, for publishing-api. */
     fun findReferences(postIds: Collection<UUID>): List<PostReferenceRow>
+
+    /** [Post]'s named query of the same name. Titles for screens other contexts rank posts on. */
+    fun findTitles(postIds: Collection<UUID>): List<PostTitleRow>
+    fun countByBlogIdAndStatus(blogId: UUID, status: PostStatus): Long
 
     /** The post [slug] leads to in the blog, whether it is the post's current slug or an old one. */
     fun findBySlugInBlog(blogId: UUID, slug: String): Post?

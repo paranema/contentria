@@ -85,6 +85,8 @@ class PostCommandService(
 
 ### 예시: 글 상세를 조합한다 (apps/api)
 
+실제로 처음 만든 조합은 블로그 대시보드다(`apps/api`의 `composition/dashboard`, [contexts/analytics/02-implementation.md](../contexts/analytics/02-implementation.md)의 "조회 조합"). 아래는 같은 방식의 글 상세 예시다.
+
 ```kotlin
 // apps/api: composition/PostDetailQuery.kt
 @Component
