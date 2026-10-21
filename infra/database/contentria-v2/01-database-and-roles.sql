@@ -8,6 +8,7 @@
 --     -v interaction_migrator_password=... \
 --     -v notification_migrator_password=... \
 --     -v media_migrator_password=... \
+--     -v analytics_migrator_password=... \
 --     -v api_app_password=... \
 --     -v batch_app_password=... \
 --     -f 01-database-and-roles.sql
@@ -20,6 +21,7 @@ CREATE ROLE publishing_migrator LOGIN PASSWORD :'publishing_migrator_password';
 CREATE ROLE interaction_migrator LOGIN PASSWORD :'interaction_migrator_password';
 CREATE ROLE notification_migrator LOGIN PASSWORD :'notification_migrator_password';
 CREATE ROLE media_migrator LOGIN PASSWORD :'media_migrator_password';
+CREATE ROLE analytics_migrator LOGIN PASSWORD :'analytics_migrator_password';
 
 -- 런타임 롤: 프로세스마다 하나. DML만 가진다.
 CREATE ROLE api_app LOGIN PASSWORD :'api_app_password';

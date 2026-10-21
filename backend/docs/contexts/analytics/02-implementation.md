@@ -84,6 +84,9 @@ IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전
 | `daily_statistics(blog_id, stat_date)` 인덱스 | 대시보드의 추이와 누적 |
 | CHECK 수는 0 이상 | |
 
+마이그레이션은 `analytics-core/src/main/resources/db/migration/analytics/V1__create_analytics_tables.sql`이다. `analytics_migrator`가 스키마를 소유하고, `api_app`(방문 기록, 조회)과 `batch_app`(집계, 지우기)은 DML만 가진다.
+방문자 키는 CHECK(`^[0-9a-f]{64}$`)로도 막는다. 일별 통계는 엔티티가 없어 매핑 검사 대신 마이그레이션 테스트가 제약과 `ON CONFLICT` 갱신을 확인한다.
+
 외래키는 없다. 블로그와 글은 출판의 것이다. 분석은 이벤트를 주고받지 않으므로 아웃박스와 인박스가 없다.
 
 ## 배치
