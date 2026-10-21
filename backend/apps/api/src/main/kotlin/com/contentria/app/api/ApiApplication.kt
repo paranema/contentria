@@ -1,5 +1,7 @@
 package com.contentria.app.api
 
+import com.contentria.analytics.config.AnalyticsCoreConfiguration
+import com.contentria.analytics.config.AnalyticsWebConfiguration
 import com.contentria.interaction.config.InteractionCoreConfiguration
 import com.contentria.interaction.config.InteractionMessagingConfiguration
 import com.contentria.interaction.config.InteractionWebConfiguration
@@ -35,6 +37,8 @@ import java.time.Clock
     NotificationSchedulingConfiguration::class,
     MediaCoreConfiguration::class,
     MediaWebConfiguration::class,
+    AnalyticsCoreConfiguration::class,
+    AnalyticsWebConfiguration::class,
     MessagingConfiguration::class,
 )
 class ApiApplication {

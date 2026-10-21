@@ -27,7 +27,7 @@ object ApiTestEnvironment {
     /** One Flyway per context, as the migrator runs them. */
     private val postgres = PostgreSQLContainer("postgres:17").apply {
         start()
-        listOf("member", "publishing", "interaction", "notification", "media").forEach { context ->
+        listOf("member", "publishing", "interaction", "notification", "media", "analytics").forEach { context ->
             Flyway.configure()
                 .dataSource(jdbcUrl, username, password)
                 .schemas(context)
@@ -73,6 +73,8 @@ object ApiTestEnvironment {
     /** Topics are created as they are first used, as in local development. */
     val kafka = KafkaContainer("apache/kafka:4.1.0").apply { start() }
 
+    private val visitorKeySecret = UUID.randomUUID().toString() + UUID.randomUUID()
+
     private val accessTokenSecret = Base64.getEncoder().encodeToString(ByteArray(32).also(SecureRandom()::nextBytes))
 
     /** One row of [sql] as column name to value, or null. For checking what an API call left behind. */
@@ -104,6 +106,8 @@ object ApiTestEnvironment {
 
         registry.add("spring.kafka.bootstrap-servers") { kafka.bootstrapServers }
         registry.add("contentria.messaging.relay.interval") { "100ms" }
+
+        registry.add("contentria.analytics.visitor-key-secret") { visitorKeySecret }
 
         registry.add("contentria.media.public-base-url") { mediaPublicBaseUrl }
         registry.add("contentria.media.storage.endpoint") { minio.s3URL }

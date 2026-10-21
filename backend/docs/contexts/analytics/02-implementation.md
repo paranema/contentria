@@ -72,6 +72,14 @@
 |---|---|
 | `POST /analytics/visits` `{blogId, postId?, referrer?}` | 204. 버린 방문도 204. 로그인하지 않아도 된다 |
 
+| 구성 | 위치 |
+|---|---|
+| 유스케이스 | `application/VisitRecorder`. 출판에 묻고 나서 짧은 트랜잭션에서 30분 확인과 저장을 한다 |
+| 방문자 키 | `application/VisitorKeys`. 비밀 키는 32자 이상이고 기본값이 없다(`ANALYTICS_VISITOR_KEY_SECRET`). 날짜, IP, User-Agent 사이에 NUL을 넣어 경계를 옮긴 입력이 같은 키가 되지 않게 한다 |
+| 30분 확인 | 글 방문과 블로그 홈 방문을 두 파생 쿼리로 나눈다. 글 ID가 비었다는 것은 "모든 글"이 아니라 "홈"이다 |
+| 출판 번역 계층 | `infra/client/PublishingClient`. 빈 이름은 `analyticsPublishingClient`다. 상호작용에도 같은 이름의 클래스가 있어, 한 프로세스에서 기본 빈 이름이 겹친다 |
+| 웹 | `presentation/web/VisitController`. 로그인한 독자면 `@AuthenticationPrincipal`로 계정 ID를 받고, 아니면 비어 있다 |
+
 IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전달 헤더를 처리해 원격 주소를 바로잡는다(`server.forward-headers-strategy`). 분석은 헤더를 직접 읽지 않는다.
 
 ## DB 제약
