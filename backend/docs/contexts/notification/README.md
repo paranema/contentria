@@ -7,7 +7,7 @@
 | `Notification` | 없음 | 수신자 본인만 |
 
 **내부 구조: 레이어드.** 이벤트를 받아 저장하고 보여주는 흐름이다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/notification/`(`notification-api`, `notification-core`)이다. 지금은 모듈 골격, 아키텍처 규칙, 도메인이 있다(N1).
+코드 위치는 `backend/contexts/notification/`(`notification-api`, `notification-core`)이다. 지금은 모듈 골격, 아키텍처 규칙, 도메인, 스키마가 있다(N2).
 
 ## 문서 목록
 

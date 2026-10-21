@@ -51,6 +51,9 @@
 | CHECK 종류별 필드 | 새 글은 댓글 ID와 쓴 사람 ID가 없고, 댓글 알림은 둘 다 있다 |
 | `inbox_event` | 상호작용과 같은 형태. `(event_id, consumer)` 기본키 |
 
+마이그레이션은 `notification-core/src/main/resources/db/migration/notification/V1__create_notification_tables.sql`이다. `notification_migrator` 롤이 스키마를 소유하고, `api_app`은 DML만 가진다.
+매핑 일치와 제약은 `infra/persistence`의 두 테스트가 실제 PostgreSQL과 Hibernate로 확인한다.
+
 알림은 이벤트를 발행하지 않으므로 `outbox_event`가 없다([architecture/04-persistence-conventions.md](../../architecture/04-persistence-conventions.md)).
 외래키는 없다. 알림이 참조하는 것은 모두 다른 컨텍스트에 있다.
 

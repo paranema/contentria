@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.time.Instant
 import java.util.UUID
 
@@ -19,7 +20,11 @@ import java.util.UUID
  * renamed post or member shows as it is now, and a post nobody can see drops out (01-rules, 왜).
  */
 @Entity
-@Table(name = "notifications", schema = NotificationSchema.NAME)
+@Table(
+    name = "notifications",
+    schema = NotificationSchema.NAME,
+    uniqueConstraints = [UniqueConstraint(name = "uq_notifications_event_recipient", columnNames = ["source_event_id", "recipient_id"])],
+)
 class Notification private constructor(
     id: UUID,
     recipientId: UUID,
