@@ -1,5 +1,7 @@
 package com.contentria.app.batch
 
+import com.contentria.analytics.config.AnalyticsBatchConfiguration
+import com.contentria.analytics.config.AnalyticsCoreConfiguration
 import com.contentria.media.config.MediaBatchConfiguration
 import com.contentria.media.config.MediaCoreConfiguration
 import org.springframework.boot.SpringApplication
@@ -12,13 +14,16 @@ import java.time.Clock
 import kotlin.system.exitProcess
 
 /**
- * One-shot jobs (docs/architecture/01-module-structure.md, 배포 단위). A schedule starts the process
- * with the job's name (`--spring.batch.job.name=...`); it runs that job and exits with its outcome.
+ * One-shot jobs (docs/architecture/01-module-structure.md, 배포 단위). There is more than one job, so
+ * a schedule must start the process with the job's name (`--spring.batch.job.name=...` or
+ * `BATCH_JOB_NAME`); it runs that job and exits with its outcome.
  */
 @SpringBootApplication
 @Import(
     MediaCoreConfiguration::class,
     MediaBatchConfiguration::class,
+    AnalyticsCoreConfiguration::class,
+    AnalyticsBatchConfiguration::class,
 )
 class BatchApplication {
 

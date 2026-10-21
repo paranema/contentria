@@ -1,4 +1,4 @@
-package com.contentria.analytics.application
+package com.contentria.analytics.application.visit
 
 import com.contentria.analytics.domain.visit.Visit
 import com.contentria.analytics.domain.visit.VisitRepository

@@ -8,7 +8,7 @@
 | `DailyStatistics` (하루 집계) | 없음 | 블로그 소유자. 글의 조회수는 누구나 |
 
 **내부 구조: 레이어드.** 쓰기는 기록 추가뿐이고 나머지는 집계 쿼리다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/analytics/`(`analytics-api`, `analytics-core`)다. 지금은 방문 도메인, 스키마, 방문 기록(출판 확인, 방문자 키, 30분 중복 제외, HTTP)이 있다(A3).
+코드 위치는 `backend/contexts/analytics/`(`analytics-api`, `analytics-core`)다. 지금은 방문 기록(출판 확인, 방문자 키, 30분 중복 제외, HTTP)과 일별 집계 잡이 있다(A4). 대시보드 조회와 조합은 A5다.
 
 ## 문서 목록
 

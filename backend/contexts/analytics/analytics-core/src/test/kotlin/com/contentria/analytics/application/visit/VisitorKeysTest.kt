@@ -1,4 +1,4 @@
-package com.contentria.analytics.application
+package com.contentria.analytics.application.visit
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
