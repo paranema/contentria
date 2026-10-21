@@ -24,11 +24,17 @@ class SchemaMappingTest {
     }
 
     @Test
-    @DisplayName("외래키는 연결에서 이미지로 가는 하나뿐이다. 글은 다른 컨텍스트라 외래키가 없다")
-    fun `the only foreign key stays inside the aggregate`(@TempDir dir: Path) {
-        val foreignKeys = generateSchema(dir.resolve("schema.sql")).lines().filter { "foreign key" in it }
+    @DisplayName("외래키는 연결에서 이미지로, 연결에서 영상으로 가는 둘뿐이다. 글은 다른 컨텍스트라 외래키가 없다")
+    fun `foreign keys stay inside the aggregates`(@TempDir dir: Path) {
+        val script = generateSchema(dir.resolve("schema.sql"))
+        // Hibernate writes each foreign key as "alter table ... add constraint ... foreign key ... references ..."
+        val foreignKeys = Regex("alter table (?:if exists )?([\\w.]+)[^;]*?foreign key[^;]*?references ([\\w.]+)").findAll(script)
+            .map { it.groupValues[1] to it.groupValues[2] }.toList()
 
-        assertThat(foreignKeys).singleElement().asString().contains("media.media_attachments", "references media.media")
+        assertThat(foreignKeys).containsExactlyInAnyOrder(
+            "media.media_attachments" to "media.media",
+            "media.video_attachments" to "media.videos",
+        )
     }
 
     private fun generateSchema(target: Path): String {
