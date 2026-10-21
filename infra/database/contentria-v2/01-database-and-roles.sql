@@ -11,6 +11,7 @@
 --     -v analytics_migrator_password=... \
 --     -v api_app_password=... \
 --     -v batch_app_password=... \
+--     -v worker_app_password=... \
 --     -f 01-database-and-roles.sql
 
 CREATE DATABASE contentria_v2;
@@ -26,3 +27,4 @@ CREATE ROLE analytics_migrator LOGIN PASSWORD :'analytics_migrator_password';
 -- 런타임 롤: 프로세스마다 하나. DML만 가진다.
 CREATE ROLE api_app LOGIN PASSWORD :'api_app_password';
 CREATE ROLE batch_app LOGIN PASSWORD :'batch_app_password';
+CREATE ROLE worker_app LOGIN PASSWORD :'worker_app_password';

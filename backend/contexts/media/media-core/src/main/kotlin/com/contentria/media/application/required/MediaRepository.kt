@@ -29,4 +29,7 @@ interface VideoRepository : Repository<Video, UUID> {
     /** [Video]'s named queries of the same names. */
     fun findAttachedTo(postId: UUID): List<Video>
     fun findAttachedToAny(postIds: Collection<UUID>): List<Video>
+
+    /** The video a queue notice is about: the bucket tells the original's key. */
+    fun findByRawKey(rawKey: String): Video?
 }

@@ -1,0 +1,40 @@
+spring:
+  main:
+    web-application-type: none
+
+  application:
+    name: contentria-worker
+
+  # worker_app has DML on the media schema only, and no DDL.
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+    username: ${DATABASE_USERNAME:worker_app}
+    password: ${DATABASE_PASSWORD}
+    # One job at a time: the pool only needs a couple of connections.
+    hikari:
+      maximum-pool-size: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+contentria:
+  media:
+    public-base-url: ${MEDIA_PUBLIC_BASE_URL}
+    storage:
+      endpoint: ${R2_ENDPOINT}
+      bucket: ${R2_BUCKET_NAME}
+      region: auto
+      access-key-id: ${R2_ACCESS_KEY_ID}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY}
+    # docs/operations/cloudflare-video-pipeline.md, 3
+    worker:
+      poll-interval: ${WORKER_POLL_INTERVAL:5s}
+      queue:
+        account-id: ${CLOUDFLARE_ACCOUNT_ID}
+        queue-id: ${CF_QUEUE_ID}
+        api-token: ${CF_API_TOKEN}
+      transcode:
+        ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
+        ffprobe-path: ${FFPROBE_PATH:ffprobe}

@@ -55,6 +55,9 @@ class ImageCleanupServiceTest {
             check(key !in failingKeys) { "storage refused" }
             files -= key
         }
+        override fun download(key: String, target: java.nio.file.Path) = error("not used")
+        override fun upload(key: String, source: java.nio.file.Path, contentType: String) = error("not used")
+        override fun deletePrefix(prefix: String) { files.removeIf { it.startsWith(prefix) } }
     }
 
     /** Commits and rolls back nothing; the rows above are the state. */

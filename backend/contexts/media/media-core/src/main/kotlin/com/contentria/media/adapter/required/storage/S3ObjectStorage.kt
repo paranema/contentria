@@ -5,13 +5,20 @@ import com.contentria.media.config.MediaProperties
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.core.sync.ResponseTransformer
+import software.amazon.awssdk.services.s3.model.Delete
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Duration
 
 /**
@@ -47,5 +54,24 @@ class S3ObjectStorage(
 
     override fun delete(key: String) {
         s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build())
+    }
+
+    override fun download(key: String, target: Path) {
+        Files.deleteIfExists(target)
+        s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build(), ResponseTransformer.toFile(target))
+    }
+
+    override fun upload(key: String, source: Path, contentType: String) {
+        s3.putObject(PutObjectRequest.builder().bucket(bucket).key(key).contentType(contentType).build(), RequestBody.fromFile(source))
+    }
+
+    /** A thousand at a time, the most one DeleteObjects takes. */
+    override fun deletePrefix(prefix: String) {
+        s3.listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build()).forEach { page ->
+            val keys = page.contents().map { ObjectIdentifier.builder().key(it.key()).build() }
+            if (keys.isNotEmpty()) {
+                s3.deleteObjects(DeleteObjectsRequest.builder().bucket(bucket).delete(Delete.builder().objects(keys).build()).build())
+            }
+        }
     }
 }
