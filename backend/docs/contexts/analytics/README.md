@@ -8,7 +8,7 @@
 | `DailyStatistics` (하루 집계) | 없음 | 블로그 소유자. 글의 조회수는 누구나 |
 
 **내부 구조: 레이어드.** 쓰기는 기록 추가뿐이고 나머지는 집계 쿼리다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/analytics/`(`analytics-api`, `analytics-core`)다. 지금은 모듈 골격, 아키텍처 규칙, 방문 도메인이 있다(A1).
+코드 위치는 `backend/contexts/analytics/`(`analytics-api`, `analytics-core`)다. 지금은 모듈 골격, 아키텍처 규칙, 방문 도메인, 스키마가 있다(A2).
 
 ## 문서 목록
 

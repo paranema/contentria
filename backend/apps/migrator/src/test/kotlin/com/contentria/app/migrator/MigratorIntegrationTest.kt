@@ -192,6 +192,27 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("api_app은 방문을 기록하고, batch_app은 일별 통계를 집계하고 지난 방문을 지운다")
+    fun `the runtime roles have DML on analytics tables`() {
+        val visit = UUID.randomUUID()
+        connect("api_app", APP_PASSWORD).use { connection ->
+            connection.prepareStatement("INSERT INTO analytics.visits (id, blog_id, visitor_key, visited_at) VALUES (?, ?, ?, now())").use {
+                it.setObject(1, visit)
+                it.setObject(2, UUID.randomUUID())
+                it.setString(3, "0123456789abcdef".repeat(4))
+                it.executeUpdate()
+            }
+        }
+        connect("batch_app", APP_PASSWORD).use { connection ->
+            connection.prepareStatement(
+                "INSERT INTO analytics.daily_statistics (blog_id, stat_date, visitors, views, aggregated_at) VALUES (?, CURRENT_DATE, 1, 1, now())",
+            ).use { it.setObject(1, UUID.randomUUID()); it.executeUpdate() }
+            connection.prepareStatement("DELETE FROM analytics.visits WHERE id = ?")
+                .use { it.setObject(1, visit); assertThat(it.executeUpdate()).isEqualTo(1) }
+        }
+    }
+
+    @Test
     @DisplayName("api_app은 테이블을 만들거나 바꿀 수 없다")
     fun `the runtime role has no DDL`() {
         connect("api_app", APP_PASSWORD).use { connection ->
@@ -231,6 +252,7 @@ class MigratorIntegrationTest {
             "-v", "interaction_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "notification_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "media_migrator_password=$MIGRATOR_PASSWORD",
+            "-v", "analytics_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
             "-v", "batch_app_password=$APP_PASSWORD",
             "-f", target,

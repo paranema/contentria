@@ -5,7 +5,7 @@
 
 REVOKE ALL ON DATABASE contentria_v2 FROM PUBLIC;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-GRANT CONNECT ON DATABASE contentria_v2 TO member_migrator, publishing_migrator, interaction_migrator, notification_migrator, media_migrator, api_app, batch_app;
+GRANT CONNECT ON DATABASE contentria_v2 TO member_migrator, publishing_migrator, interaction_migrator, notification_migrator, media_migrator, analytics_migrator, api_app, batch_app;
 
 -- ------------------------------------------------------------------ member
 -- member_migrator가 스키마를 소유하므로 그 안에서만 DDL을 실행할 수 있다.
@@ -46,4 +46,14 @@ ALTER DEFAULT PRIVILEGES FOR ROLE media_migrator IN SCHEMA media
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app;
 -- batch: 이미지 정리 잡
 ALTER DEFAULT PRIVILEGES FOR ROLE media_migrator IN SCHEMA media
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO batch_app;
+
+-- ------------------------------------------------------------------ analytics
+CREATE SCHEMA analytics AUTHORIZATION analytics_migrator;
+
+-- api: 방문 기록과 대시보드 조회. batch: 일별 집계와 지난 방문 지우기
+GRANT USAGE ON SCHEMA analytics TO api_app, batch_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE analytics_migrator IN SCHEMA analytics
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE analytics_migrator IN SCHEMA analytics
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO batch_app;

@@ -244,7 +244,7 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | `contexts/interaction` | I0~I6. 구독, 좋아요, 댓글, 수 조회, `CommentAdded` 아웃박스, `PostDeleted` 소비 |
 | `contexts/notification` | N0~N5. 새 글과 댓글 알림(`PostPublished`, `CommentAdded` 소비), 알림함 HTTP, 90일 보존 |
 | `contexts/media` | M0~M5. 이미지 업로드 준비·완료·지우기 HTTP, R2(S3 API) 어댑터, 출판의 글과 이미지 연결, 정리 잡. 영상은 다음 묶음 |
-| `contexts/analytics` | A1. 모듈 골격, 레이어드 규칙, 방문 도메인 |
+| `contexts/analytics` | A2. 모듈 골격, 레이어드 규칙, 방문 도메인, 스키마 |
 | `platform/messaging` | 있음. 이벤트 봉투, 아웃박스 기록, 릴레이, 인박스, 소비 실패 처리(재시도와 DLT) |
 | `platform/architecture-rules` | 있음. 헥사고날, 레이어드, app 규칙 |
 | `apps/api` | 있음. member, publishing, interaction, notification, media 조립, 요청 인증(Spring Security, 액세스 토큰 필터), 아웃박스 릴레이 |

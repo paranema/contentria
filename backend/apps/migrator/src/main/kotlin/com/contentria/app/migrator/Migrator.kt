@@ -52,6 +52,7 @@ class Migrator(
             ContextSchema("interaction"),
             ContextSchema("notification"),
             ContextSchema("media"),
+            ContextSchema("analytics"),
         )
     }
 }
