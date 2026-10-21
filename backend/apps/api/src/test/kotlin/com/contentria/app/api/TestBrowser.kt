@@ -19,6 +19,8 @@ class TestBrowser(private val port: Int) {
     fun patch(path: String, json: String) = send(request(path).method("PATCH", HttpRequest.BodyPublishers.ofString(json)))
     fun delete(path: String) = send(request(path).DELETE())
     fun send(method: String, path: String, json: String) = send(request(path).method(method, HttpRequest.BodyPublishers.ofString(json)))
+    fun post(path: String, json: String, headers: Map<String, String>) =
+        send(request(path).apply { headers.forEach { (name, value) -> header(name, value) } }.POST(HttpRequest.BodyPublishers.ofString(json)))
     fun postWithCookie(path: String, cookie: String) =
         send(request(path).header("Cookie", cookie).POST(HttpRequest.BodyPublishers.noBody()))
 

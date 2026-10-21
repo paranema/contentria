@@ -59,6 +59,9 @@ logging:
     org.hibernate.SQL: DEBUG
 
 contentria:
+  # Readers' visits (docs/contexts/analytics). The secret keys the visitor hash; no default.
+  analytics:
+    visitor-key-secret: ${ANALYTICS_VISITOR_KEY_SECRET}
   # Images for post bodies (docs/contexts/media). The bucket is Cloudflare R2 over its S3 API; the
   # browser puts files to it directly, and the public domain serves them.
   media:

@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":contexts:interaction:interaction-core"))
     implementation(project(":contexts:notification:notification-core"))
     implementation(project(":contexts:media:media-core"))
+    implementation(project(":contexts:analytics:analytics-core"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")

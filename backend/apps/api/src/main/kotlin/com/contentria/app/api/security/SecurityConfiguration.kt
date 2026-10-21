@@ -42,6 +42,8 @@ class SecurityConfiguration {
                 it.requestMatchers(HttpMethod.GET, "/interactions/counts").permitAll()
                 // A published post's comments
                 it.requestMatchers(HttpMethod.GET, "/posts/*/comments").permitAll()
+                // A reader opening a blog or a post, signed in or not
+                it.requestMatchers(HttpMethod.POST, "/analytics/visits").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
