@@ -7,6 +7,7 @@ dependencies {
     implementation(project(":contexts:publishing:publishing-core"))
     implementation(project(":contexts:interaction:interaction-core"))
     implementation(project(":contexts:notification:notification-core"))
+    implementation(project(":contexts:media:media-core"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -24,6 +25,10 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-kafka")
+    // 미디어의 저장소: R2와 같은 S3 API를 MinIO로 띄운다. 버킷은 테스트가 S3 API로 만든다
+    testImplementation("org.testcontainers:testcontainers-minio")
+    testImplementation(platform(libs.aws.bom))
+    testImplementation(libs.aws.s3)
     testImplementation("org.flywaydb:flyway-core")
     testImplementation("org.flywaydb:flyway-database-postgresql")
 }

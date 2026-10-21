@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
@@ -26,6 +27,11 @@ import java.util.UUID
  * by id only.
  */
 @Entity
+// Deleted images (refused, removed by their uploader, cleaned up) no longer count, as in the legacy.
+@NamedQuery(
+    name = "Media.sumSizePreparedSince",
+    query = "select coalesce(sum(m.sizeBytes), 0) from Media m where m.uploaderId = ?1 and m.createdAt >= ?2",
+)
 @Table(
     name = "media",
     schema = MediaSchema.NAME,
@@ -79,6 +85,8 @@ class Media private constructor(
     val attachedPostIds: Set<UUID> get() = postIds.toSet()
 
     fun isUploadedBy(accountId: UUID): Boolean = uploaderId == accountId
+
+    fun isReady(): Boolean = status == MediaStatus.READY
 
     /** 흐름 2의 2, 6번. Returns false when it was complete already, and changes nothing then. */
     fun complete(at: Instant): Boolean {

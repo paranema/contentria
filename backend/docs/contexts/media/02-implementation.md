@@ -73,6 +73,37 @@
 
 저장소 어댑터는 S3 호환 API만 쓴다. 테스트는 MinIO 컨테이너로 같은 어댑터를 검증한다.
 
+## HTTP
+
+| 요청 | 응답 | 01 |
+|---|---|---|
+| `POST /media/uploads` `{contentType, sizeBytes, fileName}` | 201. 이미지 ID, 업로드 주소, 이미지 주소, 업로드 주소의 만료 시각 | 흐름 1 |
+| `PUT {업로드 주소}` (브라우저가 저장소로) | 저장소의 응답. 선언한 형식(`Content-Type`)과 크기가 아니면 저장소가 거부한다 | 흐름 1 |
+| `POST /media/{id}/complete` | 200과 이미지(주소, 형식, 크기, 파일 이름). 이미 완료했어도 200 | 흐름 2 |
+| `DELETE /media/{id}` | 204 | 흐름 5 |
+
+모두 로그인이 필요하다.
+
+| 실패 | 응답 |
+|---|---|
+| 허용하지 않은 형식 | 400 `UNSUPPORTED_IMAGE_FORMAT` |
+| 10MB를 넘거나 0바이트 | 400 `IMAGE_TOO_LARGE` |
+| 파일 이름이 비었거나 255자를 넘음 | 400 `INVALID_FILE_NAME` |
+| 오늘 100MB를 넘음 | 429 `DAILY_UPLOAD_LIMIT` |
+| 내 이미지가 아니거나 없음 | 404 `IMAGE_NOT_FOUND` |
+| 저장소에 아직 파일이 없음 | 409 `UPLOAD_NOT_FINISHED` |
+| 파일의 크기나 시그니처가 선언과 다름, JPEG를 읽을 수 없음 | 400 `IMAGE_CONTENT_MISMATCH`. 기록과 파일을 지운다 |
+| 글에 연결된 이미지를 지우려 함 | 409 `IMAGE_IN_USE` |
+
+| 구현에서 정한 것 | 내용 |
+|---|---|
+| 저장소 호출과 트랜잭션 | 저장소는 트랜잭션 밖에서 부른다. 완료는 파일을 읽고 검증한 뒤 짧은 트랜잭션에서 상태만 바꾼다 |
+| 지우는 순서 | 파일을 먼저, 기록을 나중에 지운다. 기록이 먼저 사라지면 남은 파일을 찾을 길이 없다 |
+| 하루 양의 동시성 | 같은 순간에 준비한 두 업로드가 함께 한도를 넘을 수 있다. 한도는 남용을 막는 장치이고 장부가 아니다 |
+| JPEG를 읽지 못함 | JDK ImageIO가 읽지 못하는 JPEG(CMYK 등)는 형식이 다른 파일처럼 거부한다 |
+| 설정 | `contentria.media.public-base-url`, `upload-url-ttl`(10분), `storage.{endpoint, bucket, region, access-key-id, secret-access-key, path-style}`. R2의 region은 `auto` |
+| 테스트 저장소 | MinIO 컨테이너. MinIO가 Docker Hub에 이미지를 더 올리지 않아 Chainguard의 `cgr.dev/chainguard/minio:latest`를 쓴다. 무료 공개본은 `latest`만 있어 버전을 고정하지 못한다 |
+
 ## 다른 컨텍스트와의 관계
 
 미디어는 다른 컨텍스트를 호출하지 않는다. 출판이 미디어를 호출한다([strategic/04-context-map.md](../../strategic/04-context-map.md)의 "출판과 미디어의 방향").

@@ -9,6 +9,15 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // adapter/required/storage: S3 API로 R2를 쓴다
+    implementation(platform(libs.aws.bom))
+    implementation(libs.aws.s3)
+
+    // adapter/provided/web
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("tools.jackson.module:jackson-module-kotlin")
+    implementation("org.springframework.security:spring-security-core")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(project(":platform:architecture-rules"))
     testImplementation(libs.archunit.junit5)
