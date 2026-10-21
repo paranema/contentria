@@ -28,7 +28,7 @@
 | publishing | member, media | 없음 |
 | interaction | member, publishing | publishing |
 | media | 없음 | 없음 |
-| analytics | 없음 | 없음 |
+| analytics | publishing | 없음 |
 | notification | interaction | publishing, interaction |
 
 이벤트를 소비하려면 발행 측 `-api`의 이벤트 타입이 필요하다. 그래서 소비만 하는 경우에도 상대 `-api`를 의존성에 넣는다.
