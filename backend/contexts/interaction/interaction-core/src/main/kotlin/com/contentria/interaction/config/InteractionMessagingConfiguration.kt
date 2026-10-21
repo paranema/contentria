@@ -1,6 +1,7 @@
 package com.contentria.interaction.config
 
 import com.contentria.interaction.domain.InteractionSchema
+import com.contentria.interaction.presentation.messaging.InteractionInbox
 import com.contentria.platform.messaging.Inbox
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -14,7 +15,7 @@ import java.time.Clock
 @ComponentScan("com.contentria.interaction.presentation.messaging")
 class InteractionMessagingConfiguration {
 
-    @Bean
+    @Bean(InteractionInbox.BEAN)
     fun interactionInbox(jdbc: JdbcTemplate, transactions: TransactionTemplate, clock: Clock) =
         Inbox(jdbc, transactions, InteractionSchema.NAME, clock)
 }

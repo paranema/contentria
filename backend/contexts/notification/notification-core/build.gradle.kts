@@ -7,8 +7,12 @@ dependencies {
     api(project(":contexts:notification:notification-api"))
     implementation(project(":shared-kernel"))
 
-    // infra/client만 쓴다 (ArchUnit이 강제)
+    // infra/client와 presentation/messaging만 쓴다 (ArchUnit이 강제). 출판은 이벤트만 받는다
     implementation(project(":contexts:interaction:interaction-api"))
+    implementation(project(":contexts:publishing:publishing-api"))
+
+    // presentation/messaging: 소비자와 인박스
+    implementation(project(":platform:messaging"))
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 

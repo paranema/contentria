@@ -200,7 +200,7 @@ fun publish(command: PublishPostCommand) {
 |---|---|---|
 | 위치 | 소비 컨텍스트의 진입점. 헥사고날은 `adapter/provided/messaging`, 레이어드는 `presentation/messaging` | |
 | 소비자 그룹 | `<소비 컨텍스트>.<소비자 이름>` | `interaction.post-deleted` |
-| 중복 제거 | 처리와 같은 트랜잭션에서 소비 컨텍스트 스키마의 `inbox_event`에 `(eventId, 소비자)`를 기록한다. 이미 있으면 처리하지 않고 넘어간다 | |
+| 중복 제거 | 처리와 같은 트랜잭션에서 소비 컨텍스트 스키마의 `inbox_event`에 `(eventId, 소비자)`를 기록한다. 이미 있으면 처리하지 않고 넘어간다. 인박스는 컨텍스트마다 이름 있는 빈(`<컨텍스트>Inbox`)이고, 소비자는 이름으로 받는다 | `interactionInbox`, `notificationInbox` |
 | 오프셋 커밋 | 처리 트랜잭션이 커밋된 뒤 | |
 | 실패 | 1초부터 두 배씩 간격을 늘려 1분까지 재시도한 뒤 DLT(dead letter topic)로 보낸다. 메시지 하나 때문에 파티션이 막히지 않게 한다. 봉투로 읽히지 않는 메시지는 재시도하지 않고 바로 보낸다 | `publishing.post-dlt` |
 | 거르기 | 같은 토픽의 다른 이벤트 종류, 모르는 버전은 `type`과 `version`을 보고 무시한다. 버전을 바꾸는 동안 두 버전이 함께 오기 때문이다 | |
@@ -209,7 +209,7 @@ fun publish(command: PublishPostCommand) {
 // interaction-core: presentation/messaging/PostDeletedConsumer.kt (레이어드)
 @Component
 class PostDeletedConsumer(
-    private val inbox: Inbox,                                   // platform/messaging
+    @Qualifier(InteractionInbox.BEAN) private val inbox: Inbox, // platform/messaging. 컨텍스트마다 하나
     private val cleanup: PostCleanupService,
 ) {
     @KafkaListener(topics = [PublishingTopics.POST], groupId = CONSUMER)

@@ -1,14 +1,9 @@
 package com.contentria.app.api
 
+import com.contentria.app.api.TestKafka.eventually
+import com.contentria.app.api.TestKafka.produce
+import com.contentria.app.api.TestKafka.read
 import com.contentria.platform.messaging.EventEnvelope
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.kafka.common.serialization.StringSerializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -18,7 +13,6 @@ import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import java.time.Duration
 import java.util.UUID
 
 /**
@@ -150,39 +144,7 @@ class InteractionEventsIntegrationTest {
     private fun inboxed(eventId: UUID): Boolean =
         ApiTestEnvironment.row("select 1 as found from interaction.inbox_event where event_id = ?", eventId) != null
 
-    private fun eventually(condition: () -> Boolean) {
-        val deadline = System.nanoTime() + TIMEOUT.toNanos()
-        while (!condition()) {
-            check(System.nanoTime() < deadline) { "Not within $TIMEOUT" }
-            Thread.sleep(100)
-        }
-    }
-
-    /** The value of the first message on [topic], read from its start, that [matches]. */
-    private fun read(topic: String, matches: (ConsumerRecord<String, String>) -> Boolean): String {
-        val config = mapOf<String, Any>(
-            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to ApiTestEnvironment.kafka.bootstrapServers,
-            ConsumerConfig.GROUP_ID_CONFIG to "test-${UUID.randomUUID()}",
-            ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "earliest",
-        )
-        KafkaConsumer(config, StringDeserializer(), StringDeserializer()).use { consumer ->
-            consumer.subscribe(listOf(topic))
-            val deadline = System.nanoTime() + TIMEOUT.toNanos()
-            while (System.nanoTime() < deadline) {
-                consumer.poll(Duration.ofMillis(500)).firstOrNull(matches)?.let { return it.value() }
-            }
-        }
-        error("No such message on $topic within $TIMEOUT")
-    }
-
-    private fun produce(topic: String, key: String, value: String) {
-        val config = mapOf<String, Any>(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to ApiTestEnvironment.kafka.bootstrapServers)
-        KafkaProducer(config, StringSerializer(), StringSerializer()).use { it.send(ProducerRecord(topic, key, value)).get() }
-    }
-
     companion object {
-        private val TIMEOUT: Duration = Duration.ofSeconds(30)
-
         @JvmStatic
         @DynamicPropertySource
         fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)

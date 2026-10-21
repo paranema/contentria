@@ -19,7 +19,7 @@ object ApiTestEnvironment {
     /** One Flyway per context, as the migrator runs them. */
     private val postgres = PostgreSQLContainer("postgres:17").apply {
         start()
-        listOf("member", "publishing", "interaction").forEach { context ->
+        listOf("member", "publishing", "interaction", "notification").forEach { context ->
             Flyway.configure()
                 .dataSource(jdbcUrl, username, password)
                 .schemas(context)
