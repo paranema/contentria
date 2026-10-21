@@ -129,6 +129,30 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("api_app은 media 테이블도 읽고 쓸 수 있다")
+    fun `the runtime role has DML on media tables`() {
+        connect("api_app", APP_PASSWORD).use { connection ->
+            val id = UUID.randomUUID()
+            connection.prepareStatement(
+                "INSERT INTO media.media (id, uploader_id, format, size_bytes, file_name, stored_key, status, created_at, updated_at) " +
+                    "VALUES (?, ?, 'PNG', 1024, 'photo.png', ?, 'UPLOADING', now(), now())",
+            ).use { statement ->
+                statement.setObject(1, id)
+                statement.setObject(2, UUID.randomUUID())
+                statement.setString(3, "images/$id.png")
+                statement.executeUpdate()
+            }
+            connection.prepareStatement("UPDATE media.media SET status = 'READY', unattached_since = now() WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+            connection.prepareStatement("INSERT INTO media.media_attachments (media_id, post_id) VALUES (?, ?)")
+                .use { it.setObject(1, id); it.setObject(2, UUID.randomUUID()); it.executeUpdate() }
+
+            connection.prepareStatement("DELETE FROM media.media WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+        }
+    }
+
+    @Test
     @DisplayName("마이그레이션 롤은 다른 컨텍스트의 스키마에 손댈 수 없다")
     fun `a migration role cannot touch another context's schema`() {
         connect("publishing_migrator", MIGRATOR_PASSWORD).use { connection ->
@@ -180,6 +204,7 @@ class MigratorIntegrationTest {
             "-v", "publishing_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "interaction_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "notification_migrator_password=$MIGRATOR_PASSWORD",
+            "-v", "media_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
             "-f", target,
         )

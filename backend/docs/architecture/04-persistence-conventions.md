@@ -73,7 +73,7 @@ WHERE con.contype = 'f'
 
 ## DB 롤
 
-지금 만든 롤은 `member_migrator`, `publishing_migrator`, `interaction_migrator`, `notification_migrator`, `api_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
+지금 만든 롤은 `member_migrator`, `publishing_migrator`, `interaction_migrator`, `notification_migrator`, `media_migrator`, `api_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
 
 | 롤 | 쓰는 곳 | 권한 |
 |---|---|---|
