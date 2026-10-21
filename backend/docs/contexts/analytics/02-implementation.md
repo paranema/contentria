@@ -105,6 +105,24 @@ IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전
 
 `apps/batch`가 띄운다. `batch_app` 롤에 `analytics` 스키마의 DML을 더한다.
 
+| 구성 | 위치 |
+|---|---|
+| 유스케이스 | `application/statistics/DailyStatisticsService`. 끝난 최근 3일을 날마다 트랜잭션 하나에서 다시 집계하고, 90일 지난 방문을 지운다 |
+| SQL | `infra/persistence/DailyStatisticsSql`. `GROUPING SETS ((blog_id, post_id), (blog_id))`에 `HAVING GROUPING(post_id) = 1 OR post_id IS NOT NULL`을 건다. 블로그 홈 방문(`post_id IS NULL`)이 따로 묶이면 블로그 전체 행과 같은 키가 되어, 한 문장 안에서 같은 행을 두 번 바꾸려다 실패한다 |
+| 잡 | `presentation/batch/DailyStatisticsJob`(`analyticsDailyStatistics`). 단계 자체는 트랜잭션이 없다 |
+
+### 설정
+
+| 설정 | 담는 것 | 불러오는 곳 |
+|---|---|---|
+| `AnalyticsCoreConfiguration` | 엔티티, 리포지토리, 집계와 조회(`application/statistics`, `infra/persistence`). DB만 쓴다 | apps/api, apps/batch |
+| `AnalyticsWebConfiguration` | 방문 기록 전체(`presentation/web`, `application/visit`, `infra/client`, 방문자 키 비밀 키) | apps/api |
+| `AnalyticsBatchConfiguration` | 잡(`presentation/batch`) | apps/batch |
+
+방문 기록은 출판에 묻고 비밀 키가 있어야 한다. 웹으로만 들어오는 흐름이라 그 전부를 웹 설정에 두었다. 배치는 출판과 비밀 키 없이 뜬다.
+
+`apps/batch`에 잡이 둘(`mediaImageCleanup`, `analyticsDailyStatistics`)이 되어, 일정은 잡 이름(`--spring.batch.job.name` 또는 `BATCH_JOB_NAME`)을 꼭 넘겨야 한다. 이름 없이 띄우면 Spring Boot가 어느 잡을 돌릴지 정하지 못해 실패한다.
+
 ## 단계
 
 | 단계 | 내용 | 완료 조건 |

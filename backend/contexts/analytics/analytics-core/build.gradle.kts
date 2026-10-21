@@ -12,6 +12,9 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    // presentation/batch: 일별 집계 잡. Spring Batch는 잡을 띄우는 apps/batch만 가진다
+    compileOnly("org.springframework.boot:spring-boot-starter-batch")
+
     // presentation/web
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("tools.jackson.module:jackson-module-kotlin")

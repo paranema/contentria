@@ -1,7 +1,7 @@
 package com.contentria.analytics.presentation.web
 
-import com.contentria.analytics.application.RecordVisitCommand
-import com.contentria.analytics.application.VisitRecorder
+import com.contentria.analytics.application.visit.RecordVisitCommand
+import com.contentria.analytics.application.visit.VisitRecorder
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus

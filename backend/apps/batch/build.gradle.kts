@@ -5,6 +5,7 @@ plugins {
 dependencies {
     // 배치 잡을 가진 컨텍스트의 -core
     implementation(project(":contexts:media:media-core"))
+    implementation(project(":contexts:analytics:analytics-core"))
 
     implementation("org.springframework.boot:spring-boot-starter-batch")
     runtimeOnly("org.postgresql:postgresql")
