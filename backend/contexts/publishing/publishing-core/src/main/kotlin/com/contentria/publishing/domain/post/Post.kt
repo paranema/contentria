@@ -35,6 +35,11 @@ import java.util.UUID
     name = "Post.findSlugsTakenInBlog",
     query = "select s.value from PostSlug s where s.blogId = ?1 and s.value like ?2 and s.post.id <> ?3",
 )
+// For other contexts (publishing-api): a ranked list's titles, without the body.
+@NamedQuery(
+    name = "Post.findTitles",
+    query = "select p.id as postId, p.blogId as blogId, p.title as title, p.slug as slug from Post p where p.id in ?1",
+)
 // For other contexts (publishing-api): where each post sits, who owns it, whether readers see it.
 @NamedQuery(
     name = "Post.findReferences",

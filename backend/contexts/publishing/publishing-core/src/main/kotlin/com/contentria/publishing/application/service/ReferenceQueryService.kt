@@ -2,11 +2,14 @@ package com.contentria.publishing.application.service
 
 import com.contentria.publishing.api.BlogReference
 import com.contentria.publishing.api.GetBlogReferencesQuery
+import com.contentria.publishing.api.GetPostOverviewsQuery
 import com.contentria.publishing.api.GetPostReferencesQuery
 import com.contentria.publishing.api.PostReference
+import com.contentria.publishing.api.PostTitle
 import com.contentria.publishing.application.required.BlogRepository
 import com.contentria.publishing.application.required.PostRepository
 import com.contentria.publishing.domain.blog.Blog
+import com.contentria.publishing.domain.post.PostStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -19,7 +22,7 @@ import java.util.UUID
 class ReferenceQueryService(
     private val blogs: BlogRepository,
     private val posts: PostRepository,
-) : GetPostReferencesQuery, GetBlogReferencesQuery {
+) : GetPostReferencesQuery, GetBlogReferencesQuery, GetPostOverviewsQuery {
 
     @Transactional(readOnly = true)
     override fun getPosts(postIds: Set<UUID>): Map<UUID, PostReference> {
@@ -33,6 +36,13 @@ class ReferenceQueryService(
     @Transactional(readOnly = true)
     override fun getBlogs(blogIds: Set<UUID>): Map<UUID, BlogReference> =
         if (blogIds.isEmpty()) emptyMap() else blogs.findByIdIn(blogIds).associate { it.id to it.reference() }
+
+    @Transactional(readOnly = true)
+    override fun getTitles(postIds: Set<UUID>): Map<UUID, PostTitle> =
+        if (postIds.isEmpty()) emptyMap() else posts.findTitles(postIds).associate { it.postId to PostTitle(it.postId, it.blogId, it.title, it.slug) }
+
+    @Transactional(readOnly = true)
+    override fun countPublished(blogId: UUID): Long = posts.countByBlogIdAndStatus(blogId, PostStatus.PUBLISHED)
 
     private fun Blog.reference() = BlogReference(id, slug, ownerId)
 }
