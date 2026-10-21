@@ -11,7 +11,7 @@
 | 애그리거트 | 루트 | 멤버 | 식별자 |
 |---|---|---|---|
 | Media | `Media` | 연결된 글 ID 목록 (`media_attachments`) | 이미지 ID |
-| Video | `Video` | 영상 묶음에서 정한다 | 영상 ID |
+| Video | `Video` | 연결된 글 ID 목록 (`video_attachments`) | 영상 ID |
 
 **연결은 이미지의 멤버다.** "완료된 이미지만, 올린 회원의 글에만 연결한다"와 "연결된 이미지는 지울 수 없다"는 이미지 하나만 보고 판단한다.
 연결을 글 쪽에 두지 않는다. 글은 출판의 애그리거트이고, 미디어는 글 ID만 안다.
@@ -181,4 +181,34 @@
 | M3 | 업로드 준비와 완료, 지우기 HTTP. 저장소와 이미지 처리 어댑터 | MinIO로 올리고 완료하는 HTTP 테스트. 시그니처가 다른 파일 거부, JPEG의 EXIF 제거 |
 | M4 | `media-api`의 연결 포트, 출판의 이미지 찾기와 글당 20개, 저장과 삭제 뒤의 호출 | 글 저장, 수정, 삭제에 따라 연결이 맞춰지는 테스트. 연결이 실패해도 저장은 성공 |
 | M5 | 정리(`apps/batch`) | 24시간, 7일 경계와 파일 삭제 실패 시 기록이 남는 테스트 |
-| V0~ | 영상 | 영상 묶음을 시작할 때 이 표를 채운다 |
+| V0 | 영상의 규칙과 구현 배치(01의 "영상", 이 문서의 "영상") | 결정 항목 확정 |
+| V1 | `Video` 도메인(상태 기계), 마이그레이션 | 상태 전이마다 테스트, 엔티티 매핑 검사 |
+| V2 | 영상 업로드 준비 HTTP, 출판의 첨부 영상(글의 `videoId`)과 저장 뒤 연결, 독자용 조회(`media-api`) | 첨부, 교체, 해제, 남의 영상 거부, 완료 영상만 재생 주소 |
+| V3 | `apps/worker`: Cloudflare Queue pull 어댑터, ffmpeg 변환 어댑터, 변환 유스케이스 | ffmpeg 컨테이너로 실제 HLS와 포스터, 영상이 아닌 파일은 실패, 같은 알림 두 번 |
+| V4 | 정리(`apps/batch`): 오래 변환 중인 영상, 쓰이지 않는 영상 | 2시간, 7일 경계, 결과 폴더까지 지우기 |
+
+## 영상
+
+| 항목 | 내용 |
+|---|---|
+| 상태 | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`. 전이는 `Video`의 메서드로만 한다(`startTranscoding`, `complete(result)`, `fail(reason)`) |
+| 키 | 원본 `raw/{영상 ID}/original.{확장자}`, 변환 결과 `hls/{영상 ID}/`(마스터 `master.m3u8`, 포스터 `poster.jpg`) |
+| 연결 | 이미지와 같다. 연결된 글 ID 목록은 `video_attachments`, 정리 기준은 `unattached_since` |
+| 원본 이벤트 | R2가 `raw/` 접두사의 생성 이벤트만 큐에 보낸다. `hls/`에 쓴 결과가 다시 변환되지 않게 하는 장치다([operations/cloudflare-video-pipeline.md](../../operations/cloudflare-video-pipeline.md)) |
+
+| 프로세스 | 하는 일 | 진입점 |
+|---|---|---|
+| `apps/api` | 업로드 준비, 글과의 연결, 독자용 조회 | `adapter/provided/web`, `media-api` |
+| `apps/worker` (새로) | 큐에서 받아 변환 | `adapter/provided/queue` |
+| `apps/batch` | 정리 | `adapter/provided/batch` |
+
+| 포트 | 어댑터 | 내용 |
+|---|---|---|
+| `VideoQueue` | `adapter/required/queue/CloudflareVideoQueue` | Cloudflare Queues의 `http_pull`. 받기(pull)와 확인(ack). 확인하지 않은 메시지는 다시 온다 |
+| `Transcoder` | `adapter/required/transcode/FfmpegTranscoder` | ffprobe로 확인하고 ffmpeg로 HLS와 포스터를 만든다. 영상이 아니거나 너무 길면 "다시 시도하지 않을 실패"로 알린다 |
+| `ObjectStorage` | 이미지와 같은 S3 어댑터에 파일 받기, 파일 올리기, 접두사째 지우기를 더한다 | |
+
+`media-api`에는 둘을 더한다. `PostVideoAttachments.syncPostVideo(postId, ownerId, videoId?)`(흐름 V3), `GetPostVideosQuery.videosOf(postIds)`(흐름 V4, 글 상세 조합용).
+출판은 글에 첨부 영상 ID(`videoId`)를 두고, 글을 쓰거나 고칠 때 받는다. 저장이 커밋된 뒤 이미지와 함께 미디어에 알린다.
+
+`apps/worker`는 `worker_app` 롤로 접속하고 `media` 스키마의 DML만 가진다. ffmpeg와 ffprobe는 worker의 컨테이너 이미지에 들어 있다.
