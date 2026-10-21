@@ -108,6 +108,27 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("api_app은 notification 테이블도 읽고 쓸 수 있다")
+    fun `the runtime role has DML on notification tables`() {
+        connect("api_app", APP_PASSWORD).use { connection ->
+            val id = UUID.randomUUID()
+            connection.prepareStatement(
+                "INSERT INTO notification.notifications (id, recipient_id, kind, post_id, blog_id, source_event_id, created_at) " +
+                    "VALUES (?, ?, 'NEW_POST', ?, ?, ?, now())",
+            ).use { statement ->
+                statement.setObject(1, id)
+                (2..5).forEach { statement.setObject(it, UUID.randomUUID()) }
+                statement.executeUpdate()
+            }
+
+            connection.prepareStatement("UPDATE notification.notifications SET read_at = now() WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+            connection.prepareStatement("DELETE FROM notification.notifications WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+        }
+    }
+
+    @Test
     @DisplayName("마이그레이션 롤은 다른 컨텍스트의 스키마에 손댈 수 없다")
     fun `a migration role cannot touch another context's schema`() {
         connect("publishing_migrator", MIGRATOR_PASSWORD).use { connection ->
@@ -158,6 +179,7 @@ class MigratorIntegrationTest {
             "-v", "member_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "publishing_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "interaction_migrator_password=$MIGRATOR_PASSWORD",
+            "-v", "notification_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
             "-f", target,
         )

@@ -18,6 +18,7 @@ dependencies {
     runtimeOnly(project(":contexts:member:member-core"))
     runtimeOnly(project(":contexts:publishing:publishing-core"))
     runtimeOnly(project(":contexts:interaction:interaction-core"))
+    runtimeOnly(project(":contexts:notification:notification-core"))
 
     testImplementation("org.assertj:assertj-core")
     testImplementation("org.testcontainers:testcontainers-postgresql")
