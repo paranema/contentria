@@ -4,18 +4,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.net.http.HttpResponse
 import java.util.UUID
 
 /** docs/contexts/publishing/01-rules.md, 흐름 1과 흐름 2, over HTTP. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class PublishingBlogIntegrationTest {
+class PublishingBlogIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -190,9 +184,5 @@ class PublishingBlogIntegrationTest {
     companion object {
         /** One category of a tree response: id, name, parentId (quoted or null). */
         private val CATEGORY = Regex("\\{\"id\":\"([^\"]+)\",\"name\":\"([^\"]+)\",\"slug\":\"[^\"]*\",\"parentId\":(null|\"[^\"]+\")")
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
     }
 }

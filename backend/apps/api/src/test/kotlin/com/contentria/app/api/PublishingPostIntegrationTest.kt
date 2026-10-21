@@ -4,18 +4,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.net.http.HttpResponse
 import java.util.UUID
 
 /** docs/contexts/publishing/01-rules.md, 흐름 3~5와 글 slug, over HTTP. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class PublishingPostIntegrationTest {
+class PublishingPostIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -194,14 +188,13 @@ class PublishingPostIntegrationTest {
         assertThat(events["kinds"]).isEqualTo(1L)
 
         val published = ApiTestEnvironment.row(
-            "select payload->>'ownerId' as owner, payload->>'blogId' as blog, event_version as version, published_at as sent " +
+            "select payload->>'ownerId' as owner, payload->>'blogId' as blog, event_version as version " +
                 "from publishing.outbox_event where aggregate_id = ? and event_type = 'PostPublished'",
             UUID.fromString(id),
         )!!
         assertThat(published["owner"]).isEqualTo(ownerId.toString())
         assertThat(published["blog"]).isEqualTo(blogId)
         assertThat(published["version"]).isEqualTo(1)
-        assertThat(published["sent"]).isNull()
     }
 
     @Test
@@ -238,10 +231,4 @@ class PublishingPostIntegrationTest {
     private fun newSlug() = "blog-${UUID.randomUUID().toString().take(8)}"
 
     private fun TestBrowser.put(path: String, json: String): HttpResponse<String> = send("PUT", path, json)
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }

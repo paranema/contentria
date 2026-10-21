@@ -10,20 +10,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 
 /**
  * docs/contexts/member/01-rules.md, 흐름 4. 계정 관리, over HTTP. Each test also checks 공통의 세션
  * 무효화: a second browser signed in to the same account loses its session.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class AccountManagementIntegrationTest {
+class AccountManagementIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -228,10 +222,4 @@ class AccountManagementIntegrationTest {
         """{"attemptId":"$attemptId","currentAddressCode":"$current","newAddressCode":"$new"}"""
     private fun withdrawal(attemptId: String, code: String) = """{"attemptId":"$attemptId","code":"$code"}"""
     private fun wrongCodeFor(code: String) = if (code == "000000") "111111" else "000000"
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }

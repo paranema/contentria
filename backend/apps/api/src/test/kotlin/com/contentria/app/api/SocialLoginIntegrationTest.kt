@@ -7,11 +7,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.net.http.HttpResponse
 import java.util.Base64
 import java.util.UUID
@@ -22,9 +18,7 @@ import java.util.UUID
  * verification against a key set. Only the provider is fake (docs/contexts/member/01-rules.md,
  * 흐름 2, 3, 4의 연동 해제).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class SocialLoginIntegrationTest {
+class SocialLoginIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -211,10 +205,4 @@ class SocialLoginIntegrationTest {
 
     private fun verifiedIdentity() =
         Identity("sub-${UUID.randomUUID()}", "social-${UUID.randomUUID()}@gmail.com", emailVerified = true)
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }
