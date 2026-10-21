@@ -5,20 +5,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 
 /**
  * The member flows end to end: HTTP in, PostgreSQL behind, cookies carried by the client
  * the way a browser would.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class MemberFlowIntegrationTest {
+class MemberFlowIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -204,9 +198,5 @@ class MemberFlowIntegrationTest {
         private const val MAX_FAILED_ATTEMPTS = 5
 
         private val UUID_PATTERN = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
     }
 }

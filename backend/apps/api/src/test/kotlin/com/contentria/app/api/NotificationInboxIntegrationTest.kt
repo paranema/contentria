@@ -6,11 +6,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.net.http.HttpResponse
 import java.sql.Timestamp
 import java.time.Instant
@@ -18,9 +14,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 /** The notification inbox over HTTP (notification 01-rules 흐름 3) and its 90 days. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class NotificationInboxIntegrationTest {
+class NotificationInboxIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -160,10 +154,4 @@ class NotificationInboxIntegrationTest {
 
     private fun ids(page: HttpResponse<String>): List<UUID> =
         Regex("\"notificationId\":\"([^\"]+)\"").findAll(page.body()).map { UUID.fromString(it.groupValues[1]) }.toList()
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }

@@ -5,17 +5,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 
 /** Subscriptions, likes, and the counts anyone may see (interaction 01-rules 흐름 1, 2). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class InteractionSubscriptionLikeIntegrationTest {
+class InteractionSubscriptionLikeIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -215,10 +209,4 @@ class InteractionSubscriptionLikeIntegrationTest {
 
     private fun likes(postId: String): Long =
         ApiTestEnvironment.row("select count(*) as n from interaction.likes where post_id = ?", UUID.fromString(postId))!!["n"] as Long
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }

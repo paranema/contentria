@@ -8,20 +8,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.util.UUID
 
 /**
  * Events between contexts through a real Kafka: the relay, the envelope, the inbox, and the dead
  * letters (docs/architecture/03-context-integration.md, 이벤트; interaction 02-implementation, 이벤트).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class InteractionEventsIntegrationTest {
+class InteractionEventsIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -143,10 +137,4 @@ class InteractionEventsIntegrationTest {
 
     private fun inboxed(eventId: UUID): Boolean =
         ApiTestEnvironment.row("select 1 as found from interaction.inbox_event where event_id = ?", eventId) != null
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }

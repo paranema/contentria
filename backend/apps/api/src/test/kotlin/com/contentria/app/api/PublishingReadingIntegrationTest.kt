@@ -8,19 +8,13 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.net.URLEncoder
 import java.net.http.HttpResponse
 import java.util.UUID
 
 /** Reading as anyone: published posts only, pages, categories, and old slugs (01-rules 흐름 4, 글 slug). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class PublishingReadingIntegrationTest {
+class PublishingReadingIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -197,10 +191,4 @@ class PublishingReadingIntegrationTest {
         Regex("\"postId\":\"([^\"]+)\"").findAll(page.body()).map { it.groupValues[1] }.toList()
 
     private fun enc(segment: String): String = URLEncoder.encode(segment, Charsets.UTF_8)
-
-    companion object {
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
-    }
 }
