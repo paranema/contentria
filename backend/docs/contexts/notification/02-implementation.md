@@ -98,7 +98,18 @@
 | `POST /me/notifications/{id}/read` | 204. 이미 읽었어도 204 | 흐름 3의 3~5번 |
 | `POST /me/notifications/read-all` | 204 | 흐름 3의 6번 |
 
-모두 로그인이 필요하다. 남의 알림이나 없는 알림을 읽음으로 표시하려 하면 404 `NOTIFICATION_NOT_FOUND`다.
+모두 로그인이 필요하다. 남의 알림이나 없는 알림을 읽음으로 표시하려 하면 404 `NOTIFICATION_NOT_FOUND`다. 잘못된 커서는 400 `INVALID_CURSOR`다.
+
+| 구성 | 위치 |
+|---|---|
+| 목록, 안 읽은 수, 하나 읽음, 모두 읽음 | `application/MyNotificationsService`. 목록은 named query `Notification.findPageFor`(키셋, 21개를 읽어 다음 페이지가 있는지 본다) |
+| 모두 읽음, 보존 기간 삭제 | `infra/persistence/NotificationWriter`의 UPDATE, DELETE 한 문장. 리포지토리에서는 `@Modifying`을 쓰지 않는다 |
+| 웹 | `presentation/web`, 설정은 `config/NotificationWebConfiguration` |
+
+## 보존 기간
+
+`presentation/scheduling/NotificationRetentionSchedule`이 매일 04:41(Asia/Seoul)에 `NotificationRetention.removeExpired()`를 부른다. 만든 지 90일이 지난 알림을 읽었는지와 상관없이 한 문장으로 지운다.
+레플리카마다 돌아도 둘째 실행은 지울 것이 없으므로 잠그지 않는다. 설정은 `config/NotificationSchedulingConfiguration`이고, 실행할 프로세스(지금은 apps/api)가 불러온다.
 
 ## 단계
 

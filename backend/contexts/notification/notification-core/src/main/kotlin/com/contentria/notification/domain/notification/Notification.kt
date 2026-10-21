@@ -7,6 +7,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Instant
@@ -20,6 +21,13 @@ import java.util.UUID
  * renamed post or member shows as it is now, and a post nobody can see drops out (01-rules, 왜).
  */
 @Entity
+// The recipient's notifications, newest first, 20 a page and one more to tell whether another page
+// follows. A page starts after the cursor: earlier, or as early with a smaller id.
+@NamedQuery(
+    name = "Notification.findPageFor",
+    query = "select n from Notification n where n.recipientId = ?1 and " +
+        "(n.createdAt < ?2 or (n.createdAt = ?2 and n.id < ?3)) order by n.createdAt desc, n.id desc limit 21",
+)
 @Table(
     name = "notifications",
     schema = NotificationSchema.NAME,

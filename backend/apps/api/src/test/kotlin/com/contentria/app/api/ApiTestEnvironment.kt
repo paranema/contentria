@@ -63,6 +63,10 @@ object ApiTestEnvironment {
         registry.add("spring.datasource.url") { postgres.jdbcUrl }
         registry.add("spring.datasource.username") { postgres.username }
         registry.add("spring.datasource.password") { postgres.password }
+        // Each test class declares its own @DynamicPropertySource, so each gets its own cached
+        // context and connection pool. Small pools keep them all under PostgreSQL's 100 connections.
+        registry.add("spring.datasource.hikari.maximum-pool-size") { 4 }
+        registry.add("spring.datasource.hikari.minimum-idle") { 1 }
 
         registry.add("spring.kafka.bootstrap-servers") { kafka.bootstrapServers }
         registry.add("contentria.messaging.relay.interval") { "100ms" }
