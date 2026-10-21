@@ -7,6 +7,9 @@ dependencies {
     api(project(":contexts:notification:notification-api"))
     implementation(project(":shared-kernel"))
 
+    // infra/client만 쓴다 (ArchUnit이 강제)
+    implementation(project(":contexts:interaction:interaction-api"))
+
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

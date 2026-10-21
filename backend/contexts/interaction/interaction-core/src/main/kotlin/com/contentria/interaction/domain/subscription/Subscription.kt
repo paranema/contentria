@@ -23,6 +23,11 @@ import java.util.UUID
     name = "Subscription.countByBlogs",
     query = "select s.blogId as id, count(s) as total from Subscription s where s.blogId in ?1 group by s.blogId",
 )
+// A page of GetSubscribersQuery, in id order after the previous page's last id. The limit is its PAGE_SIZE.
+@NamedQuery(
+    name = "Subscription.findSubscriberIds",
+    query = "select s.subscriberId from Subscription s where s.blogId = ?1 and s.subscriberId > ?2 order by s.subscriberId limit 1000",
+)
 @Table(
     name = "subscriptions",
     schema = InteractionSchema.NAME,

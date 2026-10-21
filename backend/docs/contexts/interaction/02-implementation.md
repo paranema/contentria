@@ -25,6 +25,7 @@
 | 제약 | 보증하는 것 |
 |---|---|
 | `subscriptions(subscriber_id, blog_id)` UNIQUE | 한 회원이 한 블로그를 한 번만 구독 |
+| `subscriptions(blog_id, subscriber_id)` 인덱스 (V2) | 블로그의 구독자 수, 구독자 ID를 ID 순으로 나눠 읽기 |
 | `likes(account_id, post_id)` UNIQUE | 한 회원이 한 글에 한 번만 좋아요 |
 | `comments(post_id, created_at)` 인덱스 | 글의 댓글을 시간순으로 |
 | `comments(parent_id)` 인덱스 | 답글이 있는지, 답글 목록 |
@@ -94,6 +95,9 @@
 |---|---|
 | 좋아요 수, 댓글 수(글 ID 묶음), 구독자 수(블로그 ID 묶음) | `interaction-api`에 공개한다. 글 목록과 상세를 조합하는 진입점이 쓴다 |
 | 내가 좋아요했는지, 내가 구독했는지 | HTTP |
+| 블로그의 구독자 ID | `interaction-api`의 `GetSubscribersQuery`. 알림이 새 글의 수신자를 정할 때만 쓴다. HTTP로 공개하지 않는다 |
+
+`GetSubscribersQuery.subscriberIds(blogId, after)`는 구독자 ID를 ID 순으로 1000개(`PAGE_SIZE`)씩 준다. 앞 페이지의 마지막 ID를 `after`로 넘기면 다음 페이지다. 01의 "누가 구독했는지 목록으로 보여주지 않는다"는 사람이 보는 목록의 규칙이고, 이 조회는 그 목록이 아니다.
 
 `interaction-api`의 `GetInteractionCountsQuery`(`likeCounts`, `commentCounts`, `subscriberCounts`)는 묻는 ID마다 값을 돌려준다. 아무도 누르지 않은 ID는 0이다. 댓글 수는 답글을 넣고 지운 자리는 넣지 않는다.
 

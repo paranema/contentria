@@ -1,5 +1,6 @@
 package com.contentria.app.api
 
+import com.contentria.interaction.api.GetSubscribersQuery
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -21,6 +22,9 @@ class InteractionSubscriptionLikeIntegrationTest {
 
     @Autowired
     private lateinit var codes: RecordingCodeSender
+
+    @Autowired
+    private lateinit var subscribers: GetSubscribersQuery
 
     private val anyone get() = TestBrowser(port)
 
@@ -152,6 +156,35 @@ class InteractionSubscriptionLikeIntegrationTest {
         assertThat(reader.delete("/posts/$post/like").statusCode()).isEqualTo(204)
         assertThat(subscribers(blog.id)).isEqualTo(0)
         assertThat(likes(post)).isEqualTo(0)
+    }
+
+    @Test
+    @DisplayName("알림에는 블로그의 구독자 ID를 ID 순으로 1000개씩 나눠 알려준다. 해지한 회원과 다른 블로그의 구독자는 없다")
+    fun `subscribers for notification`() {
+        val blog = blogger()
+        val reader = TestBrowser(port)
+        val readerId = reader.signUpAsNewMember(codes)
+        reader.put("/blogs/${blog.slug}/subscription")
+        val leaver = member().also { it.put("/blogs/${blog.slug}/subscription") }
+        leaver.delete("/blogs/${blog.slug}/subscription")
+        blogger().let { other -> member().put("/blogs/${other.slug}/subscription") }
+        // HTTP로 1000명을 만들지 않고 행을 직접 넣는다
+        ApiTestEnvironment.execute(
+            "insert into interaction.subscriptions (id, subscriber_id, blog_id, created_at, updated_at) " +
+                "select gen_random_uuid(), gen_random_uuid(), ?, now(), now() from generate_series(1, 1000)",
+            UUID.fromString(blog.id),
+        )
+        val blogId = UUID.fromString(blog.id)
+
+        val first = subscribers.subscriberIds(blogId, null)
+        val second = subscribers.subscriberIds(blogId, first.last())
+
+        assertThat(first).hasSize(GetSubscribersQuery.PAGE_SIZE)
+        assertThat(second).hasSize(1)
+        val all = first + second
+        assertThat(all).contains(readerId).doesNotHaveDuplicates().hasSize(1001)
+        assertThat(all.map { it.toString() }).isSorted()
+        assertThat(subscribers.subscriberIds(UUID.randomUUID(), null)).isEmpty()
     }
 
     private class Blog(val owner: TestBrowser, val slug: String, val id: String)
