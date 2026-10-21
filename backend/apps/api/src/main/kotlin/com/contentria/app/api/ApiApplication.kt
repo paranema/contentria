@@ -3,6 +3,8 @@ package com.contentria.app.api
 import com.contentria.interaction.config.InteractionCoreConfiguration
 import com.contentria.interaction.config.InteractionMessagingConfiguration
 import com.contentria.interaction.config.InteractionWebConfiguration
+import com.contentria.media.config.MediaCoreConfiguration
+import com.contentria.media.config.MediaWebConfiguration
 import com.contentria.member.config.MemberCoreConfiguration
 import com.contentria.member.config.MemberWebConfiguration
 import com.contentria.notification.config.NotificationCoreConfiguration
@@ -31,6 +33,8 @@ import java.time.Clock
     NotificationMessagingConfiguration::class,
     NotificationWebConfiguration::class,
     NotificationSchedulingConfiguration::class,
+    MediaCoreConfiguration::class,
+    MediaWebConfiguration::class,
     MessagingConfiguration::class,
 )
 class ApiApplication {

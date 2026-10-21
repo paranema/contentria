@@ -59,6 +59,17 @@ logging:
     org.hibernate.SQL: DEBUG
 
 contentria:
+  # Images for post bodies (docs/contexts/media). The bucket is Cloudflare R2 over its S3 API; the
+  # browser puts files to it directly, and the public domain serves them.
+  media:
+    public-base-url: ${MEDIA_PUBLIC_BASE_URL}
+    upload-url-ttl: 10m
+    storage:
+      endpoint: ${R2_ENDPOINT}
+      bucket: ${R2_BUCKET_NAME}
+      region: auto
+      access-key-id: ${R2_ACCESS_KEY_ID}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY}
   member:
     access-token:
       # Base64-encoded key of at least 256 bits. No default: the app must not start without one.
