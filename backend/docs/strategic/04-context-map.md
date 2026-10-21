@@ -72,8 +72,8 @@ flowchart LR
 | PostPublished | 출판 | 알림 | 해당 블로그의 구독자에게 알림 | 확정 |
 | PostDeleted | 출판 | 상호작용 | 그 글의 댓글과 좋아요 정리 | 확정 |
 | CommentAdded | 상호작용 | 알림 | 블로그 소유자에게 알림 | 확정 |
-| PostLiked | 상호작용 | 알림 | 블로그 소유자에게 알림 | 미정 |
-| BlogSubscribed | 상호작용 | 알림 | 블로그 소유자에게 알림 | 미정 |
+| PostLiked | 상호작용 | 알림 | 블로그 소유자에게 알림 | 보류 ([알림 01-rules](../contexts/notification/01-rules.md)의 "보류") |
+| BlogSubscribed | 상호작용 | 알림 | 블로그 소유자에게 알림 | 보류 (위와 같다) |
 | AccountSuspended | 회원 | 출판 | 정지된 블로거의 블로그와 글 노출 처리 | 미정 |
 
 이벤트에는 식별자와, 소비 측이 판단에 필요한 최소한의 값만 담는다.
