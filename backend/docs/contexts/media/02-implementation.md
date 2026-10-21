@@ -50,6 +50,16 @@
 | 흐름 5의 2번 | 도메인(`Media.requireDeletable()`) | |
 | 흐름 6 | 앱 + 배치 진입점 | 파일을 먼저 지우고 기록을 지운다. 파일이 실패하면 기록을 남긴다 |
 
+| 도메인 | 하는 일 |
+|---|---|
+| `ImageFormat` | 네 형식의 선언(`image/jpeg` 등), 확장자, 시그니처. `of(contentType)`는 허용하지 않은 형식에 null, `matches(header)`는 파일 앞 12바이트로 판단한다. WebP는 앞의 `RIFF`와 8바이트 뒤의 `WEBP`를 함께 본다 |
+| `Media.prepare(uploaderId, contentType, sizeBytes, fileName)` | 형식, 크기(1바이트~10MB), 파일 이름(1~255자). 키는 `images/{ID}.{확장자}` |
+| `Media.complete(at)` | 두 번째 부름은 false를 돌려주고 아무것도 바꾸지 않는다 |
+| `Media.attachTo(postId, postOwnerId)` | 연결되었는지를 돌려준다. 업로드 중이거나 남의 글이면 false |
+| `Media.detachFrom(postId, at)`, `requireDeletable()` | 마지막 연결이 풀릴 때만 `unattached_since`를 정한다 |
+
+연결된 글 목록은 `@ElementCollection`으로 `media_attachments`에 매핑한다. 글 ID 값만 담는 멤버라 엔티티로 두지 않는다.
+
 ## 포트와 어댑터
 
 | 포트 | 방향 | 어댑터 | 내용 |
