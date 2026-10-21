@@ -150,7 +150,21 @@
 파일을 지우지 못한 이미지는 기록을 남기고 다음 실행에 다시 지운다. 그런 이미지가 하나라도 있으면 잡을 실패로 끝내, 일정이 실패를 보이게 한다.
 
 잡은 Spring Batch 메타데이터를 남기지 않는다(기본 `ResourcelessJobRepository`). 매번 처음부터 돌아도 남은 것을 찾으므로 이어서 실행할 필요가 없다. 그래서 `batch` 스키마와 `batch_migrator`는 아직 만들지 않았다.
-`apps/batch`는 `batch_app` 롤로 접속하고, 지금은 `media` 스키마의 DML만 가진다. 일정은 `--spring.batch.job.name=mediaImageCleanup`(또는 `BATCH_JOB_NAME`)으로 이 잡을 고른다. 주기는 인프라 작업 때 정한다.
+`apps/batch`는 `batch_app` 롤로 접속하고 `media` 스키마의 DML을 가진다. 일정은 `--spring.batch.job.name=mediaImageCleanup`(또는 `BATCH_JOB_NAME`)으로 이 잡을 고른다. 주기는 인프라 작업 때 정한다.
+
+영상 정리(흐름 V5)는 같은 방식의 다른 잡이다.
+
+| 구성 (V4) | 위치 |
+|---|---|
+| 유스케이스 | `application/provided/CleanUpVideosUseCase`, `application/service/VideoCleanupService`. 결과는 실패로 바꾼 수, 지운 수, 지우지 못한 수 |
+| 대상 찾기 | named query `Video.findStuckIds`(변환 중이고 시작이 2시간 전보다 앞), `Video.findUnusedIds`(`unattached_since`가 7일 전보다 앞). 오래된 것부터 종류마다 500개씩 |
+| 멈춘 영상 | 영상마다 트랜잭션 하나. `Video.findLockedById`로 잠그고 `isStuck`을 다시 본 뒤 `fail(reason)` |
+| 쓰이지 않은 영상 | 영상마다 트랜잭션 하나. 잠그고 `isExpired`를 다시 본 뒤 원본, `hls/{ID}/` 아래 전부(`deletePrefix`), 기록 순으로 지운다. 상태와 상관없다 |
+| 순서 | 멈춘 영상을 먼저 본다. 멈춘 채 쓰이지 않은 영상은 한 번 실행에 실패로 바뀌고 지워진다 |
+| 아직 변환 중인 영상 | 쓰이지 않은 지 7일이 지났어도 변환 중이고 2시간이 안 됐으면 지우지 않는다. worker가 결과를 쓰는 중일 수 있어서다. 2시간이 지나면 실패로 바뀌고 그 실행에서 지워진다 |
+| 잡 | `adapter/provided/batch/VideoCleanupJob`(`mediaVideoCleanup`). 지우지 못한 영상이 있으면 잡을 실패로 끝낸다. 일정은 `--spring.batch.job.name=mediaVideoCleanup` |
+
+원본을 지운 뒤 결과 폴더를 지우지 못해도 기록은 남는다. 다음 실행이 남은 것을 다시 지운다. 지우기는 몇 번 해도 결과가 같다.
 
 ## DB 제약
 

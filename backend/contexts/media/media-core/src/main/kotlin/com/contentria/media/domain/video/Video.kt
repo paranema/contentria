@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.LockModeType
 import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
@@ -31,6 +32,18 @@ import java.util.UUID
 @NamedQuery(name = "Video.findAttachedTo", query = "select v from Video v where ?1 member of v.postIds")
 // The videos of several posts at once, for a list or a page: each video says which posts it is on.
 @NamedQuery(name = "Video.findAttachedToAny", query = "select distinct v from Video v join v.postIds p where p in ?1")
+// Cleanup (01-rules 흐름 V5): oldest first, a run at a time. The lock holds an attach off while
+// the files and the record go; the attach then finds the video gone.
+@NamedQuery(
+    name = "Video.findStuckIds",
+    query = "select v.id from Video v where v.status = com.contentria.media.domain.video.VideoStatus.PROCESSING " +
+        "and v.transcodingStartedAt < ?1 order by v.transcodingStartedAt limit 500",
+)
+@NamedQuery(
+    name = "Video.findUnusedIds",
+    query = "select v.id from Video v where v.unattachedSince < ?1 order by v.unattachedSince limit 500",
+)
+@NamedQuery(name = "Video.findLockedById", query = "select v from Video v where v.id = ?1", lockMode = LockModeType.PESSIMISTIC_WRITE)
 @Table(
     name = "videos",
     schema = MediaSchema.NAME,
