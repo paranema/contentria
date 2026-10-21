@@ -4,9 +4,11 @@ import com.contentria.notification.domain.notification.Notification
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import java.sql.Timestamp
+import java.time.Instant
+import java.util.UUID
 
 /**
- * Inserts new notifications in JDBC batches, in the transaction already running
+ * Writes many notifications at once with JDBC: new ones in batches, in the transaction already running
  * (docs/contexts/notification/02-implementation.md, 이벤트). A new post can make one row per
  * subscriber: JPA would read each assigned-id entity back before inserting it.
  *
@@ -30,6 +32,17 @@ class NotificationWriter(private val jdbc: JdbcTemplate) {
             statement.setTimestamp(9, Timestamp.from(n.createdAt))
         }
     }
+
+    /** 흐름 3의 6번: every notification of [recipientId] still unread now. One statement. */
+    fun markAllRead(recipientId: UUID, at: Instant): Int =
+        jdbc.update(
+            "UPDATE notification.notifications SET read_at = ? WHERE recipient_id = ? AND read_at IS NULL",
+            Timestamp.from(at), recipientId,
+        )
+
+    /** Removes notifications made before [before], read or not (01-rules, 보존 기간). */
+    fun deleteMadeBefore(before: Instant): Int =
+        jdbc.update("DELETE FROM notification.notifications WHERE created_at < ?", Timestamp.from(before))
 
     private companion object {
         const val BATCH_SIZE = 500
