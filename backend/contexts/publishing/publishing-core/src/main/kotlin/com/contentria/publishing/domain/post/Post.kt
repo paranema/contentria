@@ -107,6 +107,11 @@ class Post private constructor(
     var categoryId: UUID? = categoryId
         protected set
 
+    /** The one video attached to the post, or none. Whether it may be shown is media's to say. */
+    @Column(name = "video_id")
+    var videoId: UUID? = null
+        protected set
+
     @Column(name = "title", nullable = false, length = TITLE_MAX_LENGTH)
     var title: String = validTitle(content.title)
         protected set
@@ -160,6 +165,11 @@ class Post private constructor(
         summaryWrittenByAuthor = content.summary.writtenByAuthor
         this.categoryId = categoryId
         draftSlug?.let(::changeSlug)
+    }
+
+    /** 01-rules, 첨부 영상: one at most; null takes it off. */
+    fun chooseVideo(videoId: UUID?) {
+        this.videoId = videoId
     }
 
     /** DRAFT → PUBLISHED. Always the first publication; the use case records PostPublished for it. */

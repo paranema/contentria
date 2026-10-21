@@ -36,6 +36,8 @@ data class PostRequest(
     @field:NotNull @field:Size(max = 200_000) val body: String,
     @field:Size(max = 2000) val summary: String? = null,
     val categoryId: java.util.UUID? = null,
+    /** The video to attach, or null for none (01-rules, 첨부 영상). */
+    val videoId: java.util.UUID? = null,
 )
 
 /** Null or blank: make the slug from the title again. */

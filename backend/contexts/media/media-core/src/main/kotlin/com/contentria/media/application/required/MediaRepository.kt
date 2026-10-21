@@ -1,6 +1,7 @@
 package com.contentria.media.application.required
 
 import com.contentria.media.domain.image.Media
+import com.contentria.media.domain.video.Video
 import org.springframework.data.repository.Repository
 import java.time.Instant
 import java.util.UUID
@@ -19,4 +20,13 @@ interface MediaRepository : Repository<Media, UUID> {
     fun findExpiredUploadIds(createdBefore: Instant): List<UUID>
     fun findUnusedIds(unattachedBefore: Instant): List<UUID>
     fun findLockedById(id: UUID): Media?
+}
+
+interface VideoRepository : Repository<Video, UUID> {
+    fun save(video: Video): Video
+    fun findById(id: UUID): Video?
+
+    /** [Video]'s named queries of the same names. */
+    fun findAttachedTo(postId: UUID): List<Video>
+    fun findAttachedToAny(postIds: Collection<UUID>): List<Video>
 }

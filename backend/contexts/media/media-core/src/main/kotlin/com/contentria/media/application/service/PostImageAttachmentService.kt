@@ -2,15 +2,17 @@ package com.contentria.media.application.service
 
 import com.contentria.media.api.PostImageAttachments
 import com.contentria.media.application.required.MediaRepository
+import com.contentria.media.application.required.VideoRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.util.UUID
 
-/** docs/contexts/media/01-rules.md, 흐름 3, 4. Each image decides for itself whether it may be attached. */
+/** docs/contexts/media/01-rules.md, 흐름 3, 4. Each image decides for itself whether it may be attached; a deleted post lets go of its video too. */
 @Service
 class PostImageAttachmentService(
     private val media: MediaRepository,
+    private val videos: VideoRepository,
     private val addresses: ImageAddresses,
     private val clock: Clock,
 ) : PostImageAttachments {
@@ -27,5 +29,6 @@ class PostImageAttachmentService(
     override fun releasePostImages(postId: UUID) {
         val now = clock.instant()
         media.findAttachedTo(postId).forEach { it.detachFrom(postId, now) }
+        videos.findAttachedTo(postId).forEach { it.detachFrom(postId, now) }
     }
 }

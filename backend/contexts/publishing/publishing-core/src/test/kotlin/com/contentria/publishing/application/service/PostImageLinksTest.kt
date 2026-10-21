@@ -26,6 +26,13 @@ class PostImageLinksTest {
             synced += Triple(postId, ownerId, imageUrls)
         }
 
+        val videos = mutableListOf<Triple<UUID, UUID, UUID?>>()
+
+        override fun syncVideo(postId: UUID, ownerId: UUID, videoId: UUID?) {
+            if (failing) error("media is down")
+            videos += Triple(postId, ownerId, videoId)
+        }
+
         override fun release(postId: UUID) {
             if (failing) error("media is down")
             released += postId
@@ -44,17 +51,19 @@ class PostImageLinksTest {
     }
 
     @Test
-    @DisplayName("저장과 삭제 뒤에 본문의 이미지 주소를 그대로 넘긴다")
+    @DisplayName("저장과 삭제 뒤에 본문의 이미지 주소와 첨부 영상을 그대로 넘긴다")
     fun `tells media`() {
         val media = Recording()
         val links = PostImageLinks(lines, media)
         val post = UUID.randomUUID()
         val owner = UUID.randomUUID()
 
-        links.afterSave(post, owner, body(2))
+        val video = UUID.randomUUID()
+        links.afterSave(post, owner, body(2), video)
         links.afterDelete(post)
 
         assertThat(media.synced).containsExactly(Triple(post, owner, listOf("https://img.test/images/1.png", "https://img.test/images/2.png")))
+        assertThat(media.videos).containsExactly(Triple(post, owner, video))
         assertThat(media.released).containsExactly(post)
     }
 

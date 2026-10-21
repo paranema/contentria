@@ -1,6 +1,7 @@
 package com.contentria.publishing.adapter.required.media
 
 import com.contentria.media.api.PostImageAttachments
+import com.contentria.media.api.PostVideoAttachments
 import com.contentria.publishing.application.required.PostImages
 import org.springframework.stereotype.Component
 import java.util.UUID
@@ -10,10 +11,15 @@ import java.util.UUID
  * its own service, only this class changes to make a network call.
  */
 @Component
-class MediaPostImages(private val attachments: PostImageAttachments) : PostImages {
+class MediaPostImages(
+    private val attachments: PostImageAttachments,
+    private val videos: PostVideoAttachments,
+) : PostImages {
 
     override fun sync(postId: UUID, ownerId: UUID, imageUrls: List<String>) =
         attachments.syncPostImages(postId, ownerId, imageUrls)
+
+    override fun syncVideo(postId: UUID, ownerId: UUID, videoId: UUID?) = videos.syncPostVideo(postId, ownerId, videoId)
 
     override fun release(postId: UUID) = attachments.releasePostImages(postId)
 }

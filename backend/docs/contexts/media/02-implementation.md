@@ -221,4 +221,13 @@
 `media-api`에는 둘을 더한다. `PostVideoAttachments.syncPostVideo(postId, ownerId, videoId?)`(흐름 V3), `GetPostVideosQuery.videosOf(postIds)`(흐름 V4, 글 상세 조합용).
 출판은 글에 첨부 영상 ID(`videoId`)를 두고, 글을 쓰거나 고칠 때 받는다. 저장이 커밋된 뒤 이미지와 함께 미디어에 알린다.
 
+| 구현 (V2) | 위치 |
+|---|---|
+| 업로드 준비 | `application/service/VideoUploadService`, `POST /media/videos/uploads`(201: 영상 ID, 업로드 주소, 만료 시각). 실패는 400 `UNSUPPORTED_VIDEO_FORMAT`, `VIDEO_TOO_LARGE` |
+| 연결과 조회 | `application/service/PostVideoService`가 `PostVideoAttachments`, `GetPostVideosQuery`를 구현한다. 글이 지워질 때는 `releasePostImages`가 영상까지 풀어, 출판은 한 번만 부른다 |
+| 출판 | 글의 `video_id`(마이그레이션 V3). 쓰기와 고치기 요청의 `videoId`. 저장 뒤 `PostImageLinks`가 이미지와 영상을 따로 알린다. 하나가 실패해도 다른 하나는 맞춰진다 |
+| 독자용 조합 | `apps/api`의 `GET /posts/{id}/video`. 출판에서 글이 공개인지 확인하고, 미디어에서 영상을 받는다. 공개가 아니거나 영상이 없으면 404 `VIDEO_NOT_FOUND` |
+
+출판은 받은 `videoId`를 그대로 저장한다. 남의 영상이면 미디어가 연결하지 않으므로, 독자에게는 영상이 없는 글로 보인다.
+
 `apps/worker`는 `worker_app` 롤로 접속하고 `media` 스키마의 DML만 가진다. ffmpeg와 ffprobe는 worker의 컨테이너 이미지에 들어 있다.

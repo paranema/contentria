@@ -18,7 +18,10 @@ class ImageAddresses(publicBaseUrl: String) {
             ImageFormat.entries.joinToString("|") { it.extension } + ")$",
     )
 
-    fun urlOf(media: Media): String = "$base/${media.storedKey}"
+    fun urlOf(media: Media): String = urlOfKey(media.storedKey)
+
+    /** Any object of the bucket as the public domain serves it, a video's playlist and poster included. */
+    fun urlOfKey(key: String): String = "$base/$key"
 
     /** The image an address points to, or null for an address that is not one of ours. */
     fun mediaIdOf(url: String): UUID? = ownAddress.matchEntire(url.trim())?.let { UUID.fromString(it.groupValues[1]) }

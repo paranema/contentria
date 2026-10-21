@@ -89,6 +89,7 @@
 이름과 구조는 [architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "예시: 출판이 계정 상태를 확인한다"를 따른다.
 `GetAccountStatusQuery`는 ID 묶음 조회(`getAll`)와 단건 조회(`get`)를 공개하고, 회원의 도메인 상태 대신 공개용 상태(`ACTIVE`, `SUSPENDED`, `CLOSED`)를 돌려준다. 회원이 모르는 ID는 결과에 없고, 출판은 그 계정을 "쓸 수 없음"으로 본다.
 회원이 별도 서비스가 되어 응답하지 않으면 그때도 "쓸 수 없음"으로 본다. 거부한 쓰기는 다시 시도하면 되지만, 정지된 블로거의 쓰기를 통과시키면 되돌릴 수 없다.
+글의 첨부 영상은 `posts.video_id`(V3)다. 쓰기와 고치기가 받고, 저장 뒤 미디어에 알린다. 영상이 쓸 수 있는지는 미디어가 정한다.
 분석의 블로그 대시보드 조합에는 `GetPostOverviewsQuery`(글 ID 묶음의 제목과 slug, 발행한 글 수)를 공개한다. 상태와 상관없이 주며, 소유자 확인은 조합하는 쪽이 한다.
 미디어 연결은 같은 문서의 "예: 글 저장과 이미지 연결"을 따른다. 저장과 삭제가 커밋된 뒤 미디어를 부르고, 실패해도 저장은 성공이다(`application/service/PostImageLinks`, [media/02-implementation.md](../media/02-implementation.md)). 글당 이미지 20개는 저장 전에 같은 클래스가 센다.
 

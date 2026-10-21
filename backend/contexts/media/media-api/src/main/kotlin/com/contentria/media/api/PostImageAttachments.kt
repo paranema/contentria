@@ -16,6 +16,6 @@ interface PostImageAttachments {
      */
     fun syncPostImages(postId: UUID, ownerId: UUID, imageUrls: Collection<String>)
 
-    /** The post is gone: its images let go of it, and the cleanup takes those no post uses. */
+    /** The post is gone: its images and its video let go of it, and the cleanup takes those no post uses. */
     fun releasePostImages(postId: UUID)
 }

@@ -20,6 +20,7 @@ data class WritePostCommand(
     val body: String,
     val summary: String?,
     val categoryId: UUID?,
+    val videoId: UUID? = null,
 )
 
 interface RevisePostUseCase {
@@ -34,6 +35,7 @@ data class RevisePostCommand(
     val body: String,
     val summary: String?,
     val categoryId: UUID?,
+    val videoId: UUID? = null,
 )
 
 interface ChangePostSlugUseCase {
@@ -71,6 +73,7 @@ data class PostView(
     val publishedAt: Instant?,
     val slug: String,
     val oldSlugs: List<String>,
+    val videoId: UUID?,
 )
 
 data class PostListItem(
