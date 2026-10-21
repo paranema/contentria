@@ -5,10 +5,10 @@
 | 애그리거트 | 멤버 | 공개 범위 |
 |---|---|---|
 | `Media` (이미지) | 연결된 글 ID 목록 | 파일은 주소를 아는 누구나. 기록은 올린 회원만 |
-| `Video` (영상) | 없음 | 다음 묶음에서 정한다 |
+| `Video` (영상) | 연결된 글 ID 목록 | 변환이 끝난 영상은 주소를 아는 누구나. 기록은 올린 회원만 |
 
 **내부 구조: 헥사고날.** 규칙은 작지만 외부 의존(R2, Cloudflare Queue, ffmpeg)이 많고 바뀔 수 있다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 이미지 묶음(M0~M5)을 마쳤다. 업로드 준비, 완료(검증과 사진 정보 제거), 지우기, 글과의 연결, 정리가 있다. 다음은 영상 묶음(V0~)이다.
+코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 이미지 묶음(M0~M5)을 마쳤다. 업로드 준비, 완료(검증과 사진 정보 제거), 지우기, 글과의 연결, 정리가 있다. 지금은 영상 묶음의 규칙과 구현 배치를 정했다(V0).
 
 **이미지를 먼저 만들고, 영상은 다음 묶음에서 만든다.** 영상은 변환 프로세스(`apps/worker`), ffmpeg, Cloudflare Queue, 정리 배치까지 필요하다. 이 문서들은 영상의 큰 방향만 적고, 영상 묶음을 시작할 때 자세히 채운다.
 
