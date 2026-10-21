@@ -31,6 +31,15 @@
 | 흐름 3의 6번 | 앱 | 한 번의 UPDATE. 알림마다 불러오지 않는다 |
 | 보존 기간 | 앱 + 스케줄 | 하루에 한 번, 90일이 지난 알림을 지운다 |
 
+| 도메인 메서드 | 하는 일 |
+|---|---|
+| `Notification.newPost(recipientId, postId, blogId, sourceEventId, at)` | 새 글 알림. 댓글과 쓴 사람은 비어 있다 |
+| `CommentRecipients.of(commenterId, blogOwnerId, parentCommenterId)` | 받는 사람과 종류. 부모 댓글 작성자를 먼저 정하므로, 자기 댓글에 답글을 받은 블로그 소유자는 답글 알림 하나만 받는다 |
+| `Notification.aboutComment(recipient, postId, blogId, commentId, actorId, sourceEventId, at)` | 위의 받는 사람마다 하나 |
+| `Notification.markRead(at)` | 처음 읽은 시각만 남긴다 |
+
+`Notification`은 `AuditableEntity`를 상속하지 않는다. 바뀌는 것은 읽은 시각 하나이고, 그것을 따로 둔다.
+
 ## DB 제약
 
 | 제약 | 보증하는 것 |
