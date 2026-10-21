@@ -119,7 +119,7 @@ contexts/publishing/publishing-api/src/main/kotlin/com/contentria/publishing/api
 | 엔티티를 노출하지 않는다 | 엔티티는 네트워크를 건너갈 수 없다 |
 | 쓰기(명령) 포트는 원칙적으로 두지 않는다 | 다른 컨텍스트의 데이터를 바꾸는 일은 이벤트로 한다 |
 
-마지막 규칙의 예외: 출판이 미디어를 호출해 첨부를 승격하고 연결하는 것은 쓰기지만 동기 호출이다. 이런 포트는 `-api`에 두되 [strategic/04-context-map.md](../strategic/04-context-map.md)의 "동기 호출" 표에 있어야 한다.
+마지막 규칙의 예외: 출판이 미디어를 호출해 글의 이미지 연결을 맞추고 푸는 것은 쓰기지만 동기 호출이다. 이런 포트는 `-api`에 두되 [strategic/04-context-map.md](../strategic/04-context-map.md)의 "동기 호출" 표에 있어야 한다.
 
 ### `<컨텍스트>-core`
 
