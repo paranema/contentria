@@ -53,4 +53,8 @@ sealed class PublishingUseCaseException(message: String) : DomainException(messa
     /** The tree changed since the editor loaded it. */
     class StaleCategoryTree :
         PublishingUseCaseException("The categories were changed elsewhere; reload and edit again")
+
+    /** 01-rules, 처음 정하는 값: a body shows at most 20 images. */
+    class TooManyImages :
+        PublishingUseCaseException("A post shows at most 20 images")
 }

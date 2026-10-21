@@ -5,15 +5,10 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -22,9 +17,7 @@ import java.util.UUID
 import javax.imageio.ImageIO
 
 /** Image uploads through a real S3 API (media 01-rules 흐름 1, 2, 5). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(RecordingSenders::class)
-class MediaUploadIntegrationTest {
+class MediaUploadIntegrationTest : ApiIntegrationTest() {
 
     @LocalServerPort
     private var port: Int = 0
@@ -174,48 +167,30 @@ class MediaUploadIntegrationTest {
     private fun member(): TestBrowser = TestBrowser(port).also { it.signUpAsNewMember(codes) }
 
     /** A PNG prepared, put and completed; returns its id. */
-    private fun uploaded(member: TestBrowser): String {
-        val png = png()
-        val prepared = member.post("/media/uploads", request("image/png", png.size, "a.png"))
-        check(put(prepared.field("uploadUrl"), "image/png", png).statusCode() == 200)
-        check(member.post("/media/${prepared.field("mediaId")}/complete", "").statusCode() == 200)
-        return prepared.field("mediaId")
-    }
+    private fun uploaded(member: TestBrowser): String = member.uploadPng().id.toString()
 
     private fun request(contentType: String, size: Number, fileName: String) =
         """{"contentType":"$contentType","sizeBytes":$size,"fileName":"$fileName"}"""
 
-    /** What the browser does with the upload address. */
-    private fun put(uploadUrl: String, contentType: String, bytes: ByteArray): HttpResponse<String> =
-        http.send(
-            HttpRequest.newBuilder(URI.create(uploadUrl)).header("Content-Type", contentType).PUT(HttpRequest.BodyPublishers.ofByteArray(bytes)).build(),
-            HttpResponse.BodyHandlers.ofString(),
-        )
+    private fun put(uploadUrl: String, contentType: String, bytes: ByteArray): HttpResponse<String> = putToStorage(uploadUrl, contentType, bytes)
 
     private fun status(id: String): Any? = ApiTestEnvironment.row("select status from media.media where id = ?", UUID.fromString(id))!!["status"]
 
     private fun stored(key: String): ByteArray =
         ApiTestEnvironment.storage.getObjectAsBytes { it.bucket(ApiTestEnvironment.MEDIA_BUCKET).key(key) }.asByteArray()
 
-    private fun png(): ByteArray = encode(BufferedImage(4, 4, BufferedImage.TYPE_INT_RGB), "png")
+    private fun png(): ByteArray = pngBytes()
 
     /** A JPEG with an APP1 Exif segment right after its start marker, carrying [SECRET]. */
     private fun jpegWithExif(): ByteArray {
-        val plain = encode(BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB), "jpeg")
+        val plain = encodeImage(BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB), "jpeg")
         val payload = "Exif\u0000\u0000MM\u0000*\u0000\u0000\u0000\u0008$SECRET".toByteArray(Charsets.ISO_8859_1)
         val length = payload.size + 2
         val app1 = byteArrayOf(0xFF.toByte(), 0xE1.toByte(), (length shr 8).toByte(), length.toByte()) + payload
         return plain.copyOfRange(0, 2) + app1 + plain.copyOfRange(2, plain.size)
     }
 
-    private fun encode(image: BufferedImage, format: String): ByteArray =
-        ByteArrayOutputStream().also { ImageIO.write(image, format, it) }.toByteArray()
-
-    companion object {
-        private const val SECRET = "GPS 37.5665N 126.9780E"
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun properties(registry: DynamicPropertyRegistry) = ApiTestEnvironment.register(registry)
+    private companion object {
+        const val SECRET = "GPS 37.5665N 126.9780E"
     }
 }

@@ -125,6 +125,17 @@
 
 연결 호출이 실패하면 01의 "글을 저장한 뒤에 연결한다"대로 다음 저장이 다시 맞춘다. 출판은 실패를 되돌리지 않는다.
 
+| 구현 | 위치 |
+|---|---|
+| `media-api`의 포트 | `PostImageAttachments`(`syncPostImages`, `releasePostImages`). `application/service/PostImageAttachmentService`가 구현한다 |
+| 주소를 이미지로 | `ImageAddresses.mediaIdOf(url)`. 공개 주소 + `images/{UUID}.{확장자}`가 아니면 null |
+| 이 글의 이미지 | named query `Media.findAttachedTo`(`?1 member of m.postIds`) |
+| 출판의 이미지 찾기 | `adapter/required/markdown/CommonmarkImages`. commonmark의 `Image` 노드만 모은다. 코드 안의 이미지 문법과 HTML `<img>`는 세지 않는다 |
+| 출판의 규칙과 호출 | `application/service/PostImageLinks`. 저장 전에 20개를 세고, 저장과 삭제가 커밋된 뒤 부른다. 실패는 기록만 남긴다 |
+| 출판의 번역 계층 | `adapter/required/media/MediaPostImages` |
+
+글을 쓰거나 고칠 때만 맞춘다. 발행, 비공개, slug 변경은 본문을 바꾸지 않으므로 부르지 않는다.
+
 ## DB 제약
 
 | 제약 | 보증하는 것 |
