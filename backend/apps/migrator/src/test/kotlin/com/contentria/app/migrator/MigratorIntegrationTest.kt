@@ -192,6 +192,35 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("worker_app은 영상의 상태만 바꾸고, media 밖의 스키마와 DDL에는 손댈 수 없다")
+    fun `the worker role reaches only media`() {
+        connect("worker_app", APP_PASSWORD).use { connection ->
+            val id = UUID.randomUUID()
+            connection.prepareStatement(
+                "INSERT INTO media.videos (id, uploader_id, format, size_bytes, file_name, raw_key, status, created_at, updated_at) " +
+                    "VALUES (?, ?, 'MP4', 1024, 'clip.mp4', ?, 'PENDING', now(), now())",
+            ).use { statement ->
+                statement.setObject(1, id)
+                statement.setObject(2, UUID.randomUUID())
+                statement.setString(3, "raw/$id/original.mp4")
+                statement.executeUpdate()
+            }
+            connection.prepareStatement("UPDATE media.videos SET status = 'PROCESSING', transcoding_started_at = now() WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+
+            assertThatThrownBy { connection.createStatement().executeQuery("SELECT count(*) FROM publishing.posts") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+            assertThatThrownBy { connection.createStatement().executeQuery("SELECT count(*) FROM analytics.visits") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+            assertThatThrownBy { connection.createStatement().execute("CREATE TABLE media.forbidden (id int)") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+        }
+    }
+
+    @Test
     @DisplayName("api_app은 방문을 기록하고, batch_app은 일별 통계를 집계하고 지난 방문을 지운다")
     fun `the runtime roles have DML on analytics tables`() {
         val visit = UUID.randomUUID()
@@ -255,6 +284,7 @@ class MigratorIntegrationTest {
             "-v", "analytics_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
             "-v", "batch_app_password=$APP_PASSWORD",
+            "-v", "worker_app_password=$APP_PASSWORD",
             "-f", target,
         )
         check(result.exitCode == 0) { "$name failed: ${result.stderr}" }

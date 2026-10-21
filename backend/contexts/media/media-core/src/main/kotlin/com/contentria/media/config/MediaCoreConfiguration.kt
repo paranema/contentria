@@ -22,7 +22,12 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner
 @Configuration(proxyBeanMethods = false)
 @EntityScan("com.contentria.media")
 @EnableJpaRepositories("com.contentria.media.application.required")
-@ComponentScan("com.contentria.media.application", "com.contentria.media.adapter.required")
+// Not the queue and the transcoder: those need the worker's settings and ffmpeg (MediaQueueConfiguration).
+@ComponentScan(
+    "com.contentria.media.application",
+    "com.contentria.media.adapter.required.storage",
+    "com.contentria.media.adapter.required.image",
+)
 @EnableConfigurationProperties(MediaProperties::class)
 class MediaCoreConfiguration {
 

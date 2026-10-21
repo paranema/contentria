@@ -249,7 +249,7 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | `platform/architecture-rules` | 있음. 헥사고날, 레이어드, app 규칙 |
 | `apps/api` | 있음. member, publishing, interaction, notification, media, analytics 조립, 블로그 대시보드와 글 영상 조회 조합(`composition`), 요청 인증(Spring Security, 액세스 토큰 필터), 아웃박스 릴레이 |
 | `apps/batch` | 있음. 미디어의 이미지 정리(`mediaImageCleanup`), 분석의 일별 집계(`analyticsDailyStatistics`) |
-| `apps/worker` | 없음 |
+| `apps/worker` | 있음. 미디어의 영상 변환(Cloudflare Queue 소비, ffmpeg) |
 | `apps/migrator` | 있음. 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway 실행 |
 
 ## 검증

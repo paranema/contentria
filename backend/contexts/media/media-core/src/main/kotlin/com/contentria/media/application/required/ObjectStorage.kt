@@ -1,6 +1,7 @@
 package com.contentria.media.application.required
 
 import java.net.URI
+import java.nio.file.Path
 import java.time.Duration
 
 /**
@@ -19,6 +20,14 @@ interface ObjectStorage {
 
     /** Succeeds when there is nothing to delete. */
     fun delete(key: String)
+
+    /** Streams the object to [target] without holding it in memory: a video is up to 500MB. */
+    fun download(key: String, target: Path)
+
+    fun upload(key: String, source: Path, contentType: String)
+
+    /** Every object whose key starts with [prefix], such as a video's transcoded outputs. */
+    fun deletePrefix(prefix: String)
 }
 
 /** Re-encodes an image so that only its pixels remain (01-rules 흐름 2의 5번). */

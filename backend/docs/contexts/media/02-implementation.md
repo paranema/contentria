@@ -199,7 +199,7 @@
 | 프로세스 | 하는 일 | 진입점 |
 |---|---|---|
 | `apps/api` | 업로드 준비, 글과의 연결, 독자용 조회 | `adapter/provided/web`, `media-api` |
-| `apps/worker` (새로) | 큐에서 받아 변환 | `adapter/provided/queue` |
+| `apps/worker` | 큐에서 받아 변환 | `adapter/provided/queue` |
 | `apps/batch` | 정리 | `adapter/provided/batch` |
 
 | 포트 | 어댑터 | 내용 |
@@ -231,3 +231,24 @@
 출판은 받은 `videoId`를 그대로 저장한다. 남의 영상이면 미디어가 연결하지 않으므로, 독자에게는 영상이 없는 글로 보인다.
 
 `apps/worker`는 `worker_app` 롤로 접속하고 `media` 스키마의 DML만 가진다. ffmpeg와 ffprobe는 worker의 컨테이너 이미지에 들어 있다.
+
+| 구현 (V3) | 위치 |
+|---|---|
+| 변환 유스케이스 | `application/provided/TranscodeVideoUseCase`를 `application/service/VideoTranscodingService`가 구현한다. 원본 키로 영상을 찾아 "변환 중"으로 바꾸는 트랜잭션, 트랜잭션 밖의 변환, "완료"나 "실패"로 바꾸는 트랜잭션으로 나눈다. 변환이 몇 분 걸려도 커넥션을 잡고 있지 않는다 |
+| 결과 | `SKIPPED`(기록 없음, 이미 완료나 실패), `COMPLETED`, `FAILED`(영상이 아님, 5분 초과). 셋 다 알림을 확인한다. 그 밖의 예외는 일시적 실패로 보고 확인하지 않는다 |
+| 원본 지우기 | 완료로 바꾼 뒤 지운다. 지우지 못하면 로그만 남긴다. 남은 원본은 R2 수명 규칙(`raw/` 7일)과 정리(V4)가 지운다 |
+| 큐 소비 | `adapter/provided/queue/VideoQueuePoller`. `@Scheduled` 고정 지연으로 받는다. `PutObject`, `CompleteMultipartUpload`가 아니거나 `raw/` 밖의 키면 바로 확인한다. 받기가 실패하면 다음 차례에 다시 받는다 |
+| 큐 어댑터 | `adapter/required/queue/CloudflareVideoQueue`. JDK `HttpClient`로 `messages/pull`과 `messages/ack`를 부른다. 메시지 본문이 객체로 오든 문자열로 오든 읽는다. 실패 메시지에는 상태 코드만 담고 토큰은 담지 않는다 |
+| 변환 어댑터 | `adapter/required/transcode/FfmpegTranscoder`. 원본을 작업 폴더에 받고, ffprobe로 영상 스트림과 길이를 본다. HLS(fMP4 조각, 6초)는 720p(CRF 23, 최대 3000k, 소리 128k)와 480p(CRF 24, 최대 1500k, 소리 96k)를 한 번의 ffmpeg 실행으로 만든다. 원본보다 높은 단은 빼고, 480p보다 작으면 원본 높이 한 단만 만든다. 포스터는 1초(짧으면 절반) 지점의 한 장이다. 끝나면 작업 폴더를 지운다 |
+| 프로세스 실행 | `ProcessRunner` 포트 뒤의 `LocalProcessRunner`. 표준 출력과 오류를 따로 읽어 버퍼가 차서 멈추는 일을 막는다. 시간을 넘기면 강제로 끝낸다 |
+| 설정 | `MediaQueueConfiguration`이 위 빈을 직접 만든다. `MediaCoreConfiguration`은 이것들을 스캔하지 않아서, api와 batch는 큐 설정과 ffmpeg 없이 뜬다 |
+
+| 설정 (`contentria.media.worker`) | 환경 변수 | 기본값 |
+|---|---|---|
+| `poll-interval` | `WORKER_POLL_INTERVAL` | `5s` |
+| `queue.account-id`, `queue.queue-id`, `queue.api-token` | `CLOUDFLARE_ACCOUNT_ID`, `CF_QUEUE_ID`, `CF_API_TOKEN` | 없음. 토큰은 계정의 Queues 편집 권한만 가진다 |
+| `queue.visibility-timeout`, `queue.batch-size` | | `30m`, `1`. 가장 긴 변환보다 길어서 진행 중인 일이 두 번 나가지 않는다 |
+| `transcode.ffmpeg-path`, `transcode.ffprobe-path` | `FFMPEG_PATH`, `FFPROBE_PATH` | `ffmpeg`, `ffprobe` |
+| `transcode.max-duration`, `transcode.process-timeout`, `transcode.work-dir` | | `5m`, `20m`, JVM 임시 폴더 |
+
+테스트(`apps/worker`)는 PostgreSQL, MinIO, ffmpeg 컨테이너(`jrottenberg/ffmpeg:7.1-ubuntu2404`)로 돈다. 작업 폴더를 ffmpeg 컨테이너에 같은 경로로 마운트하고, `ProcessRunner`를 그 컨테이너 안에서 실행하는 것으로 바꾼다. 큐는 가짜다. 테스트 영상은 ffmpeg의 `testsrc`와 `sine`으로 만든다. 마스터 재생 목록에서 시작해 플레이어가 받을 파일(재생 목록, 초기화 조각, 조각)이 모두 저장소에 있는지 확인한다. Cloudflare 어댑터는 JDK `HttpServer`로 띄운 가짜 API로 확인한다.

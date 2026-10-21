@@ -8,9 +8,7 @@
 | `Video` (영상) | 연결된 글 ID 목록 | 변환이 끝난 영상은 주소를 아는 누구나. 기록은 올린 회원만 |
 
 **내부 구조: 헥사고날.** 규칙은 작지만 외부 의존(R2, Cloudflare Queue, ffmpeg)이 많고 바뀔 수 있다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 이미지 묶음(M0~M5)을 마쳤다. 업로드 준비, 완료(검증과 사진 정보 제거), 지우기, 글과의 연결, 정리가 있다. 영상은 도메인, 스키마, 업로드 준비, 글과의 연결, 독자용 조회가 있다(V2). 변환(worker)은 V3이다.
-
-**이미지를 먼저 만들고, 영상은 다음 묶음에서 만든다.** 영상은 변환 프로세스(`apps/worker`), ffmpeg, Cloudflare Queue, 정리 배치까지 필요하다. 이 문서들은 영상의 큰 방향만 적고, 영상 묶음을 시작할 때 자세히 채운다.
+코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 이미지 묶음(M0~M5)을 마쳤다. 업로드 준비, 완료(검증과 사진 정보 제거), 지우기, 글과의 연결, 정리가 있다. 영상은 도메인, 스키마, 업로드 준비, 글과의 연결, 독자용 조회(V2)와 변환(V3, `apps/worker`)이 있다. 남은 것은 영상 정리(V4)다.
 
 ## 문서 목록
 

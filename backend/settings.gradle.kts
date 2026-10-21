@@ -16,4 +16,4 @@ include("contexts:interaction:interaction-api", "contexts:interaction:interactio
 include("contexts:media:media-api", "contexts:media:media-core")
 include("contexts:analytics:analytics-api", "contexts:analytics:analytics-core")
 include("contexts:notification:notification-api", "contexts:notification:notification-core")
-include("apps:api", "apps:batch", "apps:migrator")
+include("apps:api", "apps:batch", "apps:worker", "apps:migrator")
