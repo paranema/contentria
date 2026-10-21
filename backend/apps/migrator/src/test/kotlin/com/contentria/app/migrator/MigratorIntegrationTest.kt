@@ -166,6 +166,32 @@ class MigratorIntegrationTest {
     }
 
     @Test
+    @DisplayName("batch_app은 잡이 있는 media만 읽고 쓰고, 다른 컨텍스트의 스키마에는 손댈 수 없다")
+    fun `the batch role reaches only the schemas of its jobs`() {
+        connect("batch_app", APP_PASSWORD).use { connection ->
+            val id = UUID.randomUUID()
+            connection.prepareStatement(
+                "INSERT INTO media.media (id, uploader_id, format, size_bytes, file_name, stored_key, status, created_at, updated_at) " +
+                    "VALUES (?, ?, 'PNG', 1024, 'photo.png', ?, 'UPLOADING', now(), now())",
+            ).use { statement ->
+                statement.setObject(1, id)
+                statement.setObject(2, UUID.randomUUID())
+                statement.setString(3, "images/$id.png")
+                statement.executeUpdate()
+            }
+            connection.prepareStatement("DELETE FROM media.media WHERE id = ?")
+                .use { it.setObject(1, id); assertThat(it.executeUpdate()).isEqualTo(1) }
+
+            assertThatThrownBy { connection.createStatement().executeQuery("SELECT count(*) FROM publishing.posts") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+            assertThatThrownBy { connection.createStatement().execute("CREATE TABLE media.forbidden (id int)") }
+                .isInstanceOf(SQLException::class.java)
+                .hasMessageContaining("permission denied")
+        }
+    }
+
+    @Test
     @DisplayName("api_app은 테이블을 만들거나 바꿀 수 없다")
     fun `the runtime role has no DDL`() {
         connect("api_app", APP_PASSWORD).use { connection ->
@@ -206,6 +232,7 @@ class MigratorIntegrationTest {
             "-v", "notification_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "media_migrator_password=$MIGRATOR_PASSWORD",
             "-v", "api_app_password=$APP_PASSWORD",
+            "-v", "batch_app_password=$APP_PASSWORD",
             "-f", target,
         )
         check(result.exitCode == 0) { "$name failed: ${result.stderr}" }
