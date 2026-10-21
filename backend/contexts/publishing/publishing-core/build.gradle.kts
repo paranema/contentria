@@ -7,8 +7,9 @@ dependencies {
     api(project(":contexts:publishing:publishing-api"))
     implementation(project(":shared-kernel"))
 
-    // adapter/required/member만 쓴다 (ArchUnit이 강제)
+    // adapter/required/member, adapter/required/media만 쓴다 (ArchUnit이 강제)
     implementation(project(":contexts:member:member-api"))
+    implementation(project(":contexts:media:media-api"))
 
     // adapter/required/messaging: 아웃박스 기록
     implementation(project(":platform:messaging"))

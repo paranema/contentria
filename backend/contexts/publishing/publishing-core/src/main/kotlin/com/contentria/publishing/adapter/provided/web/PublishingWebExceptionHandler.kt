@@ -28,6 +28,7 @@ class PublishingWebExceptionHandler {
         is PublishingUseCaseException.PostNotFound -> error(HttpStatus.NOT_FOUND, "POST_NOT_FOUND", "No such post.")
         is PublishingUseCaseException.CategoryNotInBlog -> error(HttpStatus.BAD_REQUEST, "CATEGORY_NOT_IN_BLOG", "The category belongs to another blog.")
         is PublishingUseCaseException.PostSlugTaken -> error(HttpStatus.CONFLICT, "POST_SLUG_TAKEN", "Another post of this blog uses or used this address.")
+        is PublishingUseCaseException.TooManyImages -> error(HttpStatus.BAD_REQUEST, "TOO_MANY_IMAGES", "A post shows at most 20 images.")
     }
 
     @ExceptionHandler

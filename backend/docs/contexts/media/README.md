@@ -8,7 +8,7 @@
 | `Video` (영상) | 없음 | 다음 묶음에서 정한다 |
 
 **내부 구조: 헥사고날.** 규칙은 작지만 외부 의존(R2, Cloudflare Queue, ffmpeg)이 많고 바뀔 수 있다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 지금은 이미지의 업로드 준비, 완료(검증과 사진 정보 제거), 지우기가 있다(M3). 글과의 연결은 M4다.
+코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 지금은 이미지의 업로드 준비, 완료(검증과 사진 정보 제거), 지우기, 글과의 연결이 있다(M4). 정리는 M5다.
 
 **이미지를 먼저 만들고, 영상은 다음 묶음에서 만든다.** 영상은 변환 프로세스(`apps/worker`), ffmpeg, Cloudflare Queue, 정리 배치까지 필요하다. 이 문서들은 영상의 큰 방향만 적고, 영상 묶음을 시작할 때 자세히 채운다.
 

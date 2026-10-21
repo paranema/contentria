@@ -11,7 +11,9 @@ interface MediaRepository : Repository<Media, UUID> {
     fun save(media: Media): Media
     fun findById(id: UUID): Media?
     fun delete(media: Media)
+    fun findByIdIn(ids: Collection<UUID>): List<Media>
 
-    /** Bytes of the uploads [uploaderId] prepared since [since] and still has. [Media]'s named query. */
+    /** [Media]'s named queries of the same names. */
     fun sumSizePreparedSince(uploaderId: UUID, since: Instant): Long
+    fun findAttachedTo(postId: UUID): List<Media>
 }

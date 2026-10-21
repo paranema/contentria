@@ -32,6 +32,11 @@ import java.util.UUID
     name = "Media.sumSizePreparedSince",
     query = "select coalesce(sum(m.sizeBytes), 0) from Media m where m.uploaderId = ?1 and m.createdAt >= ?2",
 )
+// The images a post uses, to let go of those its body no longer has.
+@NamedQuery(
+    name = "Media.findAttachedTo",
+    query = "select m from Media m where ?1 member of m.postIds",
+)
 @Table(
     name = "media",
     schema = MediaSchema.NAME,

@@ -38,11 +38,17 @@ class PostService(
     private val bloggers: BloggerStatusPort,
     private val events: PostEvents,
     private val summaries: PostSummaries,
+    private val imageLinks: PostImageLinks,
     private val transactions: TransactionTemplate,
     private val clock: Clock,
 ) : WritePostUseCase, RevisePostUseCase, ChangePostSlugUseCase, ChangePostStatusUseCase, DeletePostUseCase, GetMyPostsQuery {
 
-    override fun write(command: WritePostCommand): PostView = asBlogger(command.requesterId) {
+    override fun write(command: WritePostCommand): PostView {
+        imageLinks.requireWithinLimit(command.body)
+        return writeDraft(command).also { imageLinks.afterSave(it.postId, command.requesterId, command.body) }
+    }
+
+    private fun writeDraft(command: WritePostCommand): PostView = asBlogger(command.requesterId) {
         // 흐름 3의 2번
         val blog = blogs.findBySlug(command.blogSlug) ?: throw PublishingUseCaseException.BlogNotFound()
         if (!blog.isOwnedBy(command.requesterId)) throw PublishingUseCaseException.NotBlogOwner()
@@ -55,7 +61,12 @@ class PostService(
         posts.save(draft).view()
     }
 
-    override fun revise(command: RevisePostCommand): PostView = asBlogger(command.requesterId) {
+    override fun revise(command: RevisePostCommand): PostView {
+        imageLinks.requireWithinLimit(command.body)
+        return reviseContent(command).also { imageLinks.afterSave(it.postId, command.requesterId, command.body) }
+    }
+
+    private fun reviseContent(command: RevisePostCommand): PostView = asBlogger(command.requesterId) {
         val (post, blog) = ownedPost(command.requesterId, command.postId)
         requireCategoryOf(blog, command.categoryId)
 
@@ -101,6 +112,7 @@ class PostService(
             posts.delete(post)
             events.deleted(PostDeleted(post.id, blog.id))
         }
+        imageLinks.afterDelete(postId)
     }
 
     override fun get(requesterId: UUID, postId: UUID): PostView =
