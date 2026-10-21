@@ -208,6 +208,16 @@
 | `Transcoder` | `adapter/required/transcode/FfmpegTranscoder` | ffprobe로 확인하고 ffmpeg로 HLS와 포스터를 만든다. 영상이 아니거나 너무 길면 "다시 시도하지 않을 실패"로 알린다 |
 | `ObjectStorage` | 이미지와 같은 S3 어댑터에 파일 받기, 파일 올리기, 접두사째 지우기를 더한다 | |
 
+| 도메인 메서드 | 하는 일 |
+|---|---|
+| `Video.prepare(uploaderId, contentType, sizeBytes, fileName, at)` | 형식, 크기(1바이트~500MB), 파일 이름. 원본 키는 `raw/{ID}/original.{확장자}`. 정리 기준 시각을 준비할 때부터 정한다(상태와 상관없이 연결할 수 있으므로) |
+| `startTranscoding(at)` | 완료나 실패면 false. 변환 중이면 다시 맡는다(worker가 죽고 큐가 다시 보낸 경우) |
+| `complete(result)` | 변환 중일 때만. 아니면 `NotTranscoding` |
+| `fail(reason)` | 완료나 실패면 그대로. 이유는 500자까지 |
+| `isStuck(now)`, `isExpired(now)` | 변환 시작에서 2시간, 마지막 연결이 풀린 뒤 7일 |
+
+마이그레이션은 `V2__create_video_tables.sql`(`videos`, `video_attachments`)이다. 상태마다 있어야 할 값(변환 중의 시작 시각, 완료의 재생 정보, 실패의 이유)을 CHECK로 막고, 원본 키는 고유하다.
+
 `media-api`에는 둘을 더한다. `PostVideoAttachments.syncPostVideo(postId, ownerId, videoId?)`(흐름 V3), `GetPostVideosQuery.videosOf(postIds)`(흐름 V4, 글 상세 조합용).
 출판은 글에 첨부 영상 ID(`videoId`)를 두고, 글을 쓰거나 고칠 때 받는다. 저장이 커밋된 뒤 이미지와 함께 미디어에 알린다.
 

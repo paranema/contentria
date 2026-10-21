@@ -92,6 +92,38 @@ class MigrationMatchesMappingTest {
         assertThat(count("SELECT count(*) FROM media.media_attachments WHERE media_id = '$media'")).isZero()
     }
 
+    @Test
+    @DisplayName("영상의 상태마다 있어야 할 값이 있고, 원본 키는 하나이며, 연결은 영상과 함께 지워진다")
+    fun `video constraints`() {
+        val pending = insertVideo()
+        insertVideo(status = "PROCESSING", columns = mapOf("transcoding_started_at" to "now()"))
+        insertVideo(status = "COMPLETED", columns = mapOf("master_key" to "'hls/x/master.m3u8'", "duration_ms" to "1000", "width" to "640", "height" to "360"))
+        insertVideo(status = "FAILED", columns = mapOf("failure_reason" to "'not a video'"))
+
+        assertThatThrownBy { insertVideo(status = "PROCESSING") }.hasMessageContaining("ck_videos_processing")
+        assertThatThrownBy { insertVideo(status = "COMPLETED") }.hasMessageContaining("ck_videos_completed")
+        assertThatThrownBy { insertVideo(status = "FAILED") }.hasMessageContaining("ck_videos_failed")
+        assertThatThrownBy { insertVideo(status = "DELETED") }.hasMessageContaining("ck_videos_status")
+        assertThatThrownBy { insertVideo(size = 524_288_001) }.hasMessageContaining("ck_videos_size")
+        assertThatThrownBy { insertVideo(rawKey = "raw/$pending/original.mp4") }.hasMessageContaining("uq_videos_raw_key")
+
+        execute("INSERT INTO media.video_attachments VALUES ('$pending', '${UUID.randomUUID()}')")
+        execute("DELETE FROM media.videos WHERE id = '$pending'")
+        assertThat(count("SELECT count(*) FROM media.video_attachments WHERE video_id = '$pending'")).isZero()
+    }
+
+    /** A video row with [columns] (name to SQL literal) besides the required ones. */
+    private fun insertVideo(status: String = "PENDING", size: Long = 1024, rawKey: String? = null, columns: Map<String, String> = emptyMap()): UUID {
+        val id = UUID.randomUUID()
+        val names = columns.keys.joinToString("") { ", $it" }
+        val values = columns.values.joinToString("") { ", $it" }
+        execute(
+            "INSERT INTO media.videos (id, uploader_id, format, size_bytes, file_name, raw_key, status, created_at, updated_at$names) " +
+                "VALUES ('$id', '${UUID.randomUUID()}', 'MP4', $size, 'clip.mp4', '${rawKey ?: "raw/$id/original.mp4"}', '$status', now(), now()$values)",
+        )
+        return id
+    }
+
     private fun insert(
         format: String = "PNG",
         status: String = "UPLOADING",
