@@ -119,7 +119,7 @@
 
 | 항목 | 사유 |
 |---|---|
-| 좋아요와 구독 알림 (`PostLiked`, `BlogSubscribed`) | 알림 컨텍스트를 만들 때 정한다([strategic/04-context-map.md](../../strategic/04-context-map.md)에서 미정) |
+| 좋아요와 구독 알림 (`PostLiked`, `BlogSubscribed`) | 알림 컨텍스트가 보류했다([notification/01-rules.md](../notification/01-rules.md)의 "보류"). 정해지면 이벤트를 만든다 |
 | 블로그 소유자의 댓글 관리 | 운영 규칙이 생기면 정한다 |
-| 탈퇴한 회원의 구독을 구독자 수에서 뺄지 | 탈퇴가 다른 컨텍스트에 전파되지 않으므로 지금은 센다. 알림이 탈퇴한 구독자에게 보내지 않는 것은 알림이 정한다 |
+| 탈퇴한 회원의 구독을 구독자 수에서 뺄지 | 탈퇴가 다른 컨텍스트에 전파되지 않으므로 지금은 센다. 알림도 회원에게 묻지 않으므로 탈퇴한 구독자의 알림을 만든다. 로그인하지 못해 보지 않을 뿐이다([notification/01-rules.md](../notification/01-rules.md)) |
 | 댓글 신고 | 운영 컨텍스트가 생길 때 |
