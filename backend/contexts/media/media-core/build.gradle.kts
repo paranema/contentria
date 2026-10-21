@@ -13,6 +13,9 @@ dependencies {
     implementation(platform(libs.aws.bom))
     implementation(libs.aws.s3)
 
+    // adapter/provided/batch: 정리 잡. Spring Batch는 잡을 띄우는 apps/batch만 가진다
+    compileOnly("org.springframework.boot:spring-boot-starter-batch")
+
     // adapter/provided/web
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("tools.jackson.module:jackson-module-kotlin")

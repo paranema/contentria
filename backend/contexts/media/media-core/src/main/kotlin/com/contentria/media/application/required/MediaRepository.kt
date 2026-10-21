@@ -16,4 +16,7 @@ interface MediaRepository : Repository<Media, UUID> {
     /** [Media]'s named queries of the same names. */
     fun sumSizePreparedSince(uploaderId: UUID, since: Instant): Long
     fun findAttachedTo(postId: UUID): List<Media>
+    fun findExpiredUploadIds(createdBefore: Instant): List<UUID>
+    fun findUnusedIds(unattachedBefore: Instant): List<UUID>
+    fun findLockedById(id: UUID): Media?
 }

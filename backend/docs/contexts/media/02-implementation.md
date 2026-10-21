@@ -136,6 +136,22 @@
 
 글을 쓰거나 고칠 때만 맞춘다. 발행, 비공개, slug 변경은 본문을 바꾸지 않으므로 부르지 않는다.
 
+## 정리
+
+| 구성 | 위치 |
+|---|---|
+| 유스케이스 | `application/provided/CleanUpImagesUseCase`, `application/service/ImageCleanupService` |
+| 만료 판단 | 도메인 `Media.isExpired(now)`. 업로드 중이면 만든 지 24시간, 사용 가능이면 `unattached_since`에서 7일 |
+| 대상 찾기 | named query `Media.findExpiredUploadIds`, `Media.findUnusedIds`. 오래된 것부터 종류마다 500개씩, 한 번 실행에 한 묶음 |
+| 지우기 | 이미지마다 트랜잭션 하나. `Media.findLockedById`(`SELECT ... FOR UPDATE`)로 잠그고 만료를 다시 판단한 뒤 파일, 기록 순으로 지운다 |
+| 잡 | `adapter/provided/batch/ImageCleanupJob`(`mediaImageCleanup`). 설정은 `config/MediaBatchConfiguration`, 띄우는 곳은 `apps/batch` |
+
+잠근 채 저장소를 부르는 것은 요청 경로의 규칙("저장소는 트랜잭션 밖에서")과 다르다. 잠금이 파일 삭제를 감싸야 그사이에 글이 그 이미지를 연결하지 못한다. 연결하려던 쪽은 잠금이 풀린 뒤 이미지가 없음을 보고 실패하고, 출판은 그 실패를 기록만 남긴다.
+파일을 지우지 못한 이미지는 기록을 남기고 다음 실행에 다시 지운다. 그런 이미지가 하나라도 있으면 잡을 실패로 끝내, 일정이 실패를 보이게 한다.
+
+잡은 Spring Batch 메타데이터를 남기지 않는다(기본 `ResourcelessJobRepository`). 매번 처음부터 돌아도 남은 것을 찾으므로 이어서 실행할 필요가 없다. 그래서 `batch` 스키마와 `batch_migrator`는 아직 만들지 않았다.
+`apps/batch`는 `batch_app` 롤로 접속하고, 지금은 `media` 스키마의 DML만 가진다. 일정은 `--spring.batch.job.name=mediaImageCleanup`(또는 `BATCH_JOB_NAME`)으로 이 잡을 고른다. 주기는 인프라 작업 때 정한다.
+
 ## DB 제약
 
 | 제약 | 보증하는 것 |

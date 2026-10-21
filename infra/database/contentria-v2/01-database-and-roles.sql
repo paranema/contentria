@@ -9,6 +9,7 @@
 --     -v notification_migrator_password=... \
 --     -v media_migrator_password=... \
 --     -v api_app_password=... \
+--     -v batch_app_password=... \
 --     -f 01-database-and-roles.sql
 
 CREATE DATABASE contentria_v2;
@@ -22,3 +23,4 @@ CREATE ROLE media_migrator LOGIN PASSWORD :'media_migrator_password';
 
 -- 런타임 롤: 프로세스마다 하나. DML만 가진다.
 CREATE ROLE api_app LOGIN PASSWORD :'api_app_password';
+CREATE ROLE batch_app LOGIN PASSWORD :'batch_app_password';

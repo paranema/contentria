@@ -1,3 +1,33 @@
 spring:
   main:
     web-application-type: none
+
+  application:
+    name: contentria-batch
+
+  # batch_app has DML on the schemas of the contexts whose jobs run here, and no DDL.
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+    username: ${DATABASE_USERNAME:batch_app}
+    password: ${DATABASE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  # The jobs keep no Spring Batch metadata: each one may run again from the start and finds
+  # what is left. A job that must resume where it stopped needs the batch schema first.
+  batch:
+    job:
+      name: ${BATCH_JOB_NAME:}
+
+contentria:
+  media:
+    public-base-url: ${MEDIA_PUBLIC_BASE_URL}
+    storage:
+      endpoint: ${R2_ENDPOINT}
+      bucket: ${R2_BUCKET_NAME}
+      region: auto
+      access-key-id: ${R2_ACCESS_KEY_ID}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY}

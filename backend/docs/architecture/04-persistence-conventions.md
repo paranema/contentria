@@ -73,14 +73,14 @@ WHERE con.contype = 'f'
 
 ## DB 롤
 
-지금 만든 롤은 `member_migrator`, `publishing_migrator`, `interaction_migrator`, `notification_migrator`, `media_migrator`, `api_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
+지금 만든 롤은 `member_migrator`, `publishing_migrator`, `interaction_migrator`, `notification_migrator`, `media_migrator`, `api_app`, `batch_app`이다. 나머지는 그 롤을 쓰는 컨텍스트나 프로세스가 생길 때 `01-database-and-roles.sql`에 추가한다.
 
 | 롤 | 쓰는 곳 | 권한 |
 |---|---|---|
 | `<컨텍스트>_migrator` (6개) | 그 컨텍스트의 마이그레이션 | 자기 스키마의 소유자. 다른 스키마에는 권한 없음 |
-| `batch_migrator` | Spring Batch 메타데이터 마이그레이션 | `batch` 스키마의 소유자 |
+| `batch_migrator` | Spring Batch 메타데이터 마이그레이션 | `batch` 스키마의 소유자. 지금의 잡은 메타데이터를 남기지 않아 아직 없다 |
 | `api_app` | api 프로세스 | 6개 컨텍스트 스키마의 `USAGE`와 테이블 DML |
-| `batch_app` | batch 프로세스 | `member`(토큰 정리), `media`(영상 정리), `analytics`(일별 집계), `batch`의 `USAGE`와 테이블 DML |
+| `batch_app` | batch 프로세스 | `member`(토큰 정리), `media`(이미지와 영상 정리), `analytics`(일별 집계), `batch`의 `USAGE`와 테이블 DML. 지금은 `media`만 있다. 잡이 생기는 스키마마다 더한다 |
 | `worker_app` | worker 프로세스 | `media`의 `USAGE`와 테이블 DML |
 
 런타임 롤(`*_app`)에는 DDL 권한을 주지 않는다. 테이블을 만들거나 바꾸는 것은 마이그레이션 롤만 한다.

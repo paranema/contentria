@@ -12,9 +12,11 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.LockModeType
 import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -31,6 +33,22 @@ import java.util.UUID
 @NamedQuery(
     name = "Media.sumSizePreparedSince",
     query = "select coalesce(sum(m.sizeBytes), 0) from Media m where m.uploaderId = ?1 and m.createdAt >= ?2",
+)
+// Cleanup (01-rules 흐름 6): oldest first, a run at a time. The lock holds an attach off while
+// the file and the record go; the attach then finds the image gone.
+@NamedQuery(
+    name = "Media.findExpiredUploadIds",
+    query = "select m.id from Media m where m.status = com.contentria.media.domain.image.MediaStatus.UPLOADING " +
+        "and m.createdAt < ?1 order by m.createdAt limit 500",
+)
+@NamedQuery(
+    name = "Media.findUnusedIds",
+    query = "select m.id from Media m where m.unattachedSince < ?1 order by m.unattachedSince limit 500",
+)
+@NamedQuery(
+    name = "Media.findLockedById",
+    query = "select m from Media m where m.id = ?1",
+    lockMode = LockModeType.PESSIMISTIC_WRITE,
 )
 // The images a post uses, to let go of those its body no longer has.
 @NamedQuery(
@@ -117,6 +135,12 @@ class Media private constructor(
         if (postIds.remove(postId) && postIds.isEmpty()) unattachedSince = at
     }
 
+    /** 흐름 6: an upload never completed within a day, or an image no post has used for a week. */
+    fun isExpired(now: Instant): Boolean = when (status) {
+        MediaStatus.UPLOADING -> createdAt < now.minus(UPLOAD_EXPIRY)
+        MediaStatus.READY -> unattachedSince?.let { it < now.minus(UNUSED_EXPIRY) } ?: false
+    }
+
     /** 흐름 5의 2번 */
     fun requireDeletable() {
         if (postIds.isNotEmpty()) throw MediaException.Attached()
@@ -131,6 +155,10 @@ class Media private constructor(
 
         const val MAX_SIZE_BYTES = 10L * 1024 * 1024
         const val FILE_NAME_MAX_LENGTH = 255
+
+        /** 01-rules, 처음 정하는 값 */
+        val UPLOAD_EXPIRY: Duration = Duration.ofHours(24)
+        val UNUSED_EXPIRY: Duration = Duration.ofDays(7)
 
         /** Every image key starts with this; the bucket keeps other things under other prefixes. */
         const val KEY_PREFIX = "images"

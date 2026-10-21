@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -97,5 +98,21 @@ class MediaTest {
         media.attachTo(UUID.randomUUID(), uploader)
 
         assertThatThrownBy { media.requireDeletable() }.isInstanceOf(MediaException.Attached::class.java)
+    }
+
+    @Test
+    @DisplayName("업로드 중인 채 24시간, 쓰이지 않은 채 7일이 지나야 정리 대상이다. 연결된 이미지는 대상이 아니다")
+    fun `expiry`() {
+        val uploading = Media.prepare(uploader, "image/png", 10, "a.png")
+        val created = uploading.createdAt
+        assertThat(uploading.isExpired(created.plus(Media.UPLOAD_EXPIRY))).isFalse()
+        assertThat(uploading.isExpired(created.plus(Media.UPLOAD_EXPIRY).plusSeconds(1))).isTrue()
+
+        val media = ready()
+        assertThat(media.isExpired(at.plus(Media.UNUSED_EXPIRY))).isFalse()
+        assertThat(media.isExpired(at.plus(Media.UNUSED_EXPIRY).plusSeconds(1))).isTrue()
+
+        media.attachTo(UUID.randomUUID(), uploader)
+        assertThat(media.isExpired(at.plus(Duration.ofDays(365)))).isFalse()
     }
 }
