@@ -25,8 +25,10 @@ class PostImageLinks(
         if (markdown.urlsIn(body).size > MAX_IMAGES) throw PublishingUseCaseException.TooManyImages()
     }
 
-    fun afterSave(postId: UUID, ownerId: UUID, body: String) = quietly(postId) {
-        images.sync(postId, ownerId, markdown.urlsIn(body))
+    /** The images of [body] and the attached [videoId], each told on its own: one failing leaves the other done. */
+    fun afterSave(postId: UUID, ownerId: UUID, body: String, videoId: UUID? = null) {
+        quietly(postId) { images.sync(postId, ownerId, markdown.urlsIn(body)) }
+        quietly(postId) { images.syncVideo(postId, ownerId, videoId) }
     }
 
     fun afterDelete(postId: UUID) = quietly(postId) { images.release(postId) }

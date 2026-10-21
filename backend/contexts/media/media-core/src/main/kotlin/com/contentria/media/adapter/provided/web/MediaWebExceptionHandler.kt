@@ -2,6 +2,7 @@ package com.contentria.media.adapter.provided.web
 
 import com.contentria.media.application.provided.MediaUseCaseException
 import com.contentria.media.domain.image.MediaException
+import com.contentria.media.domain.video.VideoException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -27,6 +28,14 @@ class MediaWebExceptionHandler {
         is MediaException.InvalidSize -> error(HttpStatus.BAD_REQUEST, "IMAGE_TOO_LARGE", "An image is at most 10MB.")
         is MediaException.InvalidFileName -> error(HttpStatus.BAD_REQUEST, "INVALID_FILE_NAME", "A file name is 1-255 characters.")
         is MediaException.Attached -> error(HttpStatus.CONFLICT, "IMAGE_IN_USE", "Remove the image from its posts first.")
+    }
+
+    @ExceptionHandler
+    fun handle(e: VideoException): ResponseEntity<ErrorResponse> = when (e) {
+        is VideoException.UnsupportedFormat -> error(HttpStatus.BAD_REQUEST, "UNSUPPORTED_VIDEO_FORMAT", "Use MP4, MOV, WebM or MKV.")
+        is VideoException.InvalidSize -> error(HttpStatus.BAD_REQUEST, "VIDEO_TOO_LARGE", "A video is at most 500MB.")
+        is VideoException.InvalidFileName -> error(HttpStatus.BAD_REQUEST, "INVALID_FILE_NAME", "A file name is 1-255 characters.")
+        is VideoException.NotTranscoding -> error(HttpStatus.CONFLICT, "VIDEO_NOT_TRANSCODING", "The video is not being transcoded.")
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException::class, HttpMessageNotReadableException::class)

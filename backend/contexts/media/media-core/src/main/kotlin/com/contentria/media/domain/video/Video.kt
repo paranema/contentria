@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.NamedQuery
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.time.Duration
@@ -27,6 +28,9 @@ import java.util.UUID
  * attached in any state: readers see it once it is complete.
  */
 @Entity
+@NamedQuery(name = "Video.findAttachedTo", query = "select v from Video v where ?1 member of v.postIds")
+// The videos of several posts at once, for a list or a page: each video says which posts it is on.
+@NamedQuery(name = "Video.findAttachedToAny", query = "select distinct v from Video v join v.postIds p where p in ?1")
 @Table(
     name = "videos",
     schema = MediaSchema.NAME,

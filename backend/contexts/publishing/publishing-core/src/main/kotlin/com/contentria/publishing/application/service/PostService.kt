@@ -45,7 +45,7 @@ class PostService(
 
     override fun write(command: WritePostCommand): PostView {
         imageLinks.requireWithinLimit(command.body)
-        return writeDraft(command).also { imageLinks.afterSave(it.postId, command.requesterId, command.body) }
+        return writeDraft(command).also { imageLinks.afterSave(it.postId, command.requesterId, command.body, command.videoId) }
     }
 
     private fun writeDraft(command: WritePostCommand): PostView = asBlogger(command.requesterId) {
@@ -58,12 +58,13 @@ class PostService(
         val content = PostContent(command.title, command.body, summaries.of(command.body, command.summary))
         val draft = Post.draft(blog.id, content, slug = placeholderSlug(), categoryId = command.categoryId)
         draft.changeSlug(freeSlugFromTitle(draft))
+        draft.chooseVideo(command.videoId)
         posts.save(draft).view()
     }
 
     override fun revise(command: RevisePostCommand): PostView {
         imageLinks.requireWithinLimit(command.body)
-        return reviseContent(command).also { imageLinks.afterSave(it.postId, command.requesterId, command.body) }
+        return reviseContent(command).also { imageLinks.afterSave(it.postId, command.requesterId, command.body, command.videoId) }
     }
 
     private fun reviseContent(command: RevisePostCommand): PostView = asBlogger(command.requesterId) {
@@ -73,6 +74,7 @@ class PostService(
         val content = PostContent(command.title, command.body, summaries.of(command.body, command.summary))
         val titleChanged = content.title.trim() != post.title
         post.revise(content, command.categoryId)
+        post.chooseVideo(command.videoId)
         // A draft has never been public under its slug, so its slug follows the title (글 slug, 발행 전).
         if (post.status == PostStatus.DRAFT && titleChanged) post.changeSlug(freeSlugFromTitle(post))
         post.view()
@@ -172,6 +174,6 @@ class PostService(
     private fun Post.view() = PostView(
         postId = id, blogId = blogId, categoryId = categoryId, title = title, body = body, summary = summary,
         summaryWrittenByAuthor = summaryWrittenByAuthor, status = status, publishedAt = publishedAt,
-        slug = slug, oldSlugs = oldSlugs,
+        slug = slug, oldSlugs = oldSlugs, videoId = videoId,
     )
 }

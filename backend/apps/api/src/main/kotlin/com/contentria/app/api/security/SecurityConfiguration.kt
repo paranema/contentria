@@ -44,6 +44,8 @@ class SecurityConfiguration {
                 it.requestMatchers(HttpMethod.GET, "/posts/*/comments").permitAll()
                 // A reader opening a blog or a post, signed in or not
                 it.requestMatchers(HttpMethod.POST, "/analytics/visits").permitAll()
+                // A published post's video, for its page
+                it.requestMatchers(HttpMethod.GET, "/posts/*/video").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }

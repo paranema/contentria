@@ -41,11 +41,11 @@ class PostController(
     @PostMapping("/blogs/{slug}/posts")
     fun write(@AuthenticationPrincipal accountId: UUID, @PathVariable slug: String, @Valid @RequestBody request: PostRequest): ResponseEntity<PostView> =
         ResponseEntity.status(HttpStatus.CREATED)
-            .body(writePost.write(WritePostCommand(accountId, slug, request.title, request.body, request.summary, request.categoryId)))
+            .body(writePost.write(WritePostCommand(accountId, slug, request.title, request.body, request.summary, request.categoryId, request.videoId)))
 
     @PutMapping("/posts/{id}")
     fun revise(@AuthenticationPrincipal accountId: UUID, @PathVariable id: UUID, @Valid @RequestBody request: PostRequest): PostView =
-        revisePost.revise(RevisePostCommand(accountId, id, request.title, request.body, request.summary, request.categoryId))
+        revisePost.revise(RevisePostCommand(accountId, id, request.title, request.body, request.summary, request.categoryId, request.videoId))
 
     @PutMapping("/posts/{id}/slug")
     fun changeSlug(@AuthenticationPrincipal accountId: UUID, @PathVariable id: UUID, @Valid @RequestBody request: ChangePostSlugRequest): PostView =
