@@ -135,7 +135,7 @@ IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전
 
 방문 기록은 출판에 묻고 비밀 키가 있어야 한다. 웹으로만 들어오는 흐름이라 그 전부를 웹 설정에 두었다. 배치는 출판과 비밀 키 없이 뜬다.
 
-`apps/batch`에 잡이 둘(`mediaImageCleanup`, `analyticsDailyStatistics`)이 되어, 일정은 잡 이름(`--spring.batch.job.name` 또는 `BATCH_JOB_NAME`)을 꼭 넘겨야 한다. 이름 없이 띄우면 Spring Boot가 어느 잡을 돌릴지 정하지 못해 실패한다.
+`apps/batch`에 잡이 여럿(`mediaImageCleanup`, `mediaVideoCleanup`, `analyticsDailyStatistics`)이라, 일정은 잡 이름(`--spring.batch.job.name` 또는 `BATCH_JOB_NAME`)을 꼭 넘겨야 한다. 이름 없이 띄우면 Spring Boot가 어느 잡을 돌릴지 정하지 못해 실패한다.
 
 ## 단계
 
