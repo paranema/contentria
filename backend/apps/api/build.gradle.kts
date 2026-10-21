@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":contexts:member:member-core"))
     implementation(project(":contexts:publishing:publishing-core"))
     implementation(project(":contexts:interaction:interaction-core"))
+    implementation(project(":contexts:notification:notification-core"))
 
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-security")

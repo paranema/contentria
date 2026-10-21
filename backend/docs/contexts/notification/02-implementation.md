@@ -77,7 +77,17 @@
 | `CommentAdded` | `interaction.comment` | `notification.comment-added` | 흐름 2 |
 
 소비자는 `presentation/messaging`에 둔다. 같은 토픽의 다른 종류(`PostDeleted`)와 모르는 버전은 넘긴다.
-처리는 `platform/messaging`의 `Inbox.processOnce`로 `notification.inbox_event`에 기록한 트랜잭션에서 한다. 알림을 만드는 INSERT는 JDBC 배치로 묶는다.
+처리는 `platform/messaging`의 `Inbox.processOnce`로 `notification.inbox_event`에 기록한 트랜잭션에서 한다.
+
+| 구성 | 위치 | 하는 일 |
+|---|---|---|
+| `PostPublishedConsumer` | `presentation/messaging` | 구독자를 먼저 모으고(`NewPostNotifier.subscribersOf`), 인박스 트랜잭션에서 `NewPostNotifier.notify` |
+| `CommentAddedConsumer` | `presentation/messaging` | 인박스 트랜잭션에서 `CommentNotifier.notify`. 수신자는 `CommentRecipients`가 정한다 |
+| `NotificationWriter` | `infra/persistence` | 알림을 JDBC 배치(500건)로 넣는다. 같은 이벤트와 수신자의 행이 이미 있으면 넘긴다(`ON CONFLICT DO NOTHING`) |
+| 인박스 빈 | `config/NotificationMessagingConfiguration` | 이름은 `notificationInbox`. 한 프로세스에 컨텍스트마다 인박스가 있으므로 소비자는 이름으로 받는다 |
+
+알림을 리포지토리가 아니라 JDBC로 넣는 이유: ID를 미리 정한 엔티티는 Spring Data의 `save`가 merge로 다뤄 행마다 SELECT를 먼저 한다. 구독자가 많은 블로그의 새 글은 그 수만큼 왕복이 늘어난다.
+같은 이벤트가 다시 오면 인박스가 거르고, 인박스를 지나더라도 고유 제약이 같은 알림을 두 번 만들지 않는다.
 
 ## HTTP
 

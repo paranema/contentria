@@ -5,6 +5,7 @@ import com.contentria.platform.messaging.EventEnvelope
 import com.contentria.platform.messaging.Inbox
 import com.contentria.publishing.api.event.PostDeleted
 import com.contentria.publishing.api.event.PublishingTopics
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.stereotype.Component
 
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component
  */
 @Component
 class PostDeletedConsumer(
-    private val inbox: Inbox,
+    @Qualifier(InteractionInbox.BEAN) private val inbox: Inbox,
     private val cleanup: PostCleanupService,
 ) {
 

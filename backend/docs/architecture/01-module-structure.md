@@ -242,11 +242,11 @@ apps/api/build.gradle.kts        notification-core 의존과 설정 클래스 im
 | `contexts/member` | 도메인, 이메일 가입과 비밀번호 로그인, 세션, 내 프로필 유스케이스, 웹 어댑터, V1·V2 마이그레이션. `member-api`에 액세스 토큰 인증 조회 |
 | `contexts/publishing` | P0~P5. 블로그, 카테고리, 글, 공개 조회, `PostPublished`·`PostDeleted` 아웃박스 |
 | `contexts/interaction` | I0~I6. 구독, 좋아요, 댓글, 수 조회, `CommentAdded` 아웃박스, `PostDeleted` 소비 |
-| `contexts/notification` | N3. 모듈 골격, 레이어드 규칙, 도메인, 스키마, 상호작용 번역 계층 |
+| `contexts/notification` | N4. 도메인, 스키마, 상호작용 번역 계층, `PostPublished`·`CommentAdded` 소비 |
 | `contexts/media`, `analytics` | 없음 |
 | `platform/messaging` | 있음. 이벤트 봉투, 아웃박스 기록, 릴레이, 인박스, 소비 실패 처리(재시도와 DLT) |
 | `platform/architecture-rules` | 있음. 헥사고날, 레이어드, app 규칙 |
-| `apps/api` | 있음. member, publishing, interaction 조립, 요청 인증(Spring Security, 액세스 토큰 필터), 아웃박스 릴레이 |
+| `apps/api` | 있음. member, publishing, interaction, notification 조립, 요청 인증(Spring Security, 액세스 토큰 필터), 아웃박스 릴레이 |
 | `apps/batch` | 있음. 잡 없음 |
 | `apps/worker` | 없음 |
 | `apps/migrator` | 있음. 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway 실행 |

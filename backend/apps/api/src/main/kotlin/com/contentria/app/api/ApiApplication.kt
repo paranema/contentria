@@ -5,6 +5,8 @@ import com.contentria.interaction.config.InteractionMessagingConfiguration
 import com.contentria.interaction.config.InteractionWebConfiguration
 import com.contentria.member.config.MemberCoreConfiguration
 import com.contentria.member.config.MemberWebConfiguration
+import com.contentria.notification.config.NotificationCoreConfiguration
+import com.contentria.notification.config.NotificationMessagingConfiguration
 import com.contentria.publishing.config.PublishingCoreConfiguration
 import com.contentria.platform.messaging.MessagingConfiguration
 import com.contentria.publishing.config.PublishingWebConfiguration
@@ -23,6 +25,8 @@ import java.time.Clock
     InteractionCoreConfiguration::class,
     InteractionWebConfiguration::class,
     InteractionMessagingConfiguration::class,
+    NotificationCoreConfiguration::class,
+    NotificationMessagingConfiguration::class,
     MessagingConfiguration::class,
 )
 class ApiApplication {
