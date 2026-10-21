@@ -11,7 +11,7 @@
 | 출판 | [publishing/](publishing/README.md) | 헥사고날 | 01-rules, 02-implementation |
 | 상호작용 | [interaction/](interaction/README.md) | 레이어드 | 01-rules, 02-implementation |
 | 미디어 | [media/](media/README.md) | 헥사고날 | 01-rules, 02-implementation |
-| 분석 | analytics/ | 레이어드 | 아직 없음 |
+| 분석 | [analytics/](analytics/README.md) | 레이어드 | 01-rules, 02-implementation |
 | 알림 | [notification/](notification/README.md) | 레이어드 | 01-rules, 02-implementation |
 
 내부 구조를 고른 이유는 [architecture/02-internal-architecture.md](../architecture/02-internal-architecture.md)에 있다.
