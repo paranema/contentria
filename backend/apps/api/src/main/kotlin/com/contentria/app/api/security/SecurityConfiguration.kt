@@ -33,6 +33,11 @@ class SecurityConfiguration {
             .formLogin { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
+                // Spring forwards a request it could not serve (no such path, an unhandled failure) to
+                // /error, and the access-token filter does not run again on that forward. Securing
+                // /error would turn every such 404 or 500 into a 401, which a client reads as a
+                // lost session. The request itself was already authorized before the forward.
+                it.requestMatchers("/error").permitAll()
                 it.requestMatchers("/auth/**").permitAll()
                 // Blogs and their categories are public; changing them needs a session.
                 it.requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
