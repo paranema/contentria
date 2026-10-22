@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/shared/ui/button';
-import { CategoryResponse } from '@/types/api/category';
+import { EditableCategory, toEditable } from './editableCategory';
 import {
   closestCorners,
   defaultDropAnimationSideEffects,
@@ -25,23 +25,26 @@ import { Plus, RotateCcw, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import SortableItem from './SortableItem';
 import CategoryItemCard from './CategoryItemCard';
-import { BlogInfo } from '@/types/api/blogs';
-import { syncCategoriesAction } from '@/actions/category';
+import { editCategoryTreeAction } from '../../../api/categories';
+import { publishingErrorMessage } from '../../../errors';
+import { CategoryTreeView } from '../../../types';
 import { v7 as uuidv7 } from 'uuid';
 
 interface CategoryManagerProps {
-  initialCategories: CategoryResponse[];
-  blogInfo: BlogInfo;
+  blogSlug: string;
+  initialTree: CategoryTreeView;
 }
 
-export default function CategoryManager({ initialCategories, blogInfo }: CategoryManagerProps) {
-  const [items, setItems] = useState<CategoryResponse[]>(initialCategories);
+export default function CategoryManager({ blogSlug, initialTree }: CategoryManagerProps) {
+  const [items, setItems] = useState<EditableCategory[]>(toEditable(initialTree.categories));
+  // The tree's version when it was loaded; the API refuses a save over someone else's change.
+  const [version, setVersion] = useState(initialTree.version);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [overId, setOverId] = useState<string | null>(null);
 
   // 특정 부모(Level 0)의 자식(Level 1) ID 목록 가져오기
-  const getChildrenIds = (parentId: string, flattenedCategories: CategoryResponse[]): string[] => {
+  const getChildrenIds = (parentId: string, flattenedCategories: EditableCategory[]): string[] => {
     return flattenedCategories.filter((item) => item.parentId === parentId).map((item) => item.id);
   };
 
@@ -250,34 +253,36 @@ export default function CategoryManager({ initialCategories, blogInfo }: Categor
     setIsSaving(true);
 
     try {
-      // 최종적으로 서버에 보낼 때는 현재 리스트의 순서(index)를 order로 확정한다.
-      const payload = items.map((item, index) => ({
-        id: item.id,
-        name: item.name,
-        parentId: item.level === 0 ? null : item.parentId,
-        order: index,
-      }));
-
-      console.log('Saving categories payload:', payload);
-
-      await syncCategoriesAction(blogInfo?.id, payload);
+      // The whole tree in the list's order. A new row's temporary id is its key; children name
+      // their parent by its key.
+      const result = await editCategoryTreeAction(blogSlug, {
+        version,
+        categories: items.map((item) => ({
+          key: item.id,
+          name: item.name,
+          parentKey: item.level === 0 ? null : item.parentId,
+        })),
+      });
+      if (!result.success) {
+        alert(publishingErrorMessage(result.error));
+        return;
+      }
+      // New rows now have real ids and slugs.
+      setItems(toEditable(result.data.categories));
+      setVersion(result.data.version);
       alert('카테고리가 성공적으로 저장되었습니다.');
-    } catch (error) {
-      console.error('Failed to save categories:', error);
-      alert('카테고리 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleAddCategory = () => {
-    const newCategory: CategoryResponse = {
+    const newCategory: EditableCategory = {
       id: uuidv7(),
       name: '새 카테고리',
       slug: '',
       parentId: null,
       level: 0,
-      postCount: 0,
     };
     setItems([...items, newCategory]);
   };
@@ -293,13 +298,12 @@ export default function CategoryManager({ initialCategories, blogInfo }: Categor
       insertIndex++;
     }
 
-    const newCategory: CategoryResponse = {
+    const newCategory: EditableCategory = {
       id: uuidv7(),
       name: '새 하위 카테고리',
       slug: '',
       parentId: parentId,
       level: 1,
-      postCount: 0,
     };
 
     const newItems = [...items];

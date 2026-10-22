@@ -1,11 +1,14 @@
 'use client';
 
-import { useCreateBlogMutation } from '@/hooks/mutations/useUserMutations';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import z from 'zod';
 import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
+import { createBlogAction } from '../../api/blogs';
+import { publishingErrorMessage } from '../../errors';
+import { createBlogSchema, CreateBlogFormValues } from '../../schemas';
+import { Input } from '@/shared/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
@@ -17,37 +20,27 @@ import {
   InputGroupText,
 } from '@/shared/ui/input-group';
 
-// 백엔드 CreateBlogRequest의 @Pattern("^[a-z0-9-]+$")과 동일하게 유지할 것 —
-// 클라이언트가 더 느슨하면 인라인 검증 대신 제출 후 서버 에러로 떨어진다.
-const schema = z.object({
-  slug: z
-    .string()
-    .min(3, '3자 이상 입력해주세요.')
-    .max(30, '30자 이하로 입력해주세요.')
-    .regex(/^[a-z0-9-]+$/, '영문 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다.'),
-});
-
-type FormValues = z.infer<typeof schema>;
-
 export default function CreateBlogWelcome() {
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<CreateBlogFormValues>({
+    resolver: zodResolver(createBlogSchema),
   });
 
   const router = useRouter();
-  const { mutate: createBlog, isPending, error } = useCreateBlogMutation();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const slugPreview = watch('slug');
 
-  const onSubmit: SubmitHandler<FormValues> = (data) => {
-    createBlog(data, {
-      onSuccess: () => {
-        router.replace('/dashboard');
-      },
+  const onSubmit: SubmitHandler<CreateBlogFormValues> = (data) => {
+    startTransition(async () => {
+      setError(null);
+      const result = await createBlogAction(data);
+      if (result.success) router.replace('/dashboard');
+      else setError(publishingErrorMessage(result.error));
     });
   };
 
@@ -58,7 +51,7 @@ export default function CreateBlogWelcome() {
           당신의 공간을 만들어보세요
         </h2>
         <p className="mt-4 text-lg leading-8 text-gray-600">
-          멋진 아이디어를 세상과 공유할 준비가 되셨나요? 사용할 블로그 주소를 만들어주세요.
+          멋진 아이디어를 세상과 공유할 준비가 되셨나요? 블로그 주소와 이름을 정해주세요.
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-6">
@@ -97,11 +90,29 @@ export default function CreateBlogWelcome() {
             </p>
           </div>
 
+          <div className="text-left">
+            <Label htmlFor="title">블로그 이름</Label>
+            <Input
+              id="title"
+              placeholder="나의 블로그"
+              autoComplete="off"
+              className="mt-2"
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? 'title-error' : undefined}
+              {...register('title')}
+            />
+            {errors.title && (
+              <p id="title-error" className="mt-2 text-sm font-medium text-destructive">
+                {errors.title.message}
+              </p>
+            )}
+          </div>
+
           {error && (
             <Alert variant="destructive" className="text-left">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>블로그 생성에 실패했습니다</AlertTitle>
-              <AlertDescription>{error.message}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 

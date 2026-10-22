@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { CategoryTreeNode } from '@/types/api/category';
+import { ALL_POSTS_ID, CategoryTreeNode } from '../../categoryTree';
 import { useSearchParams } from 'next/navigation';
 
 interface CategoryItemProps {
@@ -17,7 +17,7 @@ export default function CategoryItem({ category, blogSlug }: CategoryItemProps) 
 
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = category.children && category.children.length > 0;
-  const isAllPosts = category.id === 'all';
+  const isAllPosts = category.id === ALL_POSTS_ID;
   const isActive = isAllPosts ? !currentCategorySlug : currentCategorySlug === category.slug;
   const href = isAllPosts ? `/@${blogSlug}` : `/@${blogSlug}?category=${category.slug}`;
 
@@ -31,13 +31,6 @@ export default function CategoryItem({ category, blogSlug }: CategoryItemProps) 
             className={`font-medium ${isActive ? 'font-bold' : 'text-gray-700 group-hover:text-blue-600'}`}
           >
             {category.name}
-          </span>
-
-          {/* 게시글 수 뱃지 */}
-          <span
-            className={`ml-2 rounded-full px-2 py-0 text-xs font-semibold ${isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-indigo-100 text-gray-600'}`}
-          >
-            {category.postCount}
           </span>
         </Link>
 
@@ -60,11 +53,7 @@ export default function CategoryItem({ category, blogSlug }: CategoryItemProps) 
       {hasChildren && isExpanded && (
         <ul className="ml-4 border-l border-gray-200 pl-3 pt-1">
           {category.children.map((childCategory) => (
-            <CategoryItem
-              key={childCategory.id ?? childCategory.slug}
-              category={childCategory}
-              blogSlug={blogSlug}
-            />
+            <CategoryItem key={childCategory.id} category={childCategory} blogSlug={blogSlug} />
           ))}
         </ul>
       )}

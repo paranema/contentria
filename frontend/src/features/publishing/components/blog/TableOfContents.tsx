@@ -1,6 +1,6 @@
 'use client';
 
-import { Heading } from '@/types/common';
+import { Heading } from '../../markdown/headings';
 import { useEffect, useState } from 'react';
 
 interface TableOfContentsProps {

@@ -1,12 +1,11 @@
 'use client';
 
-import { CategoryResponse } from '@/types/api/category';
+import { EditableCategory } from './editableCategory';
 import type { DraggableSyntheticListeners } from '@dnd-kit/core';
 import {
   ChevronLeft,
   ChevronRight,
   CornerDownRight,
-  FileText,
   Folder,
   GripVertical,
   MoreVertical,
@@ -22,7 +21,7 @@ import {
 } from '@/shared/ui/dropdown-menu';
 
 interface CategoryItemCardProps {
-  category: CategoryResponse;
+  category: EditableCategory;
   isOverlay?: boolean; // 드래그 중인 잔상(오버레이)인지 여부
   canIndent?: boolean;
   canOutdent?: boolean;
@@ -73,11 +72,6 @@ export default function CategoryItemCard({
       />
 
       <div className="flex shrink-0 items-center gap-1">
-        <div className="flex items-center text-xs text-gray-400 md:mr-2">
-          <FileText size={12} className="mr-1" />
-          {category.postCount}
-        </div>
-
         {!isOverlay && (
           <>
             {/* 데스크톱: hover 시 노출되는 인라인 액션 */}

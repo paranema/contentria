@@ -1,6 +1,6 @@
-import { getMyBlogAction } from '@/actions/blog';
-import { getCategoriesAction } from '@/actions/category';
-import CategoryManager from '@/components/dashboard/categories/CategoryManager';
+import { getMyBlogs } from '@/features/publishing/api/blogs';
+import { getCategoryTree } from '@/features/publishing/api/categories';
+import CategoryManager from '@/features/publishing/components/dashboard/categories/CategoryManager';
 import { PATHS } from '@/shared/constants/paths';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
@@ -10,12 +10,15 @@ export const metadata: Metadata = {
 };
 
 export default async function CategoriesPage() {
-  const blogInfos = await getMyBlogAction();
-  if (!blogInfos || blogInfos.length === 0) {
+  const blog = (await getMyBlogs())[0];
+  if (!blog) {
     redirect(PATHS.DASHBOARD);
   }
 
-  const categories = await getCategoriesAction();
+  const tree = await getCategoryTree(blog.slug);
+  if (!tree) {
+    redirect(PATHS.DASHBOARD);
+  }
 
   return (
     <div className="space-y-6">
@@ -25,7 +28,7 @@ export default async function CategoriesPage() {
       </div>
 
       <div className="rounded-lg border bg-white p-4 shadow-sm sm:p-6">
-        <CategoryManager initialCategories={categories} blogInfo={blogInfos[0]} />
+        <CategoryManager blogSlug={blog.slug} initialTree={tree} />
       </div>
     </div>
   );

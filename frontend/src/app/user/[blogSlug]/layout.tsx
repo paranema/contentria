@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import BlogHeader from '@/components/blog/header';
 import Footer from '@/components/home/Footer';
-import { getBlogLayoutAction } from '@/actions/blog';
+import { notFound } from 'next/navigation';
+import { getBlogLayoutData } from '../../_composition/blog';
 
 interface BlogLayoutProps {
   children: React.ReactNode;
@@ -11,14 +12,14 @@ interface BlogLayoutProps {
 
 export async function generateMetadata({ params }: BlogLayoutProps): Promise<Metadata> {
   const { blogSlug } = await params;
-  const layoutData = await getBlogLayoutAction(blogSlug);
+  const layout = await getBlogLayoutData(blogSlug);
 
   return {
-    title: layoutData?.blog.title || 'Blog',
-    description: layoutData?.blog.description || 'Welcome to my blog',
+    title: layout?.blog.title || 'Blog',
+    description: layout?.blog.description || 'Welcome to my blog',
     openGraph: {
-      title: layoutData?.blog.title || 'Blog',
-      description: layoutData?.blog.description || 'Welcome to my blog',
+      title: layout?.blog.title || 'Blog',
+      description: layout?.blog.description || 'Welcome to my blog',
     },
   };
 }
@@ -29,7 +30,9 @@ export async function generateMetadata({ params }: BlogLayoutProps): Promise<Met
  */
 export default async function BlogLayout({ children, sidebar, params }: BlogLayoutProps) {
   const { blogSlug } = await params;
-  const layoutData = await getBlogLayoutAction(blogSlug);
+  if (!(await getBlogLayoutData(blogSlug))) {
+    notFound();
+  }
 
   return (
     <>

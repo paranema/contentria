@@ -40,23 +40,28 @@ import {
   toolbarPlugin,
   UndoRedo,
 } from '@mdxeditor/editor';
-import { ForwardRefEditor } from '@/components/dashboard/ForwardRefEditor';
+import { ForwardRefEditor } from './ForwardRefEditor';
 import CustomInsertImage from '@/components/dashboard/editor/CustomInsertImage';
 import CustomImageDialog from '@/components/dashboard/editor/CustomImageDialog';
-import { editorSyntaxHighlighting } from '@/components/dashboard/editor/editorCodeHighlight';
+import { editorSyntaxHighlighting } from './editorCodeHighlight';
 import VideoUpload from '@/components/dashboard/editor/VideoUpload';
-import { codeFenceOnEnterPlugin } from '@/components/dashboard/editor/codeFenceOnEnterPlugin';
-import { mdxEditorKoTranslation } from '@/components/dashboard/editor/mdxEditorKoTranslation';
+import { codeFenceOnEnterPlugin } from './codeFenceOnEnterPlugin';
+import { mdxEditorKoTranslation } from './mdxEditorKoTranslation';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
-import { createNewPostAction, updatePostAction } from '@/actions/post';
+import {
+  publishPostAction,
+  republishPostAction,
+  revisePostAction,
+  writePostAction,
+} from '../../../api/posts';
+import { publishingErrorMessage } from '../../../errors';
 import { uploadImageToR2 } from '@/lib/uploadImage';
-import { PostDetailResponse, PostStatus } from '@/types/api/posts';
+import { CategoryView, PostRequest, PostView } from '../../../types';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PATHS } from '@/shared/constants/paths';
-import { CategoryResponse } from '@/types/api/category';
 
 type AdmonitionKind = 'note' | 'tip' | 'danger' | 'info' | 'caution';
 
@@ -72,27 +77,38 @@ function whenInAdmonition(editorInFocus: EditorInFocus | null) {
 }
 
 interface PostEditorClientProps {
-  blogId: string;
-  categories: CategoryResponse[];
-  initialData?: PostDetailResponse;
+  blogSlug: string;
+  categories: CategoryView[];
+  /** The post being edited; none for a new one. */
+  initialData?: PostView;
 }
 
-export function PostEditorClient({ blogId, categories, initialData }: PostEditorClientProps) {
+/**
+ * What the save buttons do (publishing 01-rules 흐름 3~5): saving keeps a post's status, so a new
+ * post or a draft is saved as a draft and published as a second step; a published post stays
+ * published; a private one can be put back out.
+ */
+type SaveAction = 'SAVE' | 'PUBLISH' | 'REPUBLISH';
+
+/** No category: the post sits under "분류 없음". */
+const NO_CATEGORY = 'none';
+
+export function PostEditorClient({ blogSlug, categories, initialData }: PostEditorClientProps) {
   const router = useRouter();
   const editorRef = useRef<MDXEditorMethods>(null); // MDXEditor의 인스턴스에 접근하기 위한 ref 생성
 
   const titleRef = useRef<HTMLInputElement>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | ''>(
-    initialData?.categoryId || ''
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    initialData?.categoryId ?? NO_CATEGORY
   );
-  const [videoId, setVideoId] = useState<string | null>(initialData?.video?.videoId ?? null);
+  const [videoId, setVideoId] = useState<string | null>(initialData?.videoId ?? null);
+  const status = initialData?.status ?? 'DRAFT';
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   // 어느 저장 버튼이 진행 중인지 (해당 버튼에만 스피너 표시)
-  const [pendingAction, setPendingAction] = useState<PostStatus | null>(null);
+  const [pendingAction, setPendingAction] = useState<SaveAction | null>(null);
 
-  console.log('initialData', initialData);
   const markdown =
-    initialData?.post.contentMarkdown ||
+    initialData?.body ||
     `
 여기에 **마크다운** 문법을 사용하여 글을 작성할 수 있습니다.
 
@@ -174,63 +190,60 @@ function helloWorld() {
   };
 
   const handleSave = useCallback(
-    async (postStatus: PostStatus) => {
-      setSaveStatus('saving');
-      setPendingAction(postStatus); // 진행 중인 버튼에만 스피너를 띄우기 위한 추적
+    async (action: SaveAction) => {
       const title = titleRef.current?.value ?? '';
-      const markdownContent = editorRef.current?.getMarkdown() || '';
-      console.log(markdownContent);
-
-      if (!title.trim() || !selectedCategory || !markdownContent.trim()) {
-        alert('제목, 카고리를 선택하고 내용을 입력해주세요.');
-        setSaveStatus('idle');
-        setPendingAction(null);
+      const body = editorRef.current?.getMarkdown() || '';
+      if (!title.trim() || !body.trim()) {
+        alert('제목과 내용을 입력해주세요.');
         return;
       }
 
-      try {
-        const postData = {
-          blogId,
-          title,
-          categoryId: selectedCategory,
-          contentMarkdown: markdownContent,
-          status: postStatus,
-          videoId,
-        };
+      setSaveStatus('saving');
+      setPendingAction(action); // 진행 중인 버튼에만 스피너를 띄우기 위한 추적
+      const request: PostRequest = {
+        title,
+        body,
+        // Revising keeps a summary the author wrote; otherwise the API derives one from the body.
+        summary: initialData?.summaryWrittenByAuthor ? initialData.summary : null,
+        categoryId: selectedCategory === NO_CATEGORY ? null : selectedCategory,
+        videoId,
+      };
 
-        if (initialData) {
-          await updatePostAction({ ...postData, postId: initialData.post.id });
-        } else {
-          await createNewPostAction(postData);
-        }
+      try {
+        const saved = initialData
+          ? await revisePostAction(initialData.postId, request)
+          : await writePostAction(blogSlug, request);
+        if (!saved.success) throw saved.error;
+
+        const statusChange =
+          action === 'PUBLISH'
+            ? await publishPostAction(saved.data.postId)
+            : action === 'REPUBLISH'
+              ? await republishPostAction(saved.data.postId)
+              : null;
+        if (statusChange && !statusChange.success) throw statusChange.error;
 
         setSaveStatus('saved');
-
-        const message =
-          postStatus === 'PUBLISHED'
-            ? '포스트가 성공적으로 게시되었습니다.'
-            : '포스트가 임시 저장되었습니다.';
-
-        alert(message);
-
+        alert(
+          action === 'SAVE'
+            ? status === 'DRAFT'
+              ? '포스트가 임시 저장되었습니다.'
+              : '포스트가 저장되었습니다.'
+            : '포스트가 성공적으로 게시되었습니다.'
+        );
         router.replace(PATHS.DASHBOARD);
       } catch (error) {
         setSaveStatus('error');
-        console.error('저장 실패', error);
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : '포스트 저장에 실패했습니다. 다시 시도해주세요.';
-        alert(message);
+        alert(
+          publishingErrorMessage(error as { code: string }) ??
+            '포스트 저장에 실패했습니다. 다시 시도해주세요.'
+        );
       } finally {
         setPendingAction(null);
         setTimeout(() => setSaveStatus('idle'), 2000);
       }
-
-      // editorRef.current?.setMarkdown('새로운 마크다운 내용');
-      // console.log(editorRef.current?.getMarkdown());
     },
-    [selectedCategory, blogId, router, initialData, videoId]
+    [selectedCategory, blogSlug, router, initialData, videoId, status]
   );
 
   const handleExit = () => {
@@ -247,9 +260,10 @@ function helloWorld() {
             <SelectValue placeholder="카테고리 선택" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={NO_CATEGORY}>분류 없음</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
-                {category.level > 0 ? '└ ' : ''}
+                {category.parentId ? '└ ' : ''}
                 {category.name}
               </SelectItem>
             ))}
@@ -267,7 +281,7 @@ function helloWorld() {
         <Input
           ref={titleRef}
           type="text"
-          defaultValue={initialData?.post.title || ''}
+          defaultValue={initialData?.title || ''}
           placeholder="제목을 입력하세요"
           className="h-auto bg-white px-4 py-3 text-2xl font-semibold md:text-2xl"
         />
@@ -280,7 +294,6 @@ function helloWorld() {
         <ForwardRefEditor
           ref={editorRef}
           markdown={markdown}
-          onChange={console.log}
           spellCheck={false}
           translation={mdxEditorKoTranslation}
           className="prose max-w-none flex-1"
@@ -403,18 +416,27 @@ function helloWorld() {
 
         <div className="flex items-center justify-end space-x-3">
           <Button
-            variant="secondary"
-            onClick={() => handleSave('DRAFT')}
+            variant={status === 'PUBLISHED' ? 'default' : 'secondary'}
+            onClick={() => handleSave('SAVE')}
             disabled={saveStatus === 'saving'}
           >
-            {pendingAction === 'DRAFT' && <Loader2 className="h-4 w-4 animate-spin" />}
-            {pendingAction === 'DRAFT' ? '저장 중...' : '임시 저장'}
+            {pendingAction === 'SAVE' && <Loader2 className="h-4 w-4 animate-spin" />}
+            {pendingAction === 'SAVE' ? '저장 중...' : status === 'DRAFT' ? '임시 저장' : '저장'}
           </Button>
 
-          <Button onClick={() => handleSave('PUBLISHED')} disabled={saveStatus === 'saving'}>
-            {pendingAction === 'PUBLISHED' && <Loader2 className="h-4 w-4 animate-spin" />}
-            {pendingAction === 'PUBLISHED' ? '출간 중...' : '출간하기'}
-          </Button>
+          {status === 'DRAFT' && (
+            <Button onClick={() => handleSave('PUBLISH')} disabled={saveStatus === 'saving'}>
+              {pendingAction === 'PUBLISH' && <Loader2 className="h-4 w-4 animate-spin" />}
+              {pendingAction === 'PUBLISH' ? '출간 중...' : '출간하기'}
+            </Button>
+          )}
+
+          {status === 'PRIVATE' && (
+            <Button onClick={() => handleSave('REPUBLISH')} disabled={saveStatus === 'saving'}>
+              {pendingAction === 'REPUBLISH' && <Loader2 className="h-4 w-4 animate-spin" />}
+              {pendingAction === 'REPUBLISH' ? '공개 중...' : '저장하고 다시 공개'}
+            </Button>
+          )}
         </div>
       </div>
     </div>

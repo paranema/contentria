@@ -1,7 +1,7 @@
-import { getBlogLayoutAction } from '@/actions/blog';
-import { getBlogPostsAction } from '@/actions/post';
+import { getPublishedPosts } from '@/features/publishing/api/posts';
+import PostCard from '@/features/publishing/components/blog/PostCard';
 import CustomPagination from '@/shared/components/CustomPagination';
-import PostCard from '@/components/blog/PostCard';
+import { getBlogLayoutData } from '../../_composition/blog';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import AnalyticsTracker from '@/components/analytics/AnalyticsTracker';
@@ -19,8 +19,8 @@ interface UserBlogPageProps {
 export async function generateMetadata({ params }: UserBlogPageProps): Promise<Metadata> {
   const { blogSlug } = await params;
 
-  const blogData = await getBlogLayoutAction(blogSlug);
-  if (!blogData) {
+  const layout = await getBlogLayoutData(blogSlug);
+  if (!layout) {
     return {
       title: '블로그를 찾을 수 없습니다.',
       description: '요청하신 페이지를 찾을 수 없습니다.',
@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: UserBlogPageProps): Promise<M
   }
 
   return {
-    title: `@${blogData.blog.slug} | Contentria`,
-    description: `${blogData.owner.nickname}님의 블로그입니다. 다양한 글들을 만나보세요.`,
+    title: `@${layout.blog.slug} | Contentria`,
+    description: `${layout.owner?.displayName ?? layout.blog.title}님의 블로그입니다. 다양한 글들을 만나보세요.`,
   };
 }
 
@@ -42,37 +42,38 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
     notFound();
   }
 
-  const [layoutData, postsPage] = await Promise.all([
-    getBlogLayoutAction(blogSlug),
-    getBlogPostsAction(blogSlug, { page: currentPage, size: 5, categorySlug: category }),
-  ]);
-
-  if (!layoutData) {
+  const layout = await getBlogLayoutData(blogSlug);
+  if (!layout) {
+    notFound();
+  }
+  // A category this blog does not have answers 404 like a blog that does not exist.
+  if (category && !layout.categories.some((c) => c.slug === category)) {
     notFound();
   }
 
-  if (postsPage && currentPage >= postsPage.page.totalPages && postsPage.page.totalPages > 0) {
+  const postsPage = await getPublishedPosts(blogSlug, currentPage, category);
+  if (currentPage >= postsPage.totalPages && postsPage.totalPages > 0) {
     notFound();
   }
 
-  // const { blog, owner, categories } = layoutData;
-  const initialPosts = postsPage?.content ?? [];
-  const totalPages = postsPage?.page.totalPages ?? 0;
+  const posts = postsPage.items;
+  const totalPages = postsPage.totalPages;
+  const categoryName = layout.categories.find((c) => c.slug === category)?.name;
 
   return (
     <>
-      <AnalyticsTracker blogId={layoutData.blog.id} />
+      <AnalyticsTracker blogId={layout.blog.blogId} />
 
       <div className="w-full max-w-4xl">
         {category ? (
-          <h1 className="mb-8 text-2xl font-bold sm:text-3xl">'{category}' 카테고리 글</h1>
+          <h1 className="mb-8 text-2xl font-bold sm:text-3xl">'{categoryName}' 카테고리 글</h1>
         ) : (
           <h1 className="mb-8 text-2xl font-bold sm:text-3xl">최신 글</h1>
         )}
 
         <div className="flex flex-col divide-y divide-gray-100">
-          {initialPosts.length > 0 ? (
-            initialPosts.map((post) => <PostCard key={post.id} blogSlug={blogSlug} post={post} />)
+          {posts.length > 0 ? (
+            posts.map((post) => <PostCard key={post.postId} blogSlug={blogSlug} post={post} />)
           ) : (
             <div className="flex h-40 items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50">
               <p className="text-sm text-gray-500">아직 작성된 글이 없습니다.</p>
@@ -81,7 +82,6 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
         </div>
 
         <div className="mt-12">
-          {/* 💡 CustomPagination 컴포넌트 내부도 Shadcn의 <Pagination> 컴포넌트로 마이그레이션 하시면 더욱 좋습니다! */}
           <CustomPagination totalPages={totalPages} />
         </div>
       </div>

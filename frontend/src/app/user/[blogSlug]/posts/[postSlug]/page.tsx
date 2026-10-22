@@ -9,21 +9,16 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeShiftHeading from 'rehype-shift-heading';
 import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/default-highlight';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import React from 'react';
-import { Heading } from '@/types/common';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import { visit } from 'unist-util-visit';
-import TableOfContents from '@/components/blog/TableOfContents';
-import { getPostDetailAction } from '@/actions/post';
-import { notFound } from 'next/navigation';
-import GithubSlugger from 'github-slugger';
-import { toString } from 'mdast-util-to-string';
+import TableOfContents from '@/features/publishing/components/blog/TableOfContents';
+import { getPublishedPost } from '@/features/publishing/api/posts';
+import { notFound, permanentRedirect } from 'next/navigation';
 import AnalyticsTracker from '@/components/analytics/AnalyticsTracker';
 import { Separator } from '@/shared/ui/separator';
-import { remarkAdmonitions } from '@/lib/markdown/remarkAdmonitions';
-import Admonition, { isAdmonitionType } from '@/components/blog/Admonition';
-import VideoPlayer from '@/components/blog/VideoPlayer';
+import { remarkAdmonitions } from '@/features/publishing/markdown/remarkAdmonitions';
+import { headingsOf } from '@/features/publishing/markdown/headings';
+import Admonition, { isAdmonitionType } from '@/features/publishing/components/blog/Admonition';
+import { getPublicProfiles } from '@/features/member/api/profile';
+import { getBlogLayoutData } from '../../../../_composition/blog';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,60 +41,54 @@ interface PostDetailPageProps {
 }
 
 export async function generateMetadata({ params }: PostDetailPageProps): Promise<Metadata> {
-  const { blogSlug, postSlug } = await params;
-  const postData = await getPostDetailAction(blogSlug, postSlug);
+  const { blogSlug, postSlug } = slugsOf(await params);
+  const lookup = await getPublishedPost(blogSlug, postSlug);
 
-  if (!postData) {
+  if (!lookup || !('post' in lookup)) {
     return { title: '게시물을 찾을 수 없습니다.' };
   }
 
   return {
-    title: postData.post.title,
-    description: postData.post.metaDescription || '',
+    title: lookup.post.title,
+    description: lookup.post.summary,
   };
 }
 
-async function getHeadingsFromMarkdown(markdown: string): Promise<Heading[]> {
-  const headings: Heading[] = [];
-  const processor = unified().use(remarkParse);
-  const tree = processor.parse(markdown);
-
-  const slugger = new GithubSlugger();
-
-  visit(tree, 'heading', (node) => {
-    if (node.depth >= 1 && node.depth <= 2) {
-      const text = toString(node);
-      const id = slugger.slug(text);
-
-      headings.push({
-        id,
-        text,
-        level: node.depth,
-      });
-    }
-  });
-
-  return headings;
+/**
+ * Next.js hands a dynamic segment over still percent-encoded when it holds non-ASCII characters,
+ * as Korean post slugs do. The API calls encode it themselves, so it is decoded once here.
+ */
+function slugsOf(params: { blogSlug: string; postSlug: string }) {
+  return {
+    blogSlug: decodeURIComponent(params.blogSlug),
+    postSlug: decodeURIComponent(params.postSlug),
+  };
 }
 
 export default async function PostDetailPage({ params }: PostDetailPageProps) {
-  const { blogSlug, postSlug } = await params;
-  const postDetailResponse = await getPostDetailAction(blogSlug, postSlug);
-
-  if (!postDetailResponse) {
-    console.log('Post not found, invoking notFound()');
+  const { blogSlug, postSlug } = slugsOf(await params);
+  const lookup = await getPublishedPost(blogSlug, postSlug);
+  if (!lookup) {
     notFound();
   }
+  // An old slug: the post lives at its current address now (publishing 01-rules, 옛 slug).
+  if ('moved' in lookup) {
+    permanentRedirect(`/@${lookup.moved.blogSlug}/${encodeURIComponent(lookup.moved.currentSlug)}`);
+  }
 
-  const { post, author, blogId, video } = postDetailResponse;
-  const { contentMarkdown } = post;
-
-  const headings = await getHeadingsFromMarkdown(contentMarkdown);
-  console.log('Extracted headings:', headings);
+  // The post page (04-context-map, 조회 조합: 글 상세): publishing's post, member's author.
+  // The attached video comes with media (F3), counts and comments with interaction (F5).
+  const { post } = lookup;
+  const [[author], layout] = await Promise.all([
+    getPublicProfiles([post.authorId]),
+    getBlogLayoutData(blogSlug),
+  ]);
+  const categoryName = layout?.categories.find((category) => category.id === post.categoryId)?.name;
+  const headings = headingsOf(post.body);
 
   return (
     <>
-      <AnalyticsTracker blogId={blogId} postId={post.id} />
+      <AnalyticsTracker blogId={post.blogId} postId={post.postId} />
 
       <div className="flex w-full flex-col items-start xl:flex-row xl:gap-12">
         <div className="w-full min-w-0 max-w-4xl flex-1">
@@ -108,7 +97,15 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
               {post.title}
             </h1>
             <div className="flex items-center space-x-3 text-sm text-gray-500">
-              <span className="font-semibold text-gray-900">{author.nickname}</span>
+              <span className="font-semibold text-gray-900">
+                {author?.displayName ?? `@${post.blogSlug}`}
+              </span>
+              {categoryName && (
+                <>
+                  <span>•</span>
+                  <span>{categoryName}</span>
+                </>
+              )}
               <span>•</span>
               <time dateTime={post.publishedAt}>
                 {new Date(post.publishedAt).toLocaleDateString('ko-KR')}
@@ -117,8 +114,6 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
           </header>
 
           <Separator className="mb-8 lg:mb-10" />
-
-          {video && <VideoPlayer video={video} />}
 
           <article className="prose prose-indigo max-w-none lg:prose-lg prose-headings:scroll-mt-24">
             <Markdown
@@ -163,7 +158,7 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
                 },
               }}
             >
-              {contentMarkdown}
+              {post.body}
             </Markdown>
           </article>
         </div>

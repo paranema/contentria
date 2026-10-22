@@ -1,5 +1,5 @@
-import { getBlogLayoutAction } from '@/actions/blog';
-import Sidebar from '@/components/blog/Sidebar';
+import Sidebar from '@/features/publishing/components/blog/Sidebar';
+import { getBlogLayoutData } from '../../../_composition/blog';
 
 interface SidebarSlotProps {
   params: Promise<{
@@ -9,17 +9,10 @@ interface SidebarSlotProps {
 
 export default async function SidebarSlot({ params }: SidebarSlotProps) {
   const { blogSlug } = await params;
-
-  const layoutData = await getBlogLayoutAction(blogSlug);
-
-  if (!layoutData) {
+  const layout = await getBlogLayoutData(blogSlug);
+  if (!layout) {
     return null;
   }
 
-  const { blog, owner, categories } = layoutData;
-  if (!categories || categories.length === 0) {
-    return null;
-  }
-
-  return <Sidebar blog={blog} owner={owner} categories={categories} />;
+  return <Sidebar blog={layout.blog} owner={layout.owner} categories={layout.categories} />;
 }

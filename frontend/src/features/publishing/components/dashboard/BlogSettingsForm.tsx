@@ -1,6 +1,5 @@
 'use client';
 
-import { updateBlogSettingsAction } from '@/actions/blog';
 import { Button } from '@/shared/ui/button';
 import {
   Card,
@@ -13,8 +12,10 @@ import {
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Textarea } from '@/shared/ui/textarea';
-import { blogSettingsSchema, BlogSettingsFormValues } from '@/lib/schemas/blogSchemas';
-import { BlogInfo } from '@/types/api/blogs';
+import { changeBlogSettingsAction } from '../../api/blogs';
+import { publishingErrorMessage } from '../../errors';
+import { blogSettingsSchema, BlogSettingsFormValues } from '../../schemas';
+import { BlogView } from '../../types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -22,7 +23,7 @@ import { useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 
 interface BlogSettingsFormProps {
-  blog: BlogInfo;
+  blog: BlogView;
 }
 
 /** 블로그 공개 정보(제목/설명) 수정 폼 — 주소(slug)는 URL 정체성이라 읽기 전용. */
@@ -45,19 +46,17 @@ export default function BlogSettingsForm({ blog }: BlogSettingsFormProps) {
 
   const onSubmit = (data: BlogSettingsFormValues) => {
     startTransition(async () => {
-      try {
-        await updateBlogSettingsAction(blog.slug, {
-          title: data.title,
-          description: data.description.trim() === '' ? null : data.description,
-        });
-
-        alert('블로그 설정이 저장되었습니다.');
-        reset(data);
-        router.refresh();
-      } catch (error) {
-        console.error('Failed to update blog settings:', error);
-        alert('블로그 설정 저장에 실패했습니다. 다시 시도해주세요.');
+      const result = await changeBlogSettingsAction(blog.slug, {
+        title: data.title,
+        description: data.description.trim() === '' ? null : data.description,
+      });
+      if (!result.success) {
+        alert(publishingErrorMessage(result.error));
+        return;
       }
+      alert('블로그 설정이 저장되었습니다.');
+      reset(data);
+      router.refresh();
     });
   };
 

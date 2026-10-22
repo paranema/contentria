@@ -1,18 +1,17 @@
 import { redirect } from 'next/navigation';
-import { getMyBlogAction } from '@/actions/blog';
+import { getMyBlogs } from '@/features/publishing/api/blogs';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import Footer from '@/components/home/Footer';
 
 export default async function EditorLayout({ children }: { children: React.ReactNode }) {
-  const blogInfos = await getMyBlogAction();
-  const hasBlogs = blogInfos && blogInfos.length > 0;
+  const blogs = await getMyBlogs();
 
   // Same guard as (main): the editor is meaningless without a blog (direct-URL defense).
-  if (!hasBlogs) {
+  if (blogs.length === 0) {
     redirect('/dashboard/welcome');
   }
 
-  const firstBlogSlug = blogInfos![0].slug;
+  const firstBlogSlug = blogs[0].slug;
 
   return (
     <>

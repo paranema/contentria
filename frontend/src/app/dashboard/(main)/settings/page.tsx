@@ -1,13 +1,12 @@
-import { getMyBlogAction } from '@/actions/blog';
+import { getMyBlogs } from '@/features/publishing/api/blogs';
 import { getMyProfile } from '@/features/member/api/profile';
-import BlogSettingsForm from '@/components/dashboard/settings/BlogSettingsForm';
+import BlogSettingsForm from '@/features/publishing/components/dashboard/BlogSettingsForm';
 import ProfileForm from '@/features/member/components/ProfileForm';
 
 export default async function SettingsPage() {
   const profile = await getMyProfile();
   // (main) 레이아웃 가드가 블로그 존재를 보장하므로 첫 블로그를 사용
-  const blogInfos = await getMyBlogAction();
-  const blog = blogInfos?.[0];
+  const blog = (await getMyBlogs())[0];
 
   return (
     <div className="space-y-6">

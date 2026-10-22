@@ -1,5 +1,15 @@
 import Link from 'next/link';
-import { RecentPostResponse } from '@/types/api/posts';
+
+/** A post on the home page, with its author's name as the page put it together. */
+export interface RecentPostCard {
+  postId: string;
+  title: string;
+  summary: string;
+  blogSlug: string;
+  slug: string;
+  publishedAt: string | null;
+  authorName: string | null;
+}
 
 /** 빈 피드는 "죽은 플랫폼" 신호라, 이 개수 미만이면 섹션 자체를 렌더링하지 않는다 */
 const MIN_POSTS_TO_SHOW = 3;
@@ -14,7 +24,7 @@ const formatDate = (iso: string | null) => {
  * 홈 "최근 발행된 글" — 전체 블로그의 최신 공개 글.
  * 콘텐츠가 1명 → N명으로 늘어도 자연스럽게 확장되는 발견(discovery) 창구의 시작점.
  */
-export default function RecentPostsSection({ posts }: { posts: RecentPostResponse[] }) {
+export default function RecentPostsSection({ posts }: { posts: RecentPostCard[] }) {
   if (posts.length < MIN_POSTS_TO_SHOW) {
     return null;
   }
@@ -29,8 +39,8 @@ export default function RecentPostsSection({ posts }: { posts: RecentPostRespons
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {posts.map((post) => (
             <Link
-              key={`${post.blogSlug}/${post.postSlug}`}
-              href={`/@${post.blogSlug}/${post.postSlug}`}
+              key={post.postId}
+              href={`/@${post.blogSlug}/${post.slug}`}
               className="flex flex-col rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
             >
               <h3 className="mb-2 line-clamp-2 break-keep font-semibold text-gray-900">
@@ -38,7 +48,9 @@ export default function RecentPostsSection({ posts }: { posts: RecentPostRespons
               </h3>
               <p className="mb-4 line-clamp-2 break-keep text-sm text-gray-600">{post.summary}</p>
               <div className="mt-auto flex items-center justify-between text-xs text-gray-400">
-                <span className="truncate font-medium text-gray-500">{post.authorNickname}</span>
+                <span className="truncate font-medium text-gray-500">
+                  {post.authorName ?? `@${post.blogSlug}`}
+                </span>
                 <span className="shrink-0">{formatDate(post.publishedAt)}</span>
               </div>
             </Link>

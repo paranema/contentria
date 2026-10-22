@@ -7,18 +7,18 @@ import {
   getPopularPostsAction,
   getTrafficDataAction,
 } from '@/actions/dashboard';
-import { getMyBlogAction } from '@/actions/blog';
+import { getMyBlogs } from '@/features/publishing/api/blogs';
 import { getQueryClient } from '@/shared/lib/getQueryClient';
 
 export default async function DashboardPage() {
-  const [user, blogInfos] = await Promise.all([getMyProfile(), getMyBlogAction()]);
+  const [user, blogs] = await Promise.all([getMyProfile(), getMyBlogs()]);
 
   // The (main) layout already redirects blog-less users; this is direct-access defense.
-  if (!blogInfos || blogInfos.length === 0) {
+  if (blogs.length === 0) {
     redirect('/dashboard/welcome');
   }
 
-  const slug = blogInfos[0].slug;
+  const slug = blogs[0].slug;
   const queryClient = getQueryClient();
 
   await Promise.all([
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <DashboardContent user={user} blogInfos={blogInfos} />
+      <DashboardContent user={user} blogs={blogs} />
     </HydrationBoundary>
   );
 }

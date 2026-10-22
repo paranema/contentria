@@ -1,11 +1,11 @@
 'use client';
 
 import { useSortable } from '@dnd-kit/sortable';
-import { CategoryResponse } from '@/types/api/category';
+import { EditableCategory } from './editableCategory';
 import CategoryItemCard from './CategoryItemCard';
 
 interface SortableItemProps {
-  category: CategoryResponse;
+  category: EditableCategory;
   isFirst: boolean;
   prevItemLevel: number;
 

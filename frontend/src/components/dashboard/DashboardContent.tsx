@@ -10,15 +10,15 @@ import { Loader2 } from 'lucide-react';
 import TrafficChart, { TRAFFIC_SERIES } from './TrafficChart';
 import StatGroupCard from './StatGroupCard';
 import { MyProfile } from '@/features/member/types';
-import { BlogInfo } from '@/types/api/blogs';
+import { BlogView } from '@/features/publishing/types';
 
 interface DashboardContentProps {
   user: MyProfile | null;
-  blogInfos: BlogInfo[] | null;
+  blogs: BlogView[];
 }
 
-export default function DashboardContent({ user, blogInfos }: DashboardContentProps) {
-  const slug = blogInfos?.[0]?.slug;
+export default function DashboardContent({ user, blogs }: DashboardContentProps) {
+  const slug = blogs[0]?.slug;
 
   const { data: stats } = useDashboadStatsQuery(slug!);
   const { data: popularPosts } = usePopularPostsQuery(slug!);
