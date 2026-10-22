@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { PostVideo } from '@/types/api/video';
+import { PostVideo } from '../types';
 
 interface QualityLevel {
   index: number;
@@ -21,7 +21,7 @@ export default function VideoPlayer({ video }: { video: PostVideo }) {
   const [levels, setLevels] = useState<QualityLevel[]>([]);
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto (ABR)
 
-  const isPlayable = video.status === 'COMPLETED' && !!video.masterUrl;
+  const isPlayable = video.state === 'COMPLETED' && !!video.masterUrl;
 
   useEffect(() => {
     const el = videoRef.current;
@@ -57,7 +57,7 @@ export default function VideoPlayer({ video }: { video: PostVideo }) {
     }
   };
 
-  if (video.status === 'FAILED') {
+  if (video.state === 'FAILED') {
     return (
       <Placeholder>
         <AlertCircle className="h-6 w-6" />

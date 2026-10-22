@@ -18,6 +18,8 @@ import { remarkAdmonitions } from '@/features/publishing/markdown/remarkAdmoniti
 import { headingsOf } from '@/features/publishing/markdown/headings';
 import Admonition, { isAdmonitionType } from '@/features/publishing/components/blog/Admonition';
 import { getPublicProfiles } from '@/features/member/api/profile';
+import { getPostVideo } from '@/features/media/api/videos';
+import VideoPlayer from '@/features/media/components/VideoPlayer';
 import { getBlogLayoutData } from '../../../../_composition/blog';
 
 export const dynamic = 'force-dynamic';
@@ -76,12 +78,13 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     permanentRedirect(`/@${lookup.moved.blogSlug}/${encodeURIComponent(lookup.moved.currentSlug)}`);
   }
 
-  // The post page (04-context-map, 조회 조합: 글 상세): publishing's post, member's author.
-  // The attached video comes with media (F3), counts and comments with interaction (F5).
+  // The post page (04-context-map, 조회 조합: 글 상세): publishing's post, member's author,
+  // media's video. Counts and comments come with interaction (F5).
   const { post } = lookup;
-  const [[author], layout] = await Promise.all([
+  const [[author], layout, video] = await Promise.all([
     getPublicProfiles([post.authorId]),
     getBlogLayoutData(blogSlug),
+    getPostVideo(post.postId),
   ]);
   const categoryName = layout?.categories.find((category) => category.id === post.categoryId)?.name;
   const headings = headingsOf(post.body);
@@ -114,6 +117,8 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
           </header>
 
           <Separator className="mb-8 lg:mb-10" />
+
+          {video && <VideoPlayer video={video} />}
 
           <article className="prose prose-indigo max-w-none lg:prose-lg prose-headings:scroll-mt-24">
             <Markdown

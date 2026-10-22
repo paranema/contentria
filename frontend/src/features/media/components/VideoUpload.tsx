@@ -6,7 +6,7 @@ import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
 import { Progress } from '@/shared/ui/progress';
-import { uploadVideoToR2 } from '@/lib/uploadVideo';
+import { uploadVideoToR2 } from '../upload/uploadVideo';
 
 const ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-matroska';
 
