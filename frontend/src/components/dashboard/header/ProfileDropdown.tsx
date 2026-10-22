@@ -1,10 +1,10 @@
-import { User } from '@/types/api/user';
+import { MyProfile } from '@/features/member/types';
 import UserAvatar from './UserAvatar';
 import { Home, LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 interface ProfileDropdownProps {
-  user: User | null | undefined;
+  user: MyProfile | null | undefined;
   onClose: () => void;
   onLogout: () => void;
 }
@@ -20,7 +20,7 @@ const ProfileDropdown = ({ user, onClose, onLogout }: ProfileDropdownProps) => {
           </div>
           <div className="ml-3 min-w-0 text-left">
             <p className="truncate text-sm font-medium text-gray-800">
-              {user?.nickname || '사용자'}
+              {user?.displayName || '사용자'}
             </p>
             <p className="truncate text-xs text-gray-500">{user?.email || ''}</p>
           </div>

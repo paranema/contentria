@@ -1,6 +1,6 @@
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { redirect } from 'next/navigation';
-import { getRawUserProfileAction } from '@/actions/user';
+import { getMyProfile } from '@/features/member/api/profile';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import {
   getDashboardStatsAction,
@@ -11,7 +11,7 @@ import { getMyBlogAction } from '@/actions/blog';
 import { getQueryClient } from '@/shared/lib/getQueryClient';
 
 export default async function DashboardPage() {
-  const [user, blogInfos] = await Promise.all([getRawUserProfileAction(), getMyBlogAction()]);
+  const [user, blogInfos] = await Promise.all([getMyProfile(), getMyBlogAction()]);
 
   // The (main) layout already redirects blog-less users; this is direct-access defense.
   if (!blogInfos || blogInfos.length === 0) {

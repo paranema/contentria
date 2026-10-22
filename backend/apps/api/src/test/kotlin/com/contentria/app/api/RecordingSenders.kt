@@ -3,6 +3,8 @@ package com.contentria.app.api
 import com.contentria.member.application.required.AccountNotice
 import com.contentria.member.application.required.AccountNoticeSender
 import com.contentria.member.application.required.CodePurpose
+import com.contentria.member.application.required.HumanVerifier
+import com.contentria.member.application.required.InvisibleAssessment
 import com.contentria.member.application.required.PasswordLinkPurpose
 import com.contentria.member.application.required.PasswordLinkSender
 import com.contentria.member.application.required.VerificationCodeSender
@@ -37,6 +39,25 @@ class RecordingPasswordLinkSender : PasswordLinkSender {
     fun sentAnyTo(email: String): Boolean = tokens.keys.any { it.first == email }
 }
 
+/**
+ * Answers in place of Google's reCAPTCHA. A request carrying [HUMAN] passes either check; [BOT]
+ * scores too low on the invisible one. Any other token is one Google would not accept.
+ */
+class FakeHumanVerifier : HumanVerifier {
+    override fun assessInvisible(token: String): InvisibleAssessment? = when (token) {
+        HUMAN -> InvisibleAssessment(0.9, null)
+        BOT -> InvisibleAssessment(0.1, null)
+        else -> null
+    }
+
+    override fun acceptsCheckbox(token: String): Boolean = token == HUMAN
+
+    companion object {
+        const val HUMAN = "human"
+        const val BOT = "bot"
+    }
+}
+
 @TestConfiguration
 class RecordingSenders {
     @Bean
@@ -50,4 +71,8 @@ class RecordingSenders {
     @Bean
     @Primary
     fun recordingPasswordLinkSender() = RecordingPasswordLinkSender()
+
+    @Bean
+    @Primary
+    fun fakeHumanVerifier() = FakeHumanVerifier()
 }

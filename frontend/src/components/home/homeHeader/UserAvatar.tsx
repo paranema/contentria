@@ -17,10 +17,10 @@ const UserAvatar = ({ user, size = 'md' }: UserAvatarProps) => {
     <div
       className={`relative flex items-center justify-center overflow-hidden rounded-full bg-gray-200 ${sizeClasses[size]}`}
     >
-      {user?.profileImage ? (
+      {user?.pictureUrl ? (
         <Image
-          src={user.profileImage}
-          alt={user.username}
+          src={user.pictureUrl}
+          alt={user.displayName}
           fill // 부모 요소에 맞춰 채우기
           sizes="(max-width: 768px) 10vw, (max-width: 1200px) 5vw, 44px" // 뷰포트에 따른 이미지 크기 힌트
           className="h-full w-full object-cover"

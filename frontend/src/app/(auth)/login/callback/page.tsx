@@ -1,4 +1,4 @@
-import CallbackClient from '@/components/auth/login/callback/CallbackClient';
+import CallbackClient from '@/features/member/components/login/callback/CallbackClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {

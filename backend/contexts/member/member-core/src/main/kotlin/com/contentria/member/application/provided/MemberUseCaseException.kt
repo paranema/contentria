@@ -14,6 +14,18 @@ sealed class MemberUseCaseException(message: String) : DomainException(message) 
         enum class Reason { MISMATCH, LOCKED, EXPIRED }
     }
 
+    /** 사람 확인: 보이지 않는 확인만으로는 부족하다. 체크박스를 보여 주고 다시 보낸다. */
+    class HumanCheckRequired :
+        MemberUseCaseException("A checkbox check is required")
+
+    /** 사람 확인: 체크박스 확인을 공급자가 받아들이지 않았다. */
+    class HumanCheckFailed :
+        MemberUseCaseException("The human check failed")
+
+    /** 사람 확인: 공급자에게 물을 수 없다. 그동안은 통과시키지 않는다. */
+    class HumanCheckUnavailable :
+        MemberUseCaseException("The human check is unavailable")
+
     /** 01-rules 흐름 2의 3번: 공급자가 이메일 클레임을 주지 않았다. 공급자 화면에서 동의하도록 안내한다. */
     class SocialEmailMissing :
         MemberUseCaseException("The provider did not share an email address")

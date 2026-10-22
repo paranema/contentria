@@ -119,6 +119,9 @@ object ApiTestEnvironment {
         registry.add("contentria.member.access-token.secret") { accessTokenSecret }
         registry.add("contentria.member.cookie.secure") { false }
         registry.add("contentria.member.mail.mode") { "log" }
+        // Never sent anywhere: FakeHumanVerifier answers in place of Google.
+        registry.add("contentria.member.recaptcha.v3-secret-key") { UUID.randomUUID().toString() }
+        registry.add("contentria.member.recaptcha.v2-secret-key") { UUID.randomUUID().toString() }
         registry.add("contentria.member.social.login-success-url") { LOGIN_SUCCESS_URL }
         registry.add("contentria.member.social.login-failure-url") { LOGIN_FAILURE_URL }
         registry.add("contentria.member.social.link-result-url") { LINK_RESULT_URL }

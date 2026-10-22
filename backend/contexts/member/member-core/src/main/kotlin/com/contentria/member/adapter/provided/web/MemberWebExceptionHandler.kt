@@ -56,6 +56,13 @@ class MemberWebExceptionHandler {
             error(HttpStatus.BAD_REQUEST, "EMAIL_UNCHANGED", "That is already the account's address.")
         is MemberUseCaseException.DisplayNameTaken ->
             error(HttpStatus.CONFLICT, "DISPLAY_NAME_TAKEN", "Another member already uses this display name.")
+        // The frontend shows the checkbox on the first and tries again with its token.
+        is MemberUseCaseException.HumanCheckRequired ->
+            error(HttpStatus.FORBIDDEN, "RECAPTCHA_CHALLENGE_REQUIRED", "Confirm you are not a robot.")
+        is MemberUseCaseException.HumanCheckFailed ->
+            error(HttpStatus.FORBIDDEN, "RECAPTCHA_FAILED", "The check did not pass. Try again.")
+        is MemberUseCaseException.HumanCheckUnavailable ->
+            error(HttpStatus.SERVICE_UNAVAILABLE, "RECAPTCHA_UNAVAILABLE", "Try again in a moment.")
         is MemberUseCaseException.InvalidSession ->
             error(HttpStatus.UNAUTHORIZED, "INVALID_SESSION", "Sign in again.")
     }

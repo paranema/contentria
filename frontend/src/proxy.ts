@@ -1,34 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ParsedCookie, parseSetCookie } from './shared/api/setCookie';
 import { PATHS } from './shared/constants/paths';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
+/** The cookies the API carries a session in (backend: `SessionCookieNames`). */
+const SESSION_COOKIES: string[] = ['accessToken', 'refreshToken'];
 
-type RefreshedTokens = { accessToken: string; refreshToken: string };
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+
+/** The session cookies the API sets on a refresh, ready to set on the browser's response. */
+type RefreshedSession = ParsedCookie[];
 
 // Coalesces concurrent refresh attempts for the same refresh token into a single
 // backend call. Scope is the Node.js process (one entry per pod). Cross-pod
 // dedup relies on ingress sticky sessions; the backend's pessimistic lock +
 // grace cache is the ultimate safety net.
-const inflightRefresh = new Map<string, Promise<RefreshedTokens>>();
+const inflightRefresh = new Map<string, Promise<RefreshedSession>>();
 
-async function fetchRefreshedTokens(refreshToken: string): Promise<RefreshedTokens> {
+/**
+ * The API rotates the refresh token and answers with both session cookies in `Set-Cookie`,
+ * not in the body (backend AuthController.refresh).
+ */
+async function fetchRefreshedSession(refreshToken: string): Promise<RefreshedSession> {
   const existing = inflightRefresh.get(refreshToken);
   if (existing) return existing;
 
-  const promise = (async (): Promise<RefreshedTokens> => {
+  const promise = (async (): Promise<RefreshedSession> => {
     const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: `refreshToken=${refreshToken}`,
-      },
+      headers: { Cookie: `refreshToken=${refreshToken}` },
     });
 
     if (!refreshResponse.ok) {
       throw new Error('Refresh token invalid or expired');
     }
-    return (await refreshResponse.json()) as RefreshedTokens;
+    const cookies = refreshResponse.headers
+      .getSetCookie()
+      .map(parseSetCookie)
+      .filter(
+        (cookie): cookie is ParsedCookie => cookie !== null && SESSION_COOKIES.includes(cookie.name)
+      );
+    if (cookies.length !== SESSION_COOKIES.length) {
+      throw new Error('Refresh response is missing the session cookies');
+    }
+    return cookies;
   })().finally(() => {
     inflightRefresh.delete(refreshToken);
   });
@@ -51,10 +65,6 @@ export default async function proxy(request: NextRequest) {
   const isSessionExpired = request.nextUrl.searchParams.get('alert') === 'session_expired';
 
   if (isAuthPage) {
-    console.log(
-      `[Proxy] Auth page. accessToken: ${accessToken?.substring(0, 10) ?? ''}, refreshToken: ${refreshToken?.substring(0, 10) ?? ''}`
-    );
-
     if (isSessionExpired) {
       console.log('[Proxy] Session expired signal detected. Clearing cookies.');
       const response = NextResponse.next();
@@ -94,12 +104,11 @@ async function tryRefreshTokens(request: NextRequest, refreshToken: string): Pro
   console.log('[Proxy] accessToken expired. Attempting refresh.');
 
   try {
-    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-      await fetchRefreshedTokens(refreshToken);
+    const session = await fetchRefreshedSession(refreshToken);
 
     console.log('[Proxy] Refresh successful. Reloading...');
     const response = NextResponse.redirect(request.url);
-    setAuthCookies(response, newAccessToken, newRefreshToken);
+    session.forEach(({ name, value, ...options }) => response.cookies.set(name, value, options));
     return response;
   } catch (error) {
     console.error('[Proxy] Refresh failed. Clearing cookies.', error);
@@ -118,23 +127,6 @@ function redirectToLogin(request: NextRequest, fromPath: string) {
   response.cookies.delete('accessToken');
   response.cookies.delete('refreshToken');
   return response;
-}
-
-function setAuthCookies(response: NextResponse, accessToken: string, refreshToken: string) {
-  response.cookies.set('accessToken', accessToken, {
-    httpOnly: true,
-    secure: COOKIE_SECURE,
-    path: '/',
-    maxAge: 15 * 60, // 15 minutes
-    sameSite: 'lax',
-  });
-  response.cookies.set('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: COOKIE_SECURE,
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-    sameSite: 'lax',
-  });
 }
 
 export const config = {

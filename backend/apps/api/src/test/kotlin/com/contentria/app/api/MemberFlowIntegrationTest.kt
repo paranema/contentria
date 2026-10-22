@@ -28,7 +28,7 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
         val password = "correct horse battery"
 
         // 가입 시작: 계정은 아직 없다
-        val started = browser.post("/auth/sign-up/start", """{"email":"${email.uppercase()}"}""")
+        val started = browser.post("/auth/sign-up/start", """{"email":"${email.uppercase()}","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
         assertThat(started.statusCode()).isEqualTo(202)
         val attemptId = started.field("attemptId")
         val code = codes.lastCodeFor(email)
@@ -59,7 +59,7 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
         assertThat(renamed.field("displayName")).startsWith("새 이름 ")
 
         // 같은 주소로 다시 가입하면 409와 가입 수단을 알려준다
-        val duplicate = browser.post("/auth/sign-up/start", """{"email":"$email"}""")
+        val duplicate = browser.post("/auth/sign-up/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
         assertThat(duplicate.statusCode()).isEqualTo(409)
         assertThat(duplicate.body()).contains("EMAIL_ALREADY_REGISTERED", "EMAIL")
 
@@ -90,7 +90,7 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
     fun `five wrong codes lock the attempt across requests`() {
         val browser = TestBrowser(port)
         val email = "locked-${UUID.randomUUID()}@contentria.com"
-        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").field("attemptId")
         val code = codes.lastCodeFor(email)
 
         val failures = (1..MAX_FAILED_ATTEMPTS).map {
@@ -112,10 +112,10 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
         val browser = TestBrowser(port)
 
         // 재발송: 첫 시도는 더 이상 쓸 수 없다
-        val first = browser.post("/auth/login/code/start", """{"email":"$email"}""")
+        val first = browser.post("/auth/login/code/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
         assertThat(first.statusCode()).isEqualTo(202)
         val firstCode = codes.lastCodeFor(email, CodePurpose.LOGIN)
-        val attemptId = browser.post("/auth/login/code/start", """{"email":"${email.uppercase()}"}""").field("attemptId")
+        val attemptId = browser.post("/auth/login/code/start", """{"email":"${email.uppercase()}","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").field("attemptId")
         val code = codes.lastCodeFor(email, CodePurpose.LOGIN)
         val stale = browser.post("/auth/login/code/complete", codeLogin(first.field("attemptId"), firstCode))
         assertThat(stale.body()).contains("VERIFICATION_EXPIRED")
@@ -139,8 +139,8 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
         val registered = signUp()
         val unknown = "nobody-${UUID.randomUUID()}@contentria.com"
 
-        val forRegistered = TestBrowser(port).post("/auth/login/code/start", """{"email":"$registered"}""")
-        val forUnknown = TestBrowser(port).post("/auth/login/code/start", """{"email":"$unknown"}""")
+        val forRegistered = TestBrowser(port).post("/auth/login/code/start", """{"email":"$registered","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
+        val forUnknown = TestBrowser(port).post("/auth/login/code/start", """{"email":"$unknown","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
 
         assertThat(forUnknown.statusCode()).isEqualTo(forRegistered.statusCode())
         assertThat(forUnknown.body().replace(UUID_PATTERN, "<id>")).isEqualTo(forRegistered.body().replace(UUID_PATTERN, "<id>"))
@@ -179,7 +179,7 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
     private fun signUp(): String {
         val browser = TestBrowser(port)
         val email = "member-${UUID.randomUUID()}@contentria.com"
-        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").field("attemptId")
         val completed = browser.post("/auth/sign-up/complete", completion(attemptId, codes.lastCodeFor(email), "correct horse battery"))
         check(completed.statusCode() == 201) { "Sign-up failed: ${completed.body()}" }
         return email
@@ -190,7 +190,8 @@ class MemberFlowIntegrationTest : ApiIntegrationTest() {
     private fun completion(attemptId: String, code: String, password: String) =
         """{"attemptId":"$attemptId","code":"$code","password":"$password"}"""
 
-    private fun login(email: String, password: String) = """{"email":"$email","password":"$password"}"""
+    private fun login(email: String, password: String) =
+        """{"email":"$email","password":"$password","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}"""
 
     private fun wrongCodeFor(code: String) = if (code == "000000") "111111" else "000000"
 

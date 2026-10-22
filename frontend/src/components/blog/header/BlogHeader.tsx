@@ -8,17 +8,17 @@ import { useRouter } from 'next/navigation';
 import ProfileDropdown from '@/components/dashboard/header/ProfileDropdown';
 import UserAvatar from '@/components/dashboard/header/UserAvatar';
 import { PATHS } from '@/shared/constants/paths';
-import { logoutAction } from '@/actions/auth';
-import { useUserProfile } from '@/hooks/queries/useUserQuery';
+import { logoutAction } from '@/features/member/api/auth';
+import { useMyProfile } from '@/features/member/hooks/useMyProfile';
 import { useQueryClient } from '@tanstack/react-query';
-import { userKeys } from '@/hooks/queries/keys';
+import { memberKeys } from '@/features/member/hooks/keys';
 
 interface BlogHeaderProps {
   blogSlug: string;
 }
 
 export default function BlogHeader({ blogSlug }: BlogHeaderProps) {
-  const { data: user } = useUserProfile();
+  const { data: user } = useMyProfile();
 
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function BlogHeader({ blogSlug }: BlogHeaderProps) {
   }, []);
 
   const handleLogout = async () => {
-    queryClient.setQueryData(userKeys.profile(), null);
+    queryClient.setQueryData(memberKeys.profile(), null);
 
     await logoutAction();
 

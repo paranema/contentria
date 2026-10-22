@@ -96,13 +96,13 @@ backend/
 
 | 프로세스 | 기본값 없는 환경 변수 |
 |---|---|
-| `apps/api` | `DATABASE_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MEMBER_ACCESS_TOKEN_SECRET`(Base64, 256비트 이상), `ANALYTICS_VISITOR_KEY_SECRET`, `MEDIA_PUBLIC_BASE_URL`, `R2_ENDPOINT`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
+| `apps/api` | `DATABASE_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MEMBER_ACCESS_TOKEN_SECRET`(Base64, 256비트 이상), `ANALYTICS_VISITOR_KEY_SECRET`, `MEDIA_PUBLIC_BASE_URL`, `R2_ENDPOINT`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `GOOGLE_RECAPTCHA_V3_SECRET_KEY`, `GOOGLE_RECAPTCHA_V2_SECRET_KEY` |
 | `apps/batch` | `DATABASE_PASSWORD`, `MEDIA_PUBLIC_BASE_URL`, `R2_*` 네 개 |
 | `apps/worker` | `DATABASE_PASSWORD`, `MEDIA_PUBLIC_BASE_URL`, `R2_*` 네 개, `CLOUDFLARE_ACCOUNT_ID`, `CF_QUEUE_ID`, `CF_API_TOKEN` |
 | `apps/migrator` | `MIGRATION_DATABASE_URL`, 컨텍스트마다 `<컨텍스트>_MIGRATOR_USERNAME`, `<컨텍스트>_MIGRATOR_PASSWORD` |
 
 `DATABASE_URL`은 `jdbc:postgresql://localhost:5432/contentria_v2`, `KAFKA_BOOTSTRAP_SERVERS`는 `localhost:9092`가 기본값이다.
-로컬에서는 `MEMBER_MAIL_MODE=log`(메일 대신 로그에 코드를 쓴다)와 `MEMBER_COOKIE_SECURE=false`를 준다. 나머지 값과 기본값은 각 app의 `application.yml`에 있다.
+로컬에서는 `MEMBER_MAIL_MODE=log`(메일 대신 로그에 코드를 쓴다), `MEMBER_COOKIE_SECURE=false`, `MEMBER_RECAPTCHA_MODE=off`(사람 확인을 건너뛴다. 그러면 reCAPTCHA 비밀키가 없어도 된다)를 준다. 나머지 값과 기본값은 각 app의 `application.yml`에 있다.
 
 ## 빌드와 테스트
 

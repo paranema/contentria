@@ -15,7 +15,7 @@ const ProfileDropdown = ({ user, isOpen, onClose, onLogout }: ProfileDropdownPro
         <div className="flex items-center">
           <UserAvatar user={user} size="sm" />
           <div className="ml-3 text-left">
-            <div className="text-sm font-medium text-gray-800">{user.username}</div>
+            <div className="text-sm font-medium text-gray-800">{user.displayName}</div>
             <div className="text-xs text-gray-500">{user.email}</div>
           </div>
         </div>

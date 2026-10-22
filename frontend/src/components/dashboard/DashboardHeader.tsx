@@ -8,10 +8,10 @@ import { useRouter } from 'next/navigation';
 import UserAvatar from './header/UserAvatar';
 import ProfileDropdown from './header/ProfileDropdown';
 import DashboardMobileNav from './DashboardMobileNav';
-import { useUserProfile } from '@/hooks/queries/useUserQuery';
+import { useMyProfile } from '@/features/member/hooks/useMyProfile';
 import { useQueryClient } from '@tanstack/react-query';
-import { userKeys } from '@/hooks/queries/keys';
-import { logoutAction } from '@/actions/auth';
+import { memberKeys } from '@/features/member/hooks/keys';
+import { logoutAction } from '@/features/member/api/auth';
 import { PATHS } from '@/shared/constants/paths';
 
 interface DashboardHeaderProps {
@@ -27,7 +27,7 @@ export default function DashboardHeader({
   showMobileNav = false,
   showWriteButton = false,
 }: DashboardHeaderProps) {
-  const { data: user } = useUserProfile();
+  const { data: user } = useMyProfile();
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -51,7 +51,7 @@ export default function DashboardHeader({
   }, []);
 
   const handleLogout = useCallback(async () => {
-    queryClient.setQueryData(userKeys.profile(), null);
+    queryClient.setQueryData(memberKeys.profile(), null);
     setIsProfileOpen(false);
 
     try {

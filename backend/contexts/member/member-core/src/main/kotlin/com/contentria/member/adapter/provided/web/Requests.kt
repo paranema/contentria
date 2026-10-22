@@ -7,8 +7,13 @@ import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.util.UUID
 
+/** Tokens from the human check (docs/contexts/member/01-rules.md, 사람 확인); Google's are about 2KB. */
+private const val HUMAN_TOKEN_MAX = 4096
+
 data class StartSignUpRequest(
     @field:NotBlank @field:Size(max = 255) val email: String,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV3Token: String? = null,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV2Token: String? = null,
 )
 
 /** Answer to every request that sends a code: the id to present with the code. */
@@ -24,10 +29,14 @@ data class CompleteSignUpRequest(
 data class LoginRequest(
     @field:NotBlank @field:Size(max = 255) val email: String,
     @field:NotBlank @field:Size(max = 72) val password: String,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV3Token: String? = null,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV2Token: String? = null,
 )
 
 data class StartCodeLoginRequest(
     @field:NotBlank @field:Size(max = 255) val email: String,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV3Token: String? = null,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV2Token: String? = null,
 )
 
 data class CompleteCodeLoginRequest(
@@ -42,6 +51,8 @@ data class ChangePasswordRequest(
 
 data class PasswordResetLinkRequest(
     @field:NotBlank @field:Size(max = 255) val email: String,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV3Token: String? = null,
+    @field:Size(max = HUMAN_TOKEN_MAX) val recaptchaV2Token: String? = null,
 )
 
 data class ResetPasswordRequest(

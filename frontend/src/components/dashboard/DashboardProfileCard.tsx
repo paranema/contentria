@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import UserAvatar from '@/components/dashboard/header/UserAvatar';
-import { useUserProfile } from '@/hooks/queries/useUserQuery';
+import { useMyProfile } from '@/features/member/hooks/useMyProfile';
 
 interface DashboardProfileCardProps {
   blogSlug: string | null;
@@ -13,7 +13,7 @@ interface DashboardProfileCardProps {
  * 주소 클릭 시 (기존 '블로그로 돌아가기'처럼) 내 블로그를 새 탭으로 연다.
  */
 export default function DashboardProfileCard({ blogSlug }: DashboardProfileCardProps) {
-  const { data: user } = useUserProfile();
+  const { data: user } = useMyProfile();
 
   return (
     <div className="flex flex-col text-center">
@@ -24,7 +24,7 @@ export default function DashboardProfileCard({ blogSlug }: DashboardProfileCardP
       </div>
 
       <div className="space-y-1 px-4 py-4">
-        <p className="truncate text-sm font-semibold text-gray-900">{user?.nickname}</p>
+        <p className="truncate text-sm font-semibold text-gray-900">{user?.displayName}</p>
 
         {blogSlug && (
           <Link

@@ -95,12 +95,12 @@ class AccountManagementIntegrationTest : ApiIntegrationTest() {
         val otherDevice = signedIn(email, password)
         val unknown = newEmail()
 
-        assertThat(TestBrowser(port).post("/auth/password/reset-link", """{"email":"$unknown"}""").statusCode()).isEqualTo(202)
+        assertThat(TestBrowser(port).post("/auth/password/reset-link", """{"email":"$unknown","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").statusCode()).isEqualTo(202)
         assertThat(links.sentAnyTo(unknown)).isFalse()
 
-        assertThat(TestBrowser(port).post("/auth/password/reset-link", """{"email":"$email"}""").statusCode()).isEqualTo(202)
+        assertThat(TestBrowser(port).post("/auth/password/reset-link", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").statusCode()).isEqualTo(202)
         val first = links.lastTokenFor(email, PasswordLinkPurpose.RESET)
-        TestBrowser(port).post("/auth/password/reset-link", """{"email":"$email"}""")
+        TestBrowser(port).post("/auth/password/reset-link", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
         val second = links.lastTokenFor(email, PasswordLinkPurpose.RESET)
 
         assertThat(TestBrowser(port).post("/auth/password/reset", resetPassword(first, newPassword)).body()).contains("INVALID_PASSWORD_TOKEN")
@@ -119,7 +119,7 @@ class AccountManagementIntegrationTest : ApiIntegrationTest() {
         val taken = newEmail().also { signUp(it) }
 
         // 변경 전에 옛 주소로 나간 재설정 링크
-        TestBrowser(port).post("/auth/password/reset-link", """{"email":"$email"}""")
+        TestBrowser(port).post("/auth/password/reset-link", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
         val oldLink = links.lastTokenFor(email, PasswordLinkPurpose.RESET)
 
         assertThat(browser.post("/me/email-change/start", """{"newEmail":"${email.uppercase()}"}""").body()).contains("EMAIL_UNCHANGED")
@@ -198,7 +198,7 @@ class AccountManagementIntegrationTest : ApiIntegrationTest() {
     }
 
     private fun signUp(email: String, browser: TestBrowser = TestBrowser(port)): String {
-        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").field("attemptId")
         val completed = browser.post(
             "/auth/sign-up/complete",
             """{"attemptId":"$attemptId","code":"${codes.lastCodeFor(email)}","password":"$password"}""",
@@ -209,10 +209,10 @@ class AccountManagementIntegrationTest : ApiIntegrationTest() {
 
     /** Another browser signed in to the same account: the session that invalidation must end. */
     private fun signedIn(email: String, password: String): TestBrowser =
-        TestBrowser(port).also { check(it.post("/auth/login", """{"email":"$email","password":"$password"}""").statusCode() == 200) }
+        TestBrowser(port).also { check(it.post("/auth/login", """{"email":"$email","password":"$password","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").statusCode() == 200) }
 
     private fun login(email: String, password: String) =
-        TestBrowser(port).post("/auth/login", """{"email":"$email","password":"$password"}""")
+        TestBrowser(port).post("/auth/login", """{"email":"$email","password":"$password","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""")
 
     private fun newEmail() = "member-${UUID.randomUUID()}@contentria.com"
 

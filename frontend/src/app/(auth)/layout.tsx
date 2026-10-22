@@ -1,4 +1,4 @@
-import RecaptchaWrapper from '@/components/auth/RecaptchaWrapper';
+import RecaptchaWrapper from '@/features/member/components/RecaptchaWrapper';
 
 export const metadata = {
   title: 'Auth',

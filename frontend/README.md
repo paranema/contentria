@@ -65,10 +65,14 @@ src/
 
 | 단계 | 위치 | 하는 일 |
 |---|---|---|
-| 1 | `proxy.ts` | 화면을 옮길 때마다 쿠키를 본다. 액세스 토큰이 없고 리프레시 토큰이 있으면 서버에서 갱신하고 쿠키를 새로 심는다. 같은 리프레시 토큰의 갱신은 한 번으로 묶는다. 토큰 없이 `/dashboard`에 오면 로그인 화면으로 보낸다 |
-| 2 | `apiServer.ts` | 서버에서 부른 API가 401이면 로그인 화면으로 보낸다 |
+| 1 | 로그인, 가입 (`features/member`) | 백엔드가 세션 쿠키를 `Set-Cookie`로 심는다. Server Action이 그 쿠키를 브라우저 응답으로 옮긴다 |
+| 2 | `proxy.ts` | 화면을 옮길 때마다 쿠키를 본다. 액세스 토큰이 없고 리프레시 토큰이 있으면 백엔드에서 갱신하고, 백엔드가 준 두 쿠키를 그대로 심는다. 같은 리프레시 토큰의 갱신은 한 번으로 묶는다. 토큰 없이 `/dashboard`에 오면 로그인 화면으로 보낸다 |
+| 3 | `apiServer.ts` | 서버에서 부른 API가 401이면 로그인 화면으로 보낸다 |
+| 4 | 로그아웃 | 리프레시 토큰을 백엔드에 넘겨 그 세션을 지우고, 만료된 쿠키를 브라우저로 옮긴다 |
 
-토큰은 HttpOnly 쿠키에 둔다. 액세스 토큰은 15분, 리프레시 토큰은 7일이다.
+토큰은 HttpOnly 쿠키에 둔다. 쿠키의 속성(수명 15분과 7일, `Secure`, `SameSite=Lax`)은 백엔드가 정한다.
+
+가입, 비밀번호 로그인, 코드 로그인 시작은 reCAPTCHA v3 토큰을 함께 보낸다. 점수가 낮으면 백엔드가 403 `RECAPTCHA_CHALLENGE_REQUIRED`로 답하고, 화면은 v2 체크박스를 띄워 다시 보낸다. 사이트 키가 없으면(로컬) 토큰 없이 보내고, 이때 백엔드는 `MEMBER_RECAPTCHA_MODE=off`여야 한다.
 
 ### 파일 올리기
 
@@ -94,11 +98,10 @@ lint와 formatting 규칙은 [docs/lint-and-formatting.md](docs/lint-and-formatt
 | 변수 | 내용 |
 |---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | 서버가 부르는 백엔드 주소. 배포에서는 클러스터 안의 주소다. 비우면 `http://localhost:8080` |
-| `NEXT_PUBLIC_EXTERNAL_API_BASE_URL` | 브라우저가 가는 백엔드의 공개 주소. Google 로그인 시작에 쓴다 |
+| `NEXT_PUBLIC_EXTERNAL_API_BASE_URL` | 브라우저가 가는 백엔드의 공개 주소. `/api`까지 포함한다(로컬은 `http://localhost:8080/api`). Google 로그인 시작에 쓴다 |
 | `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` | reCAPTCHA v3 사이트 키 |
 | `NEXT_PUBLIC_RECAPTCHA_V2_CHECKBOX_SITE_KEY` | reCAPTCHA v2 체크박스 사이트 키. 로그인 중 백엔드가 추가 확인을 요구하면(403) 띄운다 |
 | `NEXT_PUBLIC_CDN_BASE_URL` | 이미지를 내주는 R2 공개 주소. `next/image`가 허용할 호스트가 된다 |
-| `COOKIE_SECURE` | HTTPS에서는 `true`, 로컬 HTTP에서는 `false` |
 
 ## 컨테이너 이미지
 

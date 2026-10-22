@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import { UserIcon } from 'lucide-react';
-import { User } from '@/types/api/user';
+import { MyProfile } from '@/features/member/types';
 
 interface UserAvatarProps {
-  user: User | null | undefined;
+  user: MyProfile | null | undefined;
   size?: number;
   /** circle(기본): 헤더 등 작은 아바타 / square: 프로필 카드처럼 영역을 가득 채울 때 */
   shape?: 'circle' | 'square';
@@ -25,10 +25,10 @@ const UserAvatar = ({ user, size = 24, shape = 'circle' }: UserAvatarProps) => {
 
   return (
     <>
-      {user?.profileImage ? (
+      {user?.pictureUrl ? (
         <Image
-          src={withDisplaySize(user.profileImage, size)}
-          alt={user.username || 'User Avatar'}
+          src={withDisplaySize(user.pictureUrl, size)}
+          alt={user.displayName || 'User Avatar'}
           fill
           sizes={`${size}px`}
           className={`${rounded} object-cover`}

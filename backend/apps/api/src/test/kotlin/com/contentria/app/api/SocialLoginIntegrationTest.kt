@@ -196,7 +196,7 @@ class SocialLoginIntegrationTest : ApiIntegrationTest() {
     ): HttpResponse<String> = browser.signInWithGoogle(identity, intent, forged, beforeCallback)
 
     private fun signUpWithEmail(email: String, browser: TestBrowser = TestBrowser(port)): String {
-        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+        val attemptId = browser.post("/auth/sign-up/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").field("attemptId")
         val code = codes.lastCodeFor(email)
         val completed = browser.post("/auth/sign-up/complete", """{"attemptId":"$attemptId","code":"$code","password":"correct horse battery"}""")
         check(completed.statusCode() == 201) { "Sign-up failed: ${completed.body()}" }
