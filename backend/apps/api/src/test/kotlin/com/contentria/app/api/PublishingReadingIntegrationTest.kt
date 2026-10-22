@@ -44,6 +44,7 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
         assertThat(ids(page)).containsExactly(second, first)
         assertThat(page.body()).doesNotContain(hidden, "책 한 권을 읽고 남기는 첫 기록")
         assertThat(page.body()).contains("\"page\":0", "\"totalItems\":2", "\"totalPages\":1")
+        assertThat(page.body()).contains("\"authorId\":\"${owner.get("/me/profile").field("accountId")}\"")
     }
 
     @Test
@@ -96,6 +97,8 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
         assertThat(found.statusCode()).isEqualTo(200)
         assertThat(found.field("postId")).isEqualTo(id)
         assertThat(found.field("body")).isEqualTo("**본문**입니다")
+        // The author is the blog's owner; the screen asks member for the profile
+        assertThat(found.field("authorId")).isEqualTo(owner.get("/me/profile").field("accountId"))
 
         assertThat(reader.get("/blogs/$blog/posts/${enc(draft)}").statusCode()).isEqualTo(404)
         owner.post("/posts/$id/hide", "")

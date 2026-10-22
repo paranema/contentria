@@ -22,7 +22,7 @@ internal object PostPages {
 
     fun of(rows: List<PostRow>, page: Int, totalItems: Long): PostPage =
         PostPage(
-            items = rows.map { PostListItem(it.postId, it.blogSlug, it.categoryId, it.title, it.summary, it.status, it.publishedAt, it.slug, it.updatedAt) },
+            items = rows.map { PostListItem(it.postId, it.blogSlug, it.categoryId, it.title, it.summary, it.status, it.publishedAt, it.slug, it.updatedAt, it.authorId) },
             page = page,
             totalItems = totalItems,
             totalPages = ((totalItems + PostPage.SIZE - 1) / PostPage.SIZE).toInt(),

@@ -54,6 +54,7 @@ class PublishedPostService(
             PublishedPostView(
                 postId = post.id, blogId = blog.id, blogSlug = blog.slug, categoryId = post.categoryId, title = post.title,
                 body = post.body, summary = post.summary, publishedAt = post.publishedAt!!, slug = post.slug,
+                authorId = blog.ownerId,
             ),
         )
     }

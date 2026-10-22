@@ -18,4 +18,7 @@ interface PostRow {
     val publishedAt: Instant?
     val slug: String
     val updatedAt: Instant
+
+    /** The blog's owner, who writes every post in it: for screens that show the author. */
+    val authorId: UUID
 }

@@ -86,4 +86,6 @@ data class PostListItem(
     val publishedAt: Instant?,
     val slug: String,
     val updatedAt: Instant,
+    /** The blog's owner. A screen asks member for the profile; publishing does not hold it. */
+    val authorId: UUID,
 )

@@ -46,4 +46,6 @@ data class PublishedPostView(
     val summary: String,
     val publishedAt: Instant,
     val slug: String,
+    /** The blog's owner, as in [PostListItem.authorId]. */
+    val authorId: UUID,
 )

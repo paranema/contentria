@@ -58,7 +58,7 @@ import java.util.UUID
     name = "Post.findPublishedInBlog",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
-        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
+        "p.updatedAt as updatedAt, b.ownerId as authorId from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
         "p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED order by p.publishedAt desc, p.id desc " +
         "limit ?2 offset ?3",
 )
@@ -70,7 +70,7 @@ import java.util.UUID
     name = "Post.findPublishedInCategories",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
-        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
+        "p.updatedAt as updatedAt, b.ownerId as authorId from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
         "p.categoryId in ?4 and p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED order by " +
         "p.publishedAt desc, p.id desc limit ?2 offset ?3",
 )
@@ -83,7 +83,7 @@ import java.util.UUID
     name = "Post.findRecentPublished",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
-        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.status = " +
+        "p.updatedAt as updatedAt, b.ownerId as authorId from Post p join Blog b on b.id = p.blogId where p.status = " +
         "com.contentria.publishing.domain.post.PostStatus.PUBLISHED order by p.publishedAt desc, p.id desc limit ?1 offset ?2",
 )
 @NamedQuery(
@@ -94,7 +94,7 @@ import java.util.UUID
     name = "Post.findInBlogByUpdate",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
-        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 " +
+        "p.updatedAt as updatedAt, b.ownerId as authorId from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 " +
         "order by p.updatedAt desc, p.id desc limit ?2 offset ?3",
 )
 @NamedQuery(name = "Post.countInBlog", query = "select count(p) from Post p where p.blogId = ?1")
