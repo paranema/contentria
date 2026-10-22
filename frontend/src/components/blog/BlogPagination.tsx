@@ -6,7 +6,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '../ui/pagination';
+} from '@/shared/ui/pagination';
 
 interface BlogPaginationProps {
   currentPage: number;

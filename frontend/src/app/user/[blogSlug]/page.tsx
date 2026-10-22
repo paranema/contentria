@@ -1,6 +1,6 @@
 import { getBlogLayoutAction } from '@/actions/blog';
 import { getBlogPostsAction } from '@/actions/post';
-import CustomPagination from '@/components/common/CustomPagination';
+import CustomPagination from '@/shared/components/CustomPagination';
 import PostCard from '@/components/blog/PostCard';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';

@@ -8,7 +8,7 @@ import {
   getTrafficDataAction,
 } from '@/actions/dashboard';
 import { getMyBlogAction } from '@/actions/blog';
-import { getQueryClient } from '@/lib/getQueryClient';
+import { getQueryClient } from '@/shared/lib/getQueryClient';
 
 export default async function DashboardPage() {
   const [user, blogInfos] = await Promise.all([getRawUserProfileAction(), getMyBlogAction()]);

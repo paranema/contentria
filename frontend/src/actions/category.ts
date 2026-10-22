@@ -1,6 +1,6 @@
 'use server';
 
-import apiServer from '@/lib/apiServer';
+import apiServer from '@/shared/api/apiServer';
 import { CategoryResponse, SyncCategoryPayload } from '@/types/api/category';
 import { getMyBlogAction } from './blog';
 

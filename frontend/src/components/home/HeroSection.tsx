@@ -1,6 +1,6 @@
 'use client';
 
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { useUserProfile } from '@/hooks/queries/useUserQuery';
 import Link from 'next/link';
 import { memo, useRef } from 'react';

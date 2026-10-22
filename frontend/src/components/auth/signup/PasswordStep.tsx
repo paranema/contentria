@@ -1,6 +1,6 @@
 'use client';
 
-import BackButton from '@/components/common/BackButton';
+import BackButton from '@/shared/components/BackButton';
 import { PasswordStepFormData, passwordStepSchema } from '@/lib/schemas/authSchemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Info, Loader2, Mail } from 'lucide-react';
@@ -8,10 +8,10 @@ import React, { useMemo, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import PasswordPolicyTooltip from './PasswordPolicyTooltip';
 import { useSignUpFlow } from '@/hooks/useSignUpFlow';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Label } from '@/shared/ui/label';
+import { Input } from '@/shared/ui/input';
+import { Button } from '@/shared/ui/button';
+import { Separator } from '@/shared/ui/separator';
 
 interface PolicyItem {
   id: string;

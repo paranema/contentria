@@ -7,11 +7,11 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SignUpEmailStepFormData, signUpEmailStepSchema } from '@/lib/schemas/authSchemas';
 import { useSignUpFlow } from '@/hooks/useSignUpFlow';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Label } from '@/shared/ui/label';
+import { Input } from '@/shared/ui/input';
+import { Button } from '@/shared/ui/button';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/ui/separator';
 
 export default function EmailStep() {
   const { formData, isLoading, error, submitEmailStep, startGoogleLogin } = useSignUpFlow();

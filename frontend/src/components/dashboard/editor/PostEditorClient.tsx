@@ -47,21 +47,15 @@ import { editorSyntaxHighlighting } from '@/components/dashboard/editor/editorCo
 import VideoUpload from '@/components/dashboard/editor/VideoUpload';
 import { codeFenceOnEnterPlugin } from '@/components/dashboard/editor/codeFenceOnEnterPlugin';
 import { mdxEditorKoTranslation } from '@/components/dashboard/editor/mdxEditorKoTranslation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { createNewPostAction, updatePostAction } from '@/actions/post';
 import { uploadImageToR2 } from '@/lib/uploadImage';
 import { PostDetailResponse, PostStatus } from '@/types/api/posts';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { CategoryResponse } from '@/types/api/category';
 
 type AdmonitionKind = 'note' | 'tip' | 'danger' | 'info' | 'caution';

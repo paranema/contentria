@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { Card, CardContent } from '../ui/card';
+import { Card, CardContent } from '@/shared/ui/card';
 
 interface AuthFormCardProps {
   title: string;

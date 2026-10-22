@@ -2,10 +2,10 @@
 
 import { useRef, useState } from 'react';
 import { AlertCircle, Loader2, Upload, Video, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
+import { Card } from '@/shared/ui/card';
+import { Progress } from '@/shared/ui/progress';
 import { uploadVideoToR2 } from '@/lib/uploadVideo';
 
 const ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-matroska';

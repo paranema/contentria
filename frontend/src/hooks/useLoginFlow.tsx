@@ -12,7 +12,7 @@ import {
 } from './mutations/useAuthMutations';
 import { RECAPTCHA_LOGIN_WITH_PASSWORD_ACTION, RECAPTCHA_SEND_OTP_ACTION } from '@/constants/auth';
 import { ERROR_CODES } from '@/constants/errorCodes';
-import { ApiError } from '@/types/api/errors';
+import { ApiError } from '@/shared/api/apiError';
 
 type LoginFlowContextType = ReturnType<typeof useLoginFlowLogic>;
 

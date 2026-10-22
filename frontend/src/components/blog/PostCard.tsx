@@ -1,6 +1,6 @@
 'use client';
 
-import { formatPostDate } from '@/lib/dateFormatUtil';
+import { formatPostDate } from '@/shared/lib/dateFormatUtil';
 import { Camera, Heart, MessageCircleMore } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';

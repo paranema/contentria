@@ -1,7 +1,7 @@
 'use client';
 
 import { updateUserProfileAction } from '@/actions/user';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 import {
   Card,
   CardContent,
@@ -9,9 +9,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from '@/shared/ui/card';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
 import { ProfileFormValues, profileSchema } from '@/lib/schemas/userSchemas';
 import { User } from '@/types/api/user';
 import { zodResolver } from '@hookform/resolvers/zod';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '../ui/input-otp';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/shared/ui/input-otp';
 import { Loader2 } from 'lucide-react';
 
 interface VerificationStepProps {

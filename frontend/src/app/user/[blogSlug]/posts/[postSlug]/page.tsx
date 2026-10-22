@@ -20,7 +20,7 @@ import { notFound } from 'next/navigation';
 import GithubSlugger from 'github-slugger';
 import { toString } from 'mdast-util-to-string';
 import AnalyticsTracker from '@/components/analytics/AnalyticsTracker';
-import { Separator } from '@/components/ui/separator';
+import { Separator } from '@/shared/ui/separator';
 import { remarkAdmonitions } from '@/lib/markdown/remarkAdmonitions';
 import Admonition, { isAdmonitionType } from '@/components/blog/Admonition';
 import VideoPlayer from '@/components/blog/VideoPlayer';

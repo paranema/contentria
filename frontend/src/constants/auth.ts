@@ -1,4 +1,4 @@
-import { PATHS } from './paths';
+import { PATHS } from '@/shared/constants/paths';
 
 export const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
 export const REFRESH_COOKIE_NAME = 'refresh_token';
