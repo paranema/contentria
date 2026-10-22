@@ -49,16 +49,20 @@ interface PostRepository : Repository<Post, UUID> {
     /** The post [slug] leads to in the blog, whether it is the post's current slug or an old one. */
     fun findBySlugInBlog(blogId: UUID, slug: String): Post?
 
-    // Pages of 21 rows: 20 to show, one to tell whether a next page exists. Each starts after
-    // (at, id). The queries are [Post]'s named queries of the same names.
+    // A page of [limit] rows after skipping [offset], and the count of all such rows. The queries
+    // are [Post]'s named queries of the same names.
 
-    fun findPublishedInBlog(blogId: UUID, beforeAt: Instant, beforeId: UUID): List<PostRow>
+    fun findPublishedInBlog(blogId: UUID, limit: Int, offset: Int): List<PostRow>
+    fun countPublishedInBlog(blogId: UUID): Long
 
-    /** [beforeAt] and [beforeId] come before [categoryIds] to keep the queries' parameter positions alike. */
-    fun findPublishedInCategories(blogId: UUID, beforeAt: Instant, beforeId: UUID, categoryIds: Collection<UUID>): List<PostRow>
+    /** [limit] and [offset] come before [categoryIds] to keep the queries' parameter positions alike. */
+    fun findPublishedInCategories(blogId: UUID, limit: Int, offset: Int, categoryIds: Collection<UUID>): List<PostRow>
+    fun countPublishedInCategories(blogId: UUID, categoryIds: Collection<UUID>): Long
 
-    fun findRecentPublished(beforeAt: Instant, beforeId: UUID): List<PostRow>
+    fun findRecentPublished(limit: Int, offset: Int): List<PostRow>
+    fun countRecentPublished(): Long
 
     /** The owner's list: every status, most recently changed first. */
-    fun findInBlogByUpdate(blogId: UUID, beforeAt: Instant, beforeId: UUID): List<PostRow>
+    fun findInBlogByUpdate(blogId: UUID, limit: Int, offset: Int): List<PostRow>
+    fun countInBlog(blogId: UUID): Long
 }

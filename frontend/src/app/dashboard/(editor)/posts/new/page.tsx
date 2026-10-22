@@ -1,6 +1,6 @@
-import { getMyBlogAction } from '@/actions/blog';
-import { getCategoriesAction } from '@/actions/category';
-import { PostEditorClient } from '@/components/dashboard/editor/PostEditorClient';
+import { getMyBlogs } from '@/features/publishing/api/blogs';
+import { getCategoryTree } from '@/features/publishing/api/categories';
+import { PostEditorClient } from '@/features/publishing/components/dashboard/editor/PostEditorClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -9,13 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default async function NewPostPage() {
-  const blogInfos = await getMyBlogAction();
-  const blogId = blogInfos?.[0]?.id;
-  if (!blogId) {
+  const blog = (await getMyBlogs())[0];
+  if (!blog) {
     return <div>블로그를 먼저 생성해주세요.</div>;
   }
 
-  const categories = await getCategoriesAction();
-
-  return <PostEditorClient categories={categories} blogId={blogId} />;
+  const tree = await getCategoryTree(blog.slug);
+  return <PostEditorClient blogSlug={blog.slug} categories={tree?.categories ?? []} />;
 }

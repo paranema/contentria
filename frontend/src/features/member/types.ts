@@ -51,3 +51,10 @@ export interface MyProfile {
 export interface RenameProfileRequest {
   displayName: string;
 }
+
+/** What anyone sees of a member (01-rules 흐름 5, 공개 범위): no email address or status. */
+export interface PublicProfile {
+  accountId: string;
+  displayName: string;
+  pictureUrl: string | null;
+}

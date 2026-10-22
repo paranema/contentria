@@ -1,9 +1,9 @@
 import DashboardNav from './DashboardNav';
 import DashboardProfileCard from './DashboardProfileCard';
-import { BlogInfo } from '@/types/api/blogs';
+import { BlogView } from '@/features/publishing/types';
 
 interface DashboardSidebarProps {
-  blogInfos: BlogInfo[] | null;
+  blogs: BlogView[];
 }
 
 /**
@@ -11,8 +11,8 @@ interface DashboardSidebarProps {
  * a profile card (avatar/nickname/blog address) and the management menu.
  * On mobile the same composition is served by DashboardMobileNav (header Sheet).
  */
-export default function DashboardSidebar({ blogInfos }: DashboardSidebarProps) {
-  const firstBlogSlug = blogInfos && blogInfos.length > 0 ? blogInfos[0].slug : null;
+export default function DashboardSidebar({ blogs }: DashboardSidebarProps) {
+  const firstBlogSlug = blogs.length > 0 ? blogs[0].slug : null;
 
   return (
     <aside className="hidden w-64 flex-col gap-4 md:flex">

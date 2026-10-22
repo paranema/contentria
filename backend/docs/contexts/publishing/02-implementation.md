@@ -124,9 +124,9 @@
 | 글 slug 바꾸기 | `ChangePostSlugUseCase` | `PostService` | `PUT /posts/{id}/slug`. `slug`가 없으면 제목에서 다시 만든다 |
 | 흐름 4 발행, 비공개, 다시 공개 | `ChangePostStatusUseCase` | `PostService` | `POST /posts/{id}/publish`, `/hide`, `/republish` |
 | 흐름 5 글 삭제 | `DeletePostUseCase` | `PostService` | `DELETE /posts/{id}` → 204 |
-| 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts?cursor=` (임시저장 포함, 최근 수정 순) |
-| 공개 글 목록 | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&cursor=` |
-| 홈의 최근 글 | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?cursor=` |
+| 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts?page=` (임시저장 포함, 최근 수정 순) |
+| 공개 글 목록 | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&page=` |
+| 홈의 최근 글 | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?page=` |
 | 공개 글 상세, 옛 slug | `GetPublishedPostsQuery.find` | `PublishedPostService` | `GET /blogs/{slug}/posts/{postSlug}` → 200, 옛 slug면 301 |
 | 다른 컨텍스트에 글과 블로그 공개 | `GetPostReferencesQuery`, `GetBlogReferencesQuery` (`publishing-api`) | `ReferenceQueryService` | 상호작용의 번역 계층이 호출. 자기 읽기 전용 트랜잭션, 본문은 읽지 않는다 |
 
@@ -147,9 +147,11 @@
 | slug가 쓰였는지 | 그 블로그의 `post_slugs`에서 같은 접두어로 시작하는 slug를 조회한다(`Post`의 named query `findSlugsTakenInBlog`). 그 글 자신의 slug는 빼서 자기 옛 slug로 돌아갈 수 있게 한다. slug에는 LIKE 와일드카드 문자가 올 수 없어 접두어를 그대로 쓴다 |
 | 임시저장 글의 slug | 제목이 바뀐 때만 다시 만든다. 본문만 고치면 작성자가 직접 정한 slug가 그대로 남는다 |
 | 새 글의 slug | 글의 ID를 알아야 자기 slug를 뺄 수 있으므로, 임시 slug로 만든 뒤 저장 전에 제목의 slug로 바꾼다 |
-| 목록의 페이지 | 20개씩, 커서(키셋) 방식이다. 커서는 마지막 글의 시각과 ID를 담은 불투명한 문자열이다. 다음 페이지는 "시각이 더 이르거나, 같으면 ID가 더 작은 글"이라 같은 시각의 글이 빠지거나 겹치지 않는다. 21개를 읽어 다음 페이지가 있는지 안다 |
+| 목록의 페이지 | 20개씩, 쪽 번호(오프셋) 방식이다. `?page=`는 0부터 센다. 응답은 `items`, `page`, `totalItems`, `totalPages`다. 범위 밖의 쪽은 빈 목록, 음수는 400 `INVALID_PAGE`다. 목록 쿼리마다 같은 조건의 개수 쿼리가 짝으로 있다 |
+| 쪽 번호를 고른 이유 | 처음에는 커서(키셋) 방식이었다. 커서는 글이 새로 발행돼도 다음 페이지가 밀리지 않고, 깊은 페이지도 첫 페이지만큼 싸다. 화면이 쪽 번호로 이동해야 해서 바꿨다. 둘러보는 동안 새 글이 발행되면 뒤 페이지가 한 칸 밀리는 것은 받아들인다. 블로그 하나의 글 수로는 오프셋의 비용이 문제 되지 않는다. 블로그 글 목록만 무한 스크롤로 바꾸게 되면 그 목록만 커서로 돌린다 |
 | 목록의 정렬 | 공개 목록과 홈은 발행 시각 최신순, 소유자 목록은 최근 수정 순. 둘 다 같은 시각이면 ID 역순 |
-| 목록이 읽는 열 | 본문을 읽지 않는다. `Post`의 named query가 목록에 필요한 열만 별칭으로 고르고, `PostRow` 프로젝션으로 받는다. 페이지 크기는 쿼리의 `limit 21`에 있다. Spring Data의 `Limit`, `Pageable`을 시그니처에 쓰지 않는 규약 때문이다 |
+| 목록이 읽는 열 | 본문을 읽지 않는다. `Post`의 named query가 목록에 필요한 열만 별칭으로 고르고, `PostRow` 프로젝션으로 받는다. 페이지 크기와 위치는 쿼리의 `limit ?`, `offset ?` 매개변수로 넘긴다. Spring Data의 `Limit`, `Pageable`을 시그니처에 쓰지 않는 규약 때문이다 |
+| 작성자 | 목록의 글과 공개 글 상세에 `authorId`(블로그 소유자)를 담는다. 화면이 회원의 공개 프로필을 ID 묶음으로 조회해 이름과 사진을 붙인다. 출판은 표시 이름을 가져오지 않는다([strategic/04-context-map.md](../../strategic/04-context-map.md), 조회 조합) |
 | 옛 slug 응답 | 301과 `Location`(현재 주소). 본문에도 블로그 slug와 현재 slug를 담아, 스스로 라우팅하는 프론트엔드가 쓸 수 있게 한다 |
 | 공개 조회에서 숨기는 것 | 임시저장, 비공개 글은 상세와 목록 모두에서 없는 글과 같다(404, 목록에서 빠짐) |
 | 동시 수정 | 같은 글을 동시에 고치면 나중 것이 남는다. 1인 블로그라 버전을 두지 않았다 |

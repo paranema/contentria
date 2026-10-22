@@ -23,11 +23,11 @@ class PublicPostController(private val published: GetPublishedPostsQuery) {
     fun inBlog(
         @PathVariable slug: String,
         @RequestParam(required = false) category: String?,
-        @RequestParam(required = false) cursor: String?,
-    ): PostPage = published.inBlog(slug, category, cursor)
+        @RequestParam(defaultValue = "0") page: Int,
+    ): PostPage = published.inBlog(slug, category, page)
 
     @GetMapping("/posts")
-    fun recent(@RequestParam(required = false) cursor: String?): PostPage = published.recent(cursor)
+    fun recent(@RequestParam(defaultValue = "0") page: Int): PostPage = published.recent(page)
 
     /**
      * An old slug answers 301 with the current address in `Location`; the body carries the same

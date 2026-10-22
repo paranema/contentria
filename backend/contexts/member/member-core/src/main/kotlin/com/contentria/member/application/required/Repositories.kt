@@ -28,6 +28,7 @@ interface AccountRepository : Repository<Account, UUID> {
 interface ProfileRepository : Repository<Profile, UUID> {
     fun save(profile: Profile): Profile
     fun findById(id: UUID): Profile?
+    fun findByIdIn(ids: Collection<UUID>): List<Profile>
     fun existsByDisplayName(displayName: String): Boolean
 }
 

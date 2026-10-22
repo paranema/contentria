@@ -1,8 +1,10 @@
 package com.contentria.member.application.service
 
 import com.contentria.member.application.provided.GetMyProfileQuery
+import com.contentria.member.application.provided.GetPublicProfilesQuery
 import com.contentria.member.application.provided.MemberUseCaseException
 import com.contentria.member.application.provided.MyProfile
+import com.contentria.member.application.provided.PublicProfile
 import com.contentria.member.application.provided.RenameProfileUseCase
 import com.contentria.member.application.required.AccountRepository
 import com.contentria.member.application.required.ProfileRepository
@@ -18,7 +20,7 @@ class ProfileService(
     private val accounts: AccountRepository,
     private val profiles: ProfileRepository,
     private val displayNames: DisplayNameGenerator,
-) : GetMyProfileQuery, RenameProfileUseCase {
+) : GetMyProfileQuery, RenameProfileUseCase, GetPublicProfilesQuery {
 
     /**
      * Every new member gets a generated name, social sign-ups included: a provider's name is the
@@ -40,6 +42,11 @@ class ProfileService(
 
     @Transactional(readOnly = true)
     override fun get(accountId: UUID): MyProfile = load(accountId)
+
+    @Transactional(readOnly = true)
+    override fun get(accountIds: Set<UUID>): List<PublicProfile> =
+        if (accountIds.isEmpty()) emptyList()
+        else profiles.findByIdIn(accountIds).map { PublicProfile(it.accountId, it.displayName, it.pictureUrl) }
 
     @Transactional
     override fun rename(accountId: UUID, displayName: String): MyProfile {

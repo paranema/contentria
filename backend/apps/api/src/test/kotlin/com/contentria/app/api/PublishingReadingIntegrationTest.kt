@@ -43,12 +43,13 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
         assertThat(page.statusCode()).isEqualTo(200)
         assertThat(ids(page)).containsExactly(second, first)
         assertThat(page.body()).doesNotContain(hidden, "책 한 권을 읽고 남기는 첫 기록")
-        assertThat(page.body()).contains("\"nextCursor\":null")
+        assertThat(page.body()).contains("\"page\":0", "\"totalItems\":2", "\"totalPages\":1")
+        assertThat(page.body()).contains("\"authorId\":\"${owner.get("/me/profile").field("accountId")}\"")
     }
 
     @Test
-    @DisplayName("20개씩 나누고, 같은 발행 시각의 글이 페이지 경계에 걸려도 빠지거나 겹치지 않는다")
-    fun `keyset pages`() {
+    @DisplayName("20개씩 쪽 번호로 나누고, 같은 발행 시각의 글이 쪽 경계에 걸려도 빠지거나 겹치지 않는다")
+    fun `numbered pages`() {
         val (owner, blog) = blogger()
         val all = (1..23).map { publish(owner, blog, "글 $it") }
         // 모두 같은 시각에 발행된 것으로 만들어 ID만으로 순서가 갈리게 한다
@@ -59,14 +60,15 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
 
         val firstPage = reader.get("/blogs/$blog/posts")
         assertThat(ids(firstPage)).hasSize(20)
-        val cursor = Regex("\"nextCursor\":\"([^\"]+)\"").find(firstPage.body())!!.groupValues[1]
+        assertThat(firstPage.body()).contains("\"page\":0", "\"totalItems\":23", "\"totalPages\":2")
 
-        val secondPage = reader.get("/blogs/$blog/posts?cursor=$cursor")
+        val secondPage = reader.get("/blogs/$blog/posts?page=1")
         assertThat(ids(secondPage)).hasSize(3)
-        assertThat(secondPage.body()).contains("\"nextCursor\":null")
+        assertThat(secondPage.body()).contains("\"page\":1", "\"totalPages\":2")
         assertThat(ids(firstPage) + ids(secondPage)).containsExactlyInAnyOrderElementsOf(all).doesNotHaveDuplicates()
 
-        assertThat(reader.get("/blogs/$blog/posts?cursor=not-a-cursor").body()).contains("INVALID_CURSOR")
+        assertThat(ids(reader.get("/blogs/$blog/posts?page=2"))).isEmpty()
+        assertThat(reader.get("/blogs/$blog/posts?page=-1").body()).contains("INVALID_PAGE")
     }
 
     @Test
@@ -76,7 +78,9 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
         val reading = publish(owner, blog, "독서 기록", category = "독서")
         val daily = publish(owner, blog, "하루 기록", category = "일상")
 
-        assertThat(ids(reader.get("/blogs/$blog/posts?category=${enc("기록")}"))).containsExactly(reading)
+        val parent = reader.get("/blogs/$blog/posts?category=${enc("기록")}")
+        assertThat(ids(parent)).containsExactly(reading)
+        assertThat(parent.body()).contains("\"totalItems\":1", "\"totalPages\":1")
         assertThat(ids(reader.get("/blogs/$blog/posts?category=${enc("독서")}"))).containsExactly(reading)
         assertThat(ids(reader.get("/blogs/$blog/posts?category=${enc("일상")}"))).containsExactly(daily)
         assertThat(reader.get("/blogs/$blog/posts?category=nowhere").body()).contains("CATEGORY_NOT_FOUND")
@@ -93,6 +97,8 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
         assertThat(found.statusCode()).isEqualTo(200)
         assertThat(found.field("postId")).isEqualTo(id)
         assertThat(found.field("body")).isEqualTo("**본문**입니다")
+        // The author is the blog's owner; the screen asks member for the profile
+        assertThat(found.field("authorId")).isEqualTo(owner.get("/me/profile").field("accountId"))
 
         assertThat(reader.get("/blogs/$blog/posts/${enc(draft)}").statusCode()).isEqualTo(404)
         owner.post("/posts/$id/hide", "")
@@ -132,7 +138,7 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
     }
 
     @Test
-    @DisplayName("소유자의 목록은 임시저장까지 최근 수정 순으로, 같은 커서로 나눈다")
+    @DisplayName("소유자의 목록은 임시저장까지 최근 수정 순으로, 같은 쪽 번호로 나눈다")
     fun `the owner's list pages too`() {
         val (owner, blog) = blogger()
         val latest = owner.post("/blogs/$blog/posts", post("방금 쓴 글")).field("postId")
@@ -141,7 +147,7 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
 
         assertThat(ids(page).first()).isEqualTo(latest)
         assertThat(ids(page)).hasSize(3)
-        assertThat(page.body()).contains("\"status\":\"DRAFT\"", "\"nextCursor\":null")
+        assertThat(page.body()).contains("\"status\":\"DRAFT\"", "\"totalItems\":3", "\"totalPages\":1")
     }
 
     @Test

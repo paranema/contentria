@@ -58,7 +58,7 @@ interface GetMyPostsQuery {
     fun get(requesterId: UUID, postId: UUID): PostView
 
     /** Every status, most recently changed first, a [PostPage.SIZE] at a time. */
-    fun list(requesterId: UUID, blogSlug: String, cursor: String?): PostPage
+    fun list(requesterId: UUID, blogSlug: String, page: Int): PostPage
 }
 
 data class PostView(
@@ -86,4 +86,6 @@ data class PostListItem(
     val publishedAt: Instant?,
     val slug: String,
     val updatedAt: Instant,
+    /** The blog's owner. A screen asks member for the profile; publishing does not hold it. */
+    val authorId: UUID,
 )

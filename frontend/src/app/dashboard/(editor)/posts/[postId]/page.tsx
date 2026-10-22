@@ -1,7 +1,7 @@
-import { getMyBlogAction } from '@/actions/blog';
-import { getCategoriesAction } from '@/actions/category';
-import { getPostDetailByIdAction } from '@/actions/post';
-import { PostEditorClient } from '@/components/dashboard/editor/PostEditorClient';
+import { getMyBlogs } from '@/features/publishing/api/blogs';
+import { getCategoryTree } from '@/features/publishing/api/categories';
+import { getMyPost } from '@/features/publishing/api/posts';
+import { PostEditorClient } from '@/features/publishing/components/dashboard/editor/PostEditorClient';
 import { Metadata } from 'next';
 
 interface EditPostPageProps {
@@ -19,21 +19,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function EditPostPage({ params }: EditPostPageProps) {
   const { postId } = await params;
+  const [blogs, post] = await Promise.all([getMyBlogs(), getMyPost(postId)]);
 
-  const [blogInfos, categories, postDetail] = await Promise.all([
-    getMyBlogAction(),
-    getCategoriesAction(),
-    getPostDetailByIdAction(postId),
-  ]);
-
-  const blogId = blogInfos?.[0]?.id;
-  if (!blogId) {
+  const blog = blogs[0];
+  if (!blog) {
     return <div>블로그를 먼저 생성해주세요.</div>;
   }
-
-  if (!postDetail) {
+  if (!post) {
     return <div>게시글을 찾을 수 없습니다.</div>;
   }
 
-  return <PostEditorClient blogId={blogId} categories={categories} initialData={postDetail} />;
+  const tree = await getCategoryTree(blog.slug);
+  return (
+    <PostEditorClient blogSlug={blog.slug} categories={tree?.categories ?? []} initialData={post} />
+  );
 }

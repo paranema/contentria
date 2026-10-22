@@ -70,6 +70,6 @@ class PostController(
     fun mine(@AuthenticationPrincipal accountId: UUID, @PathVariable id: UUID): PostView = myPosts.get(accountId, id)
 
     @GetMapping("/me/blogs/{slug}/posts")
-    fun myList(@AuthenticationPrincipal accountId: UUID, @PathVariable slug: String, @RequestParam(required = false) cursor: String?): PostPage =
-        myPosts.list(accountId, slug, cursor)
+    fun myList(@AuthenticationPrincipal accountId: UUID, @PathVariable slug: String, @RequestParam(defaultValue = "0") page: Int): PostPage =
+        myPosts.list(accountId, slug, page)
 }

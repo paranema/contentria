@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { PostVideo } from '@/types/api/posts';
+import { PostVideo } from '@/types/api/video';
 
 interface QualityLevel {
   index: number;

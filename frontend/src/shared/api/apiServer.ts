@@ -1,11 +1,9 @@
 import { PATHS } from '@/shared/constants/paths';
+import { API_BASE_URL } from '@/shared/api/apiBase';
 import { ApiError } from '@/shared/api/apiError';
 import { relaySessionCookies } from '@/shared/api/sessionCookies';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-
-/** The API as the Next.js server reaches it; in a cluster, its in-cluster address. */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 type FetchOptions = RequestInit & {
   /** Sends the access token from the browser's cookie. Default true. */

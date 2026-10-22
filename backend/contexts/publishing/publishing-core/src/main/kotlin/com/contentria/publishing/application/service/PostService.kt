@@ -120,11 +120,11 @@ class PostService(
     override fun get(requesterId: UUID, postId: UUID): PostView =
         transactions.execute { ownedPost(requesterId, postId).first.view() }!!
 
-    override fun list(requesterId: UUID, blogSlug: String, cursor: String?): PostPage = transactions.execute {
+    override fun list(requesterId: UUID, blogSlug: String, page: Int): PostPage = transactions.execute {
+        val offset = PostPages.offsetOf(page)
         val blog = blogs.findBySlug(blogSlug) ?: throw PublishingUseCaseException.BlogNotFound()
         if (!blog.isOwnedBy(requesterId)) throw PublishingUseCaseException.NotBlogOwner()
-        val after = PageCursor.decode(cursor)
-        PageCursor.page(posts.findInBlogByUpdate(blog.id, after.at, after.id)) { it.updatedAt }
+        PostPages.of(posts.findInBlogByUpdate(blog.id, PostPage.SIZE, offset), page, posts.countInBlog(blog.id))
     }!!
 
     private fun changeStatus(requesterId: UUID, postId: UUID, change: (Post) -> Unit): PostView = asBlogger(requesterId) {

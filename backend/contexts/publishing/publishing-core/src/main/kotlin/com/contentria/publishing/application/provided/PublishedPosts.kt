@@ -13,17 +13,17 @@ interface GetPublishedPostsQuery {
      * The blog's published posts, newest first. With [categorySlug], that category's posts, a
      * top-level category's including its children's (흐름 2, 상위의 글 목록).
      */
-    fun inBlog(blogSlug: String, categorySlug: String?, cursor: String?): PostPage
+    fun inBlog(blogSlug: String, categorySlug: String?, page: Int): PostPage
 
     /** Every blog's published posts, newest first. For the home page. */
-    fun recent(cursor: String?): PostPage
+    fun recent(page: Int): PostPage
 
     /** The post at [postSlug], current or old (글 slug, 옛 slug). Null when no published post is there. */
     fun find(blogSlug: String, postSlug: String): PublishedPostLookup?
 }
 
-/** A page of a list. [nextCursor] fetches the page after it; null on the last page. */
-data class PostPage(val items: List<PostListItem>, val nextCursor: String?) {
+/** A page of a list, [SIZE] at a time. [page] counts from 0; an empty list has no pages. */
+data class PostPage(val items: List<PostListItem>, val page: Int, val totalItems: Long, val totalPages: Int) {
     companion object {
         const val SIZE = 20
     }
@@ -46,4 +46,6 @@ data class PublishedPostView(
     val summary: String,
     val publishedAt: Instant,
     val slug: String,
+    /** The blog's owner, as in [PostListItem.authorId]. */
+    val authorId: UUID,
 )
