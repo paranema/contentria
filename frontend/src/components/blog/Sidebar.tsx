@@ -5,8 +5,8 @@ import { getHighResGoogleProfileImage } from '@/lib/imageUtil';
 import { OwnerResponse } from '@/types/api/user';
 import { CategoryResponse } from '@/types/api/category';
 import { buildCategoryTree } from '@/lib/categoryTree';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Separator } from '../ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Separator } from '@/shared/ui/separator';
 
 interface SidebarProps {
   blog: BlogResponse;

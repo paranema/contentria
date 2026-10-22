@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, SquarePen } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 import { useRouter } from 'next/navigation';
 import UserAvatar from './header/UserAvatar';
 import ProfileDropdown from './header/ProfileDropdown';
@@ -12,7 +12,7 @@ import { useUserProfile } from '@/hooks/queries/useUserQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import { userKeys } from '@/hooks/queries/keys';
 import { logoutAction } from '@/actions/auth';
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 
 interface DashboardHeaderProps {
   blogSlug: string | null;

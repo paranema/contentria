@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import ProfileDropdown from '@/components/dashboard/header/ProfileDropdown';
 import UserAvatar from '@/components/dashboard/header/UserAvatar';
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { logoutAction } from '@/actions/auth';
 import { useUserProfile } from '@/hooks/queries/useUserQuery';
 import { useQueryClient } from '@tanstack/react-query';

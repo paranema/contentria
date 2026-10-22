@@ -1,6 +1,6 @@
 'use client';
 
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { useAuthStore } from '@/store/authStore';
 import { LoginPayload, LoginResponse, SendOtpPayload, SendOtpResponse } from '@/types/api/auth';
 import {
@@ -15,9 +15,9 @@ import {
   initiateSignUpAction,
   loginWithPasswordAction,
   sendOtpCodeAction,
-  SerializedError,
   verifyOtpCodeAction,
 } from '@/actions/auth';
+import { SerializedError } from '@/shared/api/actionResult';
 
 /**
  * 패스워드로 로그인하는 Mutation

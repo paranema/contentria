@@ -8,7 +8,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '@/components/ui/pagination';
+} from '@/shared/ui/pagination';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 interface PaginationProps {

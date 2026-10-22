@@ -1,8 +1,8 @@
 'use client';
 
 import { deletePostAction } from '@/actions/post';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/shared/ui/badge';
+import { Button } from '@/shared/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/shared/ui/dropdown-menu';
 import { PostSummary } from '@/types/api/posts';
 import { ColumnDef } from '@tanstack/react-table';
 import { format, formatDistanceToNow, isToday } from 'date-fns';

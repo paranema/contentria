@@ -1,6 +1,6 @@
 'use server';
 
-import apiServer from '@/lib/apiServer';
+import apiServer from '@/shared/api/apiServer';
 import { TrackVisitPayload } from '@/types/api/analytics';
 import { headers } from 'next/headers';
 

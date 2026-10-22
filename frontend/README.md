@@ -19,43 +19,22 @@ Contentria의 웹 화면이다. Next.js App Router로 만들고, 공개 블로�
 | 글 표시 | react-markdown, remark-gfm, remark-directive(안내 상자), rehype-sanitize |
 | 영상 재생 | hls.js |
 | 차트, 끌어 놓기 | Recharts, dnd-kit |
-| 인증 | HttpOnly 쿠키, axios-auth-refresh, reCAPTCHA v3와 v2 |
+| 인증 | HttpOnly 쿠키, reCAPTCHA v3와 v2 |
+| 테스트 | Vitest |
 
 ## 디렉터리 구조
 
+기능 폴더(`features/<기능>/`, 기능은 백엔드 컨텍스트와 1:1)와 공용 코드(`shared/`)로 나눈다. 폴더의 역할, 기능 사이의 규칙, API 호출 방식은 [docs/architecture.md](docs/architecture.md)에 있다.
+
 ```
 src/
-├── app/                        App Router
-│   ├── (home)/                 첫 화면, 약관
-│   ├── (auth)/                 로그인, 회원가입, 소셜 로그인 콜백
-│   ├── dashboard/
-│   │   ├── (main)/             대시보드, 글 목록, 카테고리, 설정
-│   │   ├── (editor)/           글 편집기 (새 글, 고치기)
-│   │   └── (onboarding)/       블로그 만들기 안내
-│   └── user/[blogSlug]/        공개 블로그 (사이드바는 parallel route)
-├── actions/                    Server Actions. 백엔드 API를 부른다
-├── components/
-│   ├── ui/                     shadcn/ui 기본 컴포넌트
-│   ├── common/                 공용 컴포넌트 (페이지 나누기, 표, 입력)
-│   ├── auth/                   로그인, 회원가입, reCAPTCHA
-│   ├── blog/                   공개 블로그 (글 카드, 사이드바, 목차, 영상 플레이어)
-│   ├── dashboard/              대시보드 (편집기, 카테고리, 통계, 설정)
-│   ├── home/                   첫 화면
-│   └── analytics/              방문 기록
-├── hooks/
-│   ├── queries/, mutations/    TanStack Query 훅
-│   └── useLoginFlow 등         여러 단계로 된 로그인과 회원가입의 상태
-├── lib/
-│   ├── apiClient.ts            브라우저용 Axios 클라이언트 (토큰 갱신)
-│   ├── apiServer.ts            서버용 fetch 래퍼 (쿠키의 토큰을 붙인다)
-│   ├── uploadImage.ts          이미지를 압축해 R2에 바로 올린다
-│   ├── uploadVideo.ts          영상을 R2에 바로 올린다 (진행률 표시)
-│   └── markdown/, schemas/     마크다운 플러그인, Zod 스키마
-├── store/                      Zustand 스토어 (인증, UI)
-├── types/                      API 요청과 응답 타입, 환경 변수 타입
-├── constants/                  경로, 오류 코드, 메시지
-└── proxy.ts                    요청마다 쿠키를 보고 토큰 갱신과 보호 경로를 처리한다
+├── app/            라우팅과 페이지. 여러 기능을 모아 화면을 만든다
+├── features/       기능마다 api, types, hooks, components
+├── shared/         apiServer와 오류, shadcn/ui, 공용 컴포넌트와 유틸
+└── proxy.ts        요청마다 세션 쿠키를 보고 토큰 갱신과 보호 경로를 처리한다
 ```
+
+새 백엔드 API로 옮기면서 기능 하나씩 `features/`로 옮기는 중이다. 옮기기 전의 코드는 예전 폴더(`actions/`, `components/`, `hooks/`, `types/`, `lib/`, `store/`, `constants/`)에 있다.
 
 ## 구조
 
@@ -79,8 +58,8 @@ src/
 
 | 쪽 | 경로 | 하는 일 |
 |---|---|---|
-| 서버 컴포넌트, Server Actions | `apiServer.ts` | 쿠키에서 액세스 토큰을 읽어 `Authorization` 헤더로 붙인다. 401이면 로그인 화면으로 보낸다 |
-| 브라우저 컴포넌트 | TanStack Query 훅 → `apiClient.ts` | 액세스 토큰을 붙이고 오류 모양을 맞춘다. 401이면 axios-auth-refresh가 토큰을 갱신하고 다시 보낸다. 동시에 실패한 요청은 줄을 세운다 |
+| 서버 컴포넌트, Server Actions | `shared/api/apiServer.ts` | 쿠키에서 액세스 토큰을 읽어 `Authorization` 헤더로 붙인다. 401이면 로그인 화면으로 보낸다. 로그인처럼 백엔드가 세션 쿠키를 심는 요청은 그 쿠키를 브라우저로 옮긴다 |
+| 브라우저 컴포넌트 | TanStack Query 훅 → Server Actions | 브라우저에서 백엔드를 직접 부르지 않는다. 훅이 Server Action을 부른다 |
 
 ### 인증
 
@@ -88,7 +67,6 @@ src/
 |---|---|---|
 | 1 | `proxy.ts` | 화면을 옮길 때마다 쿠키를 본다. 액세스 토큰이 없고 리프레시 토큰이 있으면 서버에서 갱신하고 쿠키를 새로 심는다. 같은 리프레시 토큰의 갱신은 한 번으로 묶는다. 토큰 없이 `/dashboard`에 오면 로그인 화면으로 보낸다 |
 | 2 | `apiServer.ts` | 서버에서 부른 API가 401이면 로그인 화면으로 보낸다 |
-| 3 | `apiClient.ts` | 브라우저에서 부른 API가 401이면 갱신하고 다시 보낸다 |
 
 토큰은 HttpOnly 쿠키에 둔다. 액세스 토큰은 15분, 리프레시 토큰은 7일이다.
 
@@ -103,7 +81,8 @@ npm ci
 npm run dev        # 개발 서버 (Turbopack), http://localhost:3000
 npm run build      # 운영 빌드
 npm start
-npm run lint       # ESLint와 Prettier
+npm run lint       # ESLint와 Prettier, 기능 경계 규칙
+npm test           # Vitest
 ```
 
 lint와 formatting 규칙은 [docs/lint-and-formatting.md](docs/lint-and-formatting.md)에 있다.

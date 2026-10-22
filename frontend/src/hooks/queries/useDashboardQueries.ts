@@ -1,8 +1,7 @@
 'use client';
 
-import { ApiError } from '@/types/api/errors';
+import { ApiError } from '@/shared/api/apiError';
 import { useQuery } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import {
   getDashboardStatsAction,
   getPopularPostsAction,
@@ -16,21 +15,21 @@ import {
 } from '@/types/api/dashboard';
 
 export const useDashboadStatsQuery = (slug: string) => {
-  return useQuery<StatsResponse, ApiError | AxiosError>({
+  return useQuery<StatsResponse, ApiError>({
     queryKey: ['dashboard', 'stats', slug],
     queryFn: () => getDashboardStatsAction(slug),
   });
 };
 
 export const usePopularPostsQuery = (slug: string) => {
-  return useQuery<PopularPostResponse[], ApiError | AxiosError>({
+  return useQuery<PopularPostResponse[], ApiError>({
     queryKey: ['dashboard', 'popular-posts', slug],
     queryFn: () => getPopularPostsAction(slug),
   });
 };
 
 export const useTrafficChartQuery = (slug: string, timeRange: TimeRange) => {
-  return useQuery<TrafficChartResponse[], ApiError | AxiosError>({
+  return useQuery<TrafficChartResponse[], ApiError>({
     queryKey: ['dashboard', 'traffic', slug, timeRange],
     queryFn: () => getTrafficDataAction(slug, timeRange),
     staleTime: 5 * 60 * 1000, // 5 minutes

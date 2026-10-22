@@ -1,6 +1,6 @@
 'use server';
 
-import apiServer from '@/lib/apiServer';
+import apiServer from '@/shared/api/apiServer';
 import {
   InitiateSignUpPayload,
   InitiateSignUpResponse,
@@ -11,26 +11,11 @@ import {
   VerifyOtpCodePayload,
   VerifyOtpCodeResponse,
 } from '@/types/api/auth';
-import { ApiError } from '@/types/api/errors';
+import { ActionResult, toActionError } from '@/shared/api/actionResult';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
-
-export interface SerializedError {
-  name: string;
-  message: string;
-  status?: number;
-  code?: string;
-  error?: string;
-  timestamp?: string;
-  path?: string;
-  details?: Record<string, string>;
-}
-
-export type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: SerializedError };
 
 export async function logoutAction() {
   try {
@@ -61,30 +46,7 @@ export async function initiateSignUpAction(
     return { success: true, data };
   } catch (error) {
     console.error('[initiateSignUpAction] Error in initiateSignUpAction:', error);
-    if (error instanceof ApiError) {
-      return {
-        success: false,
-        error: {
-          name: error.name,
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          error: error.error,
-          timestamp: error.timestamp,
-          path: error.path,
-          details: error.details,
-        },
-      };
-    }
-    return {
-      success: false,
-      error: {
-        name: error instanceof Error ? error.name : 'UnknownError',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: 500,
-        code: 'INTERNAL_ERROR',
-      },
-    };
+    return toActionError(error);
   }
 }
 
@@ -121,30 +83,7 @@ export async function verifyOtpCodeAction(
     return { success: true, data };
   } catch (error) {
     console.error('[verifyOtpCodeAction] Error in verifyOtpCodeAction:', error);
-    if (error instanceof ApiError) {
-      return {
-        success: false,
-        error: {
-          name: error.name,
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          error: error.error,
-          timestamp: error.timestamp,
-          path: error.path,
-          details: error.details,
-        },
-      };
-    }
-    return {
-      success: false,
-      error: {
-        name: error instanceof Error ? error.name : 'UnknownError',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: 500,
-        code: 'INTERNAL_ERROR',
-      },
-    };
+    return toActionError(error);
   }
 }
 
@@ -181,30 +120,7 @@ export async function loginWithPasswordAction(
     return { success: true, data };
   } catch (error) {
     console.error('[loginWithPasswordAction] Error in loginWithPasswordAction:', error);
-    if (error instanceof ApiError) {
-      return {
-        success: false,
-        error: {
-          name: error.name,
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          error: error.error,
-          timestamp: error.timestamp,
-          path: error.path,
-          details: error.details,
-        },
-      };
-    }
-    return {
-      success: false,
-      error: {
-        name: error instanceof Error ? error.name : 'UnknownError',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: 500,
-        code: 'INTERNAL_ERROR',
-      },
-    };
+    return toActionError(error);
   }
 }
 
@@ -218,29 +134,6 @@ export async function sendOtpCodeAction(
     return { success: true, data };
   } catch (error) {
     console.error('[sendOtpCodeAction] Error in sendOtpCodeAction:', error);
-    if (error instanceof ApiError) {
-      return {
-        success: false,
-        error: {
-          name: error.name,
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          error: error.error,
-          timestamp: error.timestamp,
-          path: error.path,
-          details: error.details,
-        },
-      };
-    }
-    return {
-      success: false,
-      error: {
-        name: error instanceof Error ? error.name : 'UnknownError',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: 500,
-        code: 'INTERNAL_ERROR',
-      },
-    };
+    return toActionError(error);
   }
 }

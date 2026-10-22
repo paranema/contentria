@@ -1,6 +1,6 @@
 'use client';
 
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { useUserProfile } from '@/hooks/queries/useUserQuery';
 import { useAuthStore } from '@/store/authStore';
 import { Loader2 } from 'lucide-react';

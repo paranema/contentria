@@ -1,6 +1,6 @@
 'use server';
 
-import apiServer from '@/lib/apiServer';
+import apiServer from '@/shared/api/apiServer';
 import { VideoPresignedUrlRequest, VideoPresignedUrlResponse } from '@/types/api/video';
 
 export async function requestVideoPresignedUrlAction(

@@ -1,7 +1,7 @@
 'use server';
 
-import apiServer from '@/lib/apiServer';
-import { ApiError } from '@/types/api/errors';
+import apiServer from '@/shared/api/apiServer';
+import { ApiError } from '@/shared/api/apiError';
 import { User } from '@/types/api/user';
 import { revalidatePath } from 'next/cache';
 import { UpdateUserProfileRequest, updateUserProfileRequestSchema } from './schemas';

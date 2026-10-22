@@ -6,16 +6,16 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import z from 'zod';
 import { useRouter } from 'next/navigation';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
+import { Button } from '@/shared/ui/button';
+import { Card } from '@/shared/ui/card';
+import { Label } from '@/shared/ui/label';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
-} from '@/components/ui/input-group';
+} from '@/shared/ui/input-group';
 
 // 백엔드 CreateBlogRequest의 @Pattern("^[a-z0-9-]+$")과 동일하게 유지할 것 —
 // 클라이언트가 더 느슨하면 인라인 검증 대신 제출 후 서버 에러로 떨어진다.

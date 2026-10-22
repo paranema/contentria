@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
-import ReactQueryProvider from '@/components/ReactQueryProvider';
+import ReactQueryProvider from '@/shared/providers/ReactQueryProvider';
 import { getUserProfileAction } from '@/actions/user';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { userKeys } from '@/hooks/queries/keys';
-import { getQueryClient } from '@/lib/getQueryClient';
+import { getQueryClient } from '@/shared/lib/getQueryClient';
 
 const pretendard = localFont({
   src: '../../public/fonts/PretendardVariable.woff2',

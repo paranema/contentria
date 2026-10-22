@@ -1,7 +1,7 @@
 import { getMyBlogAction } from '@/actions/blog';
 import { getCategoriesAction } from '@/actions/category';
 import CategoryManager from '@/components/dashboard/categories/CategoryManager';
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 

@@ -1,9 +1,9 @@
 import { getMyBlogAction } from '@/actions/blog';
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { notFound, redirect } from 'next/navigation';
 import { getBlogPostsAction } from '@/actions/post';
-import CustomPagination from '@/components/common/CustomPagination';
-import { DataTable } from '@/components/common/DataTable';
+import CustomPagination from '@/shared/components/CustomPagination';
+import { DataTable } from '@/shared/components/DataTable';
 import { columns } from '@/components/dashboard/posts/columns';
 
 interface PostPageProps {

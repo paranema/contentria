@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 import ProfileDropdown from './ProfileDropdown';
 import UserAvatar from './UserAvatar';
-import { PATHS } from '@/constants/paths';
+import { PATHS } from '@/shared/constants/paths';
 import { useUserProfile } from '@/hooks/queries/useUserQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
