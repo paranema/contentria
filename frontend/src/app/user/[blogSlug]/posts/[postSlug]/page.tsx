@@ -12,7 +12,7 @@ import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import TableOfContents from '@/features/publishing/components/blog/TableOfContents';
 import { getPublishedPost } from '@/features/publishing/api/posts';
 import { notFound, permanentRedirect } from 'next/navigation';
-import AnalyticsTracker from '@/components/analytics/AnalyticsTracker';
+import VisitTracker from '@/features/analytics/components/VisitTracker';
 import { Separator } from '@/shared/ui/separator';
 import { remarkAdmonitions } from '@/features/publishing/markdown/remarkAdmonitions';
 import { headingsOf } from '@/features/publishing/markdown/headings';
@@ -91,7 +91,7 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
 
   return (
     <>
-      <AnalyticsTracker blogId={post.blogId} postId={post.postId} />
+      <VisitTracker blogId={post.blogId} postId={post.postId} />
 
       <div className="flex w-full flex-col items-start xl:flex-row xl:gap-12">
         <div className="w-full min-w-0 max-w-4xl flex-1">

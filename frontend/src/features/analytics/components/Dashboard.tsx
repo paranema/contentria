@@ -1,32 +1,22 @@
 'use client';
 
-import {
-  useDashboadStatsQuery,
-  usePopularPostsQuery,
-  useTrafficChartQuery,
-} from '@/hooks/queries/useDashboardQueries';
+import { useDashboard } from '../hooks/useDashboard';
+import { DASHBOARD_RANGE } from '../queryKeys';
 import PopularPostList from './PopularPostList';
 import { Loader2 } from 'lucide-react';
 import TrafficChart, { TRAFFIC_SERIES } from './TrafficChart';
 import StatGroupCard from './StatGroupCard';
-import { MyProfile } from '@/features/member/types';
-import { BlogView } from '@/features/publishing/types';
 
-interface DashboardContentProps {
-  user: MyProfile | null;
-  blogs: BlogView[];
+interface DashboardProps {
+  blogSlug: string;
+  /** The owner's display name, from member, as the page put it together. */
+  ownerName: string | null;
 }
 
-export default function DashboardContent({ user, blogs }: DashboardContentProps) {
-  const slug = blogs[0]?.slug;
-
-  const { data: stats } = useDashboadStatsQuery(slug!);
-  const { data: popularPosts } = usePopularPostsQuery(slug!);
-  // 기간 선택 없이 최근 30일 고정
-  const { data: trafficChart, isFetching: isTrafficFetching } = useTrafficChartQuery(
-    slug!,
-    '30days'
-  );
+/** The blog dashboard (analytics 01-rules 흐름 3): one API call that apps/api puts together. */
+export default function Dashboard({ blogSlug, ownerName }: DashboardProps) {
+  const { data, isFetching } = useDashboard(blogSlug, DASHBOARD_RANGE);
+  const stats = data?.summary;
 
   return (
     <div className="space-y-6">
@@ -34,7 +24,7 @@ export default function DashboardContent({ user, blogs }: DashboardContentProps)
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">블로그관리 홈</h1>
         <p className="mt-1 text-sm text-gray-500">
-          안녕하세요, {user?.displayName || '관리자'}님! 오늘의 블로그 현황입니다.
+          안녕하세요, {ownerName || '관리자'}님! 오늘의 블로그 현황입니다.
         </p>
       </div>
 
@@ -78,12 +68,12 @@ export default function DashboardContent({ user, blogs }: DashboardContentProps)
             ))}
           </div>
         </div>
-        {isTrafficFetching ? (
+        {isFetching && !data ? (
           <div className="flex h-[280px] items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
           </div>
         ) : (
-          <TrafficChart data={trafficChart || []} />
+          <TrafficChart data={data?.trend ?? []} />
         )}
       </div>
 
@@ -93,7 +83,7 @@ export default function DashboardContent({ user, blogs }: DashboardContentProps)
           <h2 className="text-lg font-semibold">인기 게시글</h2>
           <span className="text-sm text-gray-400">최근 30일 조회수 기준</span>
         </div>
-        <PopularPostList posts={popularPosts || []} blogSlug={slug!} />
+        <PopularPostList posts={data?.popularPosts ?? []} blogSlug={blogSlug} />
       </div>
     </div>
   );

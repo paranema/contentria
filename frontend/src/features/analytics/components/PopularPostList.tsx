@@ -1,9 +1,9 @@
-import { PopularPostResponse } from '@/types/api/dashboard';
+import { PopularPost } from '../types';
 import Link from 'next/link';
 import React from 'react';
 
 interface PopularPostListProps {
-  posts: PopularPostResponse[];
+  posts: PopularPost[];
   /** 리더 URL(/@{blogSlug}/{postSlug}) 구성용 */
   blogSlug: string;
 }
@@ -21,7 +21,7 @@ export default function PopularPostList({ posts, blogSlug }: PopularPostListProp
   return (
     <ol className="space-y-0.5">
       {posts.map((post, index) => (
-        <li key={post.id}>
+        <li key={post.postId}>
           <Link
             href={`/@${blogSlug}/${post.slug}`}
             target="_blank"

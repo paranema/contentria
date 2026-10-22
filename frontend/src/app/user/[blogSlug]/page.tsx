@@ -4,7 +4,7 @@ import CustomPagination from '@/shared/components/CustomPagination';
 import { getBlogLayoutData } from '../../_composition/blog';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import AnalyticsTracker from '@/components/analytics/AnalyticsTracker';
+import VisitTracker from '@/features/analytics/components/VisitTracker';
 
 interface UserBlogPageProps {
   params: Promise<{
@@ -62,7 +62,7 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
 
   return (
     <>
-      <AnalyticsTracker blogId={layout.blog.blogId} />
+      <VisitTracker blogId={layout.blog.blogId} />
 
       <div className="w-full max-w-4xl">
         {category ? (

@@ -1,14 +1,15 @@
 'use client';
 
-import { trackVisitAction } from '@/actions/analytics';
+import { recordVisitAction } from '../api/visits';
 import { useEffect, useRef } from 'react';
 
-interface AnalyticsTrackerProps {
+interface VisitTrackerProps {
   blogId: string;
   postId?: string | null;
 }
 
-export default function AnalyticsTracker({ blogId, postId }: AnalyticsTrackerProps) {
+/** Records one visit when a blog's home or a post is opened (analytics 01-rules 흐름 1). */
+export default function VisitTracker({ blogId, postId }: VisitTrackerProps) {
   const isTracked = useRef(false);
 
   useEffect(() => {
@@ -17,12 +18,10 @@ export default function AnalyticsTracker({ blogId, postId }: AnalyticsTrackerPro
     }
     isTracked.current = true;
 
-    const referer = document.referrer;
-
-    trackVisitAction({
+    recordVisitAction({
       blogId,
       postId: postId ?? null,
-      referer,
+      referrer: document.referrer || null,
     });
   }, [blogId, postId]);
 
