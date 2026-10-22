@@ -1,3 +1,4 @@
+import { getCounts } from '@/features/interaction/api/interactions';
 import { getPublishedPosts } from '@/features/publishing/api/posts';
 import PostCard from '@/features/publishing/components/blog/PostCard';
 import CustomPagination from '@/shared/components/CustomPagination';
@@ -57,6 +58,8 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
   }
 
   const posts = postsPage.items;
+  // Interaction's counts for the whole page at once (04-context-map, 조회 조합: 글 목록)
+  const counts = await getCounts({ postIds: posts.map((post) => post.postId) });
   const totalPages = postsPage.totalPages;
   const categoryName = layout.categories.find((c) => c.slug === category)?.name;
 
@@ -73,7 +76,17 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
 
         <div className="flex flex-col divide-y divide-gray-100">
           {posts.length > 0 ? (
-            posts.map((post) => <PostCard key={post.postId} blogSlug={blogSlug} post={post} />)
+            posts.map((post) => (
+              <PostCard
+                key={post.postId}
+                blogSlug={blogSlug}
+                post={post}
+                counts={{
+                  likes: counts.likes[post.postId] ?? 0,
+                  comments: counts.comments[post.postId] ?? 0,
+                }}
+              />
+            ))
           ) : (
             <div className="flex h-40 items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50">
               <p className="text-sm text-gray-500">아직 작성된 글이 없습니다.</p>

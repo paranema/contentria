@@ -3,7 +3,6 @@ import { getMyPosts } from '@/features/publishing/api/posts';
 import { postColumns } from '@/features/publishing/components/dashboard/postColumns';
 import CustomPagination from '@/shared/components/CustomPagination';
 import { DataTable } from '@/shared/components/DataTable';
-import { PATHS } from '@/shared/constants/paths';
 import { notFound, redirect } from 'next/navigation';
 
 interface PostPageProps {
@@ -23,7 +22,7 @@ export default async function PostsPage({ searchParams }: PostPageProps) {
 
   const blogs = await getMyBlogs();
   if (blogs.length === 0) {
-    redirect(PATHS.DASHBOARD);
+    redirect('/dashboard/welcome');
   }
 
   const postsPage = await getMyPosts(blogs[0].slug, currentPage);

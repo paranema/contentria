@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function CategoriesPage() {
   const blog = (await getMyBlogs())[0];
   if (!blog) {
-    redirect(PATHS.DASHBOARD);
+    redirect('/dashboard/welcome');
   }
 
   const tree = await getCategoryTree(blog.slug);
