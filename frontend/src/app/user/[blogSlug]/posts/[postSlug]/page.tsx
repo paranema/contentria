@@ -18,9 +18,14 @@ import { remarkAdmonitions } from '@/features/publishing/markdown/remarkAdmoniti
 import { headingsOf } from '@/features/publishing/markdown/headings';
 import Admonition, { isAdmonitionType } from '@/features/publishing/components/blog/Admonition';
 import { getPublicProfiles } from '@/features/member/api/profile';
+import { getCounts, getMyLikes } from '@/features/interaction/api/interactions';
+import CommentSection from '@/features/interaction/components/CommentSection';
+import LikeButton from '@/features/interaction/components/LikeButton';
 import { getPostVideo } from '@/features/media/api/videos';
 import VideoPlayer from '@/features/media/components/VideoPlayer';
 import { getBlogLayoutData } from '../../../../_composition/blog';
+import { loadComments } from '../../../../_composition/comments';
+import { viewerOf } from '../../../../_composition/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,13 +84,18 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   }
 
   // The post page (04-context-map, 조회 조합: 글 상세): publishing's post, member's author,
-  // media's video. Counts and comments come with interaction (F5).
+  // media's video, interaction's likes and comments with their authors.
   const { post } = lookup;
-  const [[author], layout, video] = await Promise.all([
+  const [[author], layout, video, counts, comments, { profile, viewer }] = await Promise.all([
     getPublicProfiles([post.authorId]),
     getBlogLayoutData(blogSlug),
     getPostVideo(post.postId),
+    getCounts({ postIds: [post.postId] }),
+    loadComments(post.postId),
+    viewerOf(post.authorId),
   ]);
+  const liked = viewer === 'member' && (await getMyLikes([post.postId])).has(post.postId);
+  const here = `/@${post.blogSlug}/${post.slug}`;
   const categoryName = layout?.categories.find((category) => category.id === post.categoryId)?.name;
   const headings = headingsOf(post.body);
 
@@ -166,6 +176,31 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
               {post.body}
             </Markdown>
           </article>
+
+          <div className="mt-10 flex justify-center">
+            <LikeButton
+              postId={post.postId}
+              viewer={viewer}
+              initialLiked={liked}
+              initialCount={counts.likes[post.postId] ?? 0}
+              loginRedirect={here}
+            />
+          </div>
+
+          <CommentSection
+            postId={post.postId}
+            initial={comments}
+            viewer={
+              profile
+                ? {
+                    accountId: profile.accountId,
+                    author: { displayName: profile.displayName, pictureUrl: profile.pictureUrl },
+                  }
+                : null
+            }
+            loadMore={loadComments}
+            loginRedirect={here}
+          />
         </div>
 
         <aside className="hidden w-64 shrink-0 xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">

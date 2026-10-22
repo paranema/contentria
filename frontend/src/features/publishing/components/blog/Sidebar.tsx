@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import Image from 'next/image';
 import CategoryItem from './CategoryItem';
 import { getHighResGoogleProfileImage } from '@/shared/lib/imageUtil';
@@ -16,9 +17,11 @@ interface SidebarProps {
   blog: BlogView;
   owner: BlogOwner | null;
   categories: CategoryView[];
+  /** What the page puts under the owner, such as interaction's subscribe button. */
+  actions?: ReactNode;
 }
 
-export default function Sidebar({ blog, owner, categories }: SidebarProps) {
+export default function Sidebar({ blog, owner, categories, actions }: SidebarProps) {
   const profileImageUrl =
     getHighResGoogleProfileImage(owner?.pictureUrl ?? null, 256) ?? '/images/default-profile.png';
   const blogDescription = blog.description ?? '블로그에 오신 것을 환영합니다.';
@@ -44,6 +47,7 @@ export default function Sidebar({ blog, owner, categories }: SidebarProps) {
             {owner?.displayName ?? blog.title}
           </h2>
           <p className="text-sm text-muted-foreground">{blogDescription}</p>
+          {actions && <div className="mt-4 w-full">{actions}</div>}
         </CardContent>
       </Card>
 
