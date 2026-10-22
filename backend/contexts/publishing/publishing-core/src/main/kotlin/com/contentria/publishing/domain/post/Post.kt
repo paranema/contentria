@@ -51,42 +51,53 @@ import java.util.UUID
     name = "Post.findBySlugInBlog",
     query = "select s.post from PostSlug s where s.blogId = ?1 and s.value = ?2",
 )
-// Lists, newest first, 20 a page and one more to tell whether another page follows. A page starts
-// after the cursor: earlier, or as early with a smaller id, so posts sharing a time are not lost.
+// Lists, a page at a time: a limit of rows after skipping an offset (02-implementation, 목록의 페이지).
+// Each has a count of the same rows, for the number of pages. Ties in time fall back to the id so that a page boundary is stable.
 // Columns for a list only; the body (up to 100,000 characters) is not read.
 @NamedQuery(
     name = "Post.findPublishedInBlog",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
         "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
-        "p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED and (p.publishedAt < ?2 or " +
-        "(p.publishedAt = ?2 and p.id < ?3)) order by p.publishedAt desc, p.id desc limit 21",
+        "p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED order by p.publishedAt desc, p.id desc " +
+        "limit ?2 offset ?3",
+)
+@NamedQuery(
+    name = "Post.countPublishedInBlog",
+    query = "select count(p) from Post p where p.blogId = ?1 and p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED",
 )
 @NamedQuery(
     name = "Post.findPublishedInCategories",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
         "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
-        "p.categoryId in ?4 and p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED and " +
-        "(p.publishedAt < ?2 or (p.publishedAt = ?2 and p.id < ?3)) order by p.publishedAt desc, p.id " +
-        "desc limit 21",
+        "p.categoryId in ?4 and p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED order by " +
+        "p.publishedAt desc, p.id desc limit ?2 offset ?3",
+)
+@NamedQuery(
+    name = "Post.countPublishedInCategories",
+    query = "select count(p) from Post p where p.blogId = ?1 and p.categoryId in ?2 and " +
+        "p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED",
 )
 @NamedQuery(
     name = "Post.findRecentPublished",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
         "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.status = " +
-        "com.contentria.publishing.domain.post.PostStatus.PUBLISHED and (p.publishedAt < ?1 or " +
-        "(p.publishedAt = ?1 and p.id < ?2)) order by p.publishedAt desc, p.id desc limit 21",
+        "com.contentria.publishing.domain.post.PostStatus.PUBLISHED order by p.publishedAt desc, p.id desc limit ?1 offset ?2",
+)
+@NamedQuery(
+    name = "Post.countRecentPublished",
+    query = "select count(p) from Post p where p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED",
 )
 @NamedQuery(
     name = "Post.findInBlogByUpdate",
     query = "select p.id as postId, b.slug as blogSlug, p.categoryId as categoryId, p.title as title, " +
         "p.summary as summary, p.status as status, p.publishedAt as publishedAt, p.slug as slug, " +
-        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 and " +
-        "(p.updatedAt < ?2 or (p.updatedAt = ?2 and p.id < ?3)) order by p.updatedAt desc, p.id desc " +
-        "limit 21",
+        "p.updatedAt as updatedAt from Post p join Blog b on b.id = p.blogId where p.blogId = ?1 " +
+        "order by p.updatedAt desc, p.id desc limit ?2 offset ?3",
 )
+@NamedQuery(name = "Post.countInBlog", query = "select count(p) from Post p where p.blogId = ?1")
 class Post private constructor(
     id: UUID,
     blogId: UUID,

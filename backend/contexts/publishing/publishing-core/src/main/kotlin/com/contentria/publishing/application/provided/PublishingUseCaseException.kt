@@ -46,9 +46,9 @@ sealed class PublishingUseCaseException(message: String) : DomainException(messa
     class CategoryNotFound :
         PublishingUseCaseException("The blog has no category at this address")
 
-    /** A cursor this context did not hand out, or one that was altered. */
-    class InvalidCursor :
-        PublishingUseCaseException("The page cursor is not valid")
+    /** A page number below 0, or too far to count up to. */
+    class InvalidPage :
+        PublishingUseCaseException("The page number is not valid")
 
     /** The tree changed since the editor loaded it. */
     class StaleCategoryTree :

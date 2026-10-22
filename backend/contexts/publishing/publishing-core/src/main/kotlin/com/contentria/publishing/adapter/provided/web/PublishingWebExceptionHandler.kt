@@ -24,7 +24,7 @@ class PublishingWebExceptionHandler {
         is PublishingUseCaseException.CategoriesInUse -> error(HttpStatus.CONFLICT, "CATEGORIES_IN_USE", "Move the posts out of the category first.")
         is PublishingUseCaseException.StaleCategoryTree -> error(HttpStatus.CONFLICT, "CATEGORY_TREE_CHANGED", "The categories changed; reload and edit again.")
         is PublishingUseCaseException.CategoryNotFound -> error(HttpStatus.NOT_FOUND, "CATEGORY_NOT_FOUND", "The blog has no such category.")
-        is PublishingUseCaseException.InvalidCursor -> error(HttpStatus.BAD_REQUEST, "INVALID_CURSOR", "The page cursor is not valid.")
+        is PublishingUseCaseException.InvalidPage -> error(HttpStatus.BAD_REQUEST, "INVALID_PAGE", "The page number is not valid.")
         is PublishingUseCaseException.PostNotFound -> error(HttpStatus.NOT_FOUND, "POST_NOT_FOUND", "No such post.")
         is PublishingUseCaseException.CategoryNotInBlog -> error(HttpStatus.BAD_REQUEST, "CATEGORY_NOT_IN_BLOG", "The category belongs to another blog.")
         is PublishingUseCaseException.PostSlugTaken -> error(HttpStatus.CONFLICT, "POST_SLUG_TAKEN", "Another post of this blog uses or used this address.")

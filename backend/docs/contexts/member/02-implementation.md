@@ -125,6 +125,7 @@
 | 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
 | 공통 로그아웃 | `LogoutUseCase` | `SessionService` | `POST /auth/logout` → 항상 204, 쿠키 만료. 그 리프레시 토큰 하나만 지운다. 액세스 토큰은 만료까지 통과하지만 브라우저는 쿠키와 함께 버린다 |
 | 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
+| 흐름 5 공개 프로필 | `GetPublicProfilesQuery` | `ProfileService` | `GET /members/profiles?ids=a,b` → 표시 이름과 사진. 로그인하지 않아도 된다. 한 번에 100명까지. 없는 ID는 빠진다. 이메일, 계정 상태, 권한은 담지 않는다. 탈퇴한 회원도 남은 프로필 그대로 나온다 |
 | 사람 확인 | `CheckHumanUseCase` | `HumanCheckService` | 가입 시작, 비밀번호 로그인, 코드 로그인 시작, 재설정 링크 요청의 컨트롤러가 유스케이스보다 먼저 부른다 |
 | 요청 인증 | `AuthenticateAccessTokenQuery` (`member-api`) | `AccessTokenAuthenticationService` | `apps/api`의 필터가 호출 |
 | 다른 컨텍스트에 계정 상태 공개 | `GetAccountStatusQuery` (`member-api`) | `AccountStatusQueryService` | 출판의 번역 계층이 호출. 자기 읽기 전용 트랜잭션에서 동작하고, 탈퇴(DELETED)는 `CLOSED`로 내보낸다 |

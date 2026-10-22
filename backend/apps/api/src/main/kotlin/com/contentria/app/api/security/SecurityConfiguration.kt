@@ -46,6 +46,8 @@ class SecurityConfiguration {
                 it.requestMatchers(HttpMethod.POST, "/analytics/visits").permitAll()
                 // A published post's video, for its page
                 it.requestMatchers(HttpMethod.GET, "/posts/*/video").permitAll()
+                // Members' public profiles: who wrote a post or a comment
+                it.requestMatchers(HttpMethod.GET, "/members/profiles").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }

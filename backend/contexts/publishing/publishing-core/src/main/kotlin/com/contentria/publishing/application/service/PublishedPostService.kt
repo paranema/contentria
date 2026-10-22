@@ -20,25 +20,30 @@ class PublishedPostService(
 ) : GetPublishedPostsQuery {
 
     @Transactional(readOnly = true)
-    override fun inBlog(blogSlug: String, categorySlug: String?, cursor: String?): PostPage {
+    override fun inBlog(blogSlug: String, categorySlug: String?, page: Int): PostPage {
+        val offset = PostPages.offsetOf(page)
         val blog = blogs.findBySlug(blogSlug) ?: throw PublishingUseCaseException.BlogNotFound()
-        val after = PageCursor.decode(cursor)
 
-        val rows = if (categorySlug.isNullOrBlank()) {
-            posts.findPublishedInBlog(blog.id, after.at, after.id)
-        } else {
-            val tree = trees.findById(blog.id)
-            val category = tree?.categories?.firstOrNull { it.slug == categorySlug } ?: throw PublishingUseCaseException.CategoryNotFound()
-            posts.findPublishedInCategories(blog.id, after.at, after.id, tree.withChildren(category.id))
+        if (categorySlug.isNullOrBlank()) {
+            return PostPages.of(
+                posts.findPublishedInBlog(blog.id, PostPage.SIZE, offset),
+                page,
+                posts.countPublishedInBlog(blog.id),
+            )
         }
-        return PageCursor.page(rows) { it.publishedAt!! }
+        val tree = trees.findById(blog.id)
+        val category = tree?.categories?.firstOrNull { it.slug == categorySlug } ?: throw PublishingUseCaseException.CategoryNotFound()
+        val categories = tree.withChildren(category.id)
+        return PostPages.of(
+            posts.findPublishedInCategories(blog.id, PostPage.SIZE, offset, categories),
+            page,
+            posts.countPublishedInCategories(blog.id, categories),
+        )
     }
 
     @Transactional(readOnly = true)
-    override fun recent(cursor: String?): PostPage {
-        val after = PageCursor.decode(cursor)
-        return PageCursor.page(posts.findRecentPublished(after.at, after.id)) { it.publishedAt!! }
-    }
+    override fun recent(page: Int): PostPage =
+        PostPages.of(posts.findRecentPublished(PostPage.SIZE, PostPages.offsetOf(page)), page, posts.countRecentPublished())
 
     @Transactional(readOnly = true)
     override fun find(blogSlug: String, postSlug: String): PublishedPostLookup? {
