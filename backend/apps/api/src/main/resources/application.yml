@@ -2,6 +2,11 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  # The API sits behind the gateway and, for the web's server-side calls, behind Next.js. The
+  # client's address comes from X-Forwarded-For, which Tomcat honours only when the request itself
+  # comes from a private address (a proxy of ours); anyone else's header is ignored. Analytics
+  # keys visitors by this address (docs/contexts/analytics/02-implementation.md).
+  forward-headers-strategy: native
 
 spring:
   application:

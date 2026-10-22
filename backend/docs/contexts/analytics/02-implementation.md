@@ -94,7 +94,7 @@
 | 출판 번역 계층 | `infra/client/PublishingClient`. 빈 이름은 `analyticsPublishingClient`다. 상호작용에도 같은 이름의 클래스가 있어, 한 프로세스에서 기본 빈 이름이 겹친다 |
 | 웹 | `presentation/web/VisitController`. 로그인한 독자면 `@AuthenticationPrincipal`로 계정 ID를 받고, 아니면 비어 있다 |
 
-IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전달 헤더를 처리해 원격 주소를 바로잡는다(`server.forward-headers-strategy`). 분석은 헤더를 직접 읽지 않는다.
+IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전달 헤더를 처리해 원격 주소를 바로잡는다. `apps/api`는 `server.forward-headers-strategy: native`를 명시한다. Tomcat은 요청이 사설 주소(게이트웨이, 웹의 Next.js 서버)에서 왔을 때만 `X-Forwarded-For`를 믿는다. 웹은 방문 기록을 Next.js 서버에서 보내므로 독자의 주소를 이 헤더로 넘긴다. 쿠버네티스에서는 이 설정이 기본으로 켜지지만, 다른 환경에서는 꺼져 있어 모든 독자가 Next.js 서버 한 곳으로 보였다. 분석은 헤더를 직접 읽지 않는다.
 
 ## DB 제약
 

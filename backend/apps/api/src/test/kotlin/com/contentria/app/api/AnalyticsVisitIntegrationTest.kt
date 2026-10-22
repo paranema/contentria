@@ -57,6 +57,24 @@ class AnalyticsVisitIntegrationTest : ApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("우리 프록시(사설 주소)가 넘긴 X-Forwarded-For의 주소로 방문자를 가른다. 같은 브라우저라도 주소가 다르면 다른 방문자다")
+    fun `the forwarded address tells readers apart`() {
+        val blog = blogger()
+        val post = publish(blog)
+        // The test client connects from 127.0.0.1, a private address, as Next.js does in the cluster
+        val first = mapOf("User-Agent" to "Same Browser/1.0", "X-Forwarded-For" to "203.0.113.10")
+        val second = mapOf("User-Agent" to "Same Browser/1.0", "X-Forwarded-For" to "203.0.113.20")
+
+        val body = """{"blogId":"${blog.id}","postId":"$post"}"""
+        TestBrowser(port).post("/analytics/visits", body, first)
+        TestBrowser(port).post("/analytics/visits", body, first)
+        assertThat(visitsTo(blog.id, post)).isEqualTo(1)
+
+        TestBrowser(port).post("/analytics/visits", body, second)
+        assertThat(visitsTo(blog.id, post)).isEqualTo(2)
+    }
+
+    @Test
     @DisplayName("블로그 소유자의 방문은 세지 않는다. 다른 회원의 방문은 센다")
     fun `the owner's own visits`() {
         val blog = blogger()
