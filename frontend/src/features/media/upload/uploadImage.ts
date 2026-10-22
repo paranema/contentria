@@ -1,5 +1,6 @@
 import imageCompression from 'browser-image-compression';
-import { requestPresignedUrlAction } from '@/actions/media';
+import { completeImageUploadAction, prepareImageUploadAction } from '../api/uploads';
+import { mediaErrorMessage } from '../errors';
 
 const COMPRESSION_OPTIONS = {
   maxSizeMB: 1,
@@ -31,8 +32,9 @@ async function validateMagicNumber(file: File): Promise<boolean> {
 }
 
 /**
- * Compresses an image, requests a presigned URL, uploads to R2,
- * and returns the public CDN URL.
+ * Media 01-rules 흐름 1, 2: checks and compresses the image in the browser, asks for an upload
+ * address, puts the file to the storage itself, then has the API check what was stored. Returns
+ * the image's public address for the post body. Throws an Error with a message to show.
  */
 export async function uploadImageToR2(file: File): Promise<string> {
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -53,26 +55,24 @@ export async function uploadImageToR2(file: File): Promise<string> {
   const compressedFile =
     file.type === 'image/gif' ? file : await imageCompression(file, COMPRESSION_OPTIONS);
 
-  // Request presigned URL from backend via Server Action
-  const { presignedUrl, publicUrl } = await requestPresignedUrlAction({
+  const prepared = await prepareImageUploadAction({
     fileName: file.name,
     contentType: compressedFile.type,
-    fileSize: compressedFile.size,
+    sizeBytes: compressedFile.size,
   });
+  if (!prepared.success) throw new Error(mediaErrorMessage(prepared.error));
 
-  // Upload directly to R2
-  const uploadResponse = await fetch(presignedUrl, {
+  // The address is signed for exactly this type and size.
+  const uploadResponse = await fetch(prepared.data.uploadUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': compressedFile.type,
-      'Content-Length': compressedFile.size.toString(),
-    },
+    headers: { 'Content-Type': compressedFile.type },
     body: compressedFile,
   });
-
   if (!uploadResponse.ok) {
-    throw new Error(`Upload to R2 failed: ${uploadResponse.status}`);
+    throw new Error(`이미지 업로드에 실패했습니다 (${uploadResponse.status}).`);
   }
 
-  return publicUrl;
+  const completed = await completeImageUploadAction(prepared.data.mediaId);
+  if (!completed.success) throw new Error(mediaErrorMessage(completed.error));
+  return completed.data.imageUrl;
 }

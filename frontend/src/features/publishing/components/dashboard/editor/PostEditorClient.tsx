@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { ReactNode, useCallback, useRef, useState } from 'react';
 import {
   AdmonitionDirectiveDescriptor,
   BlockTypeSelect,
@@ -41,10 +41,9 @@ import {
   UndoRedo,
 } from '@mdxeditor/editor';
 import { ForwardRefEditor } from './ForwardRefEditor';
-import CustomInsertImage from '@/components/dashboard/editor/CustomInsertImage';
-import CustomImageDialog from '@/components/dashboard/editor/CustomImageDialog';
+import CustomInsertImage, { ImageUploader } from './CustomInsertImage';
+import CustomImageDialog from './CustomImageDialog';
 import { editorSyntaxHighlighting } from './editorCodeHighlight';
-import VideoUpload from '@/components/dashboard/editor/VideoUpload';
 import { codeFenceOnEnterPlugin } from './codeFenceOnEnterPlugin';
 import { mdxEditorKoTranslation } from './mdxEditorKoTranslation';
 import { Button } from '@/shared/ui/button';
@@ -57,7 +56,6 @@ import {
   writePostAction,
 } from '../../../api/posts';
 import { publishingErrorMessage } from '../../../errors';
-import { uploadImageToR2 } from '@/lib/uploadImage';
 import { CategoryView, PostRequest, PostView } from '../../../types';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -81,6 +79,15 @@ interface PostEditorClientProps {
   categories: CategoryView[];
   /** The post being edited; none for a new one. */
   initialData?: PostView;
+  /**
+   * Media's parts, handed in by the page that puts the editor together: an image upload for the
+   * body, and the field that uploads the post's one video and gives back its id.
+   */
+  uploadImage: ImageUploader;
+  renderVideoField: (field: {
+    value: string | null;
+    onChange: (videoId: string | null) => void;
+  }) => ReactNode;
 }
 
 /**
@@ -93,7 +100,13 @@ type SaveAction = 'SAVE' | 'PUBLISH' | 'REPUBLISH';
 /** No category: the post sits under "분류 없음". */
 const NO_CATEGORY = 'none';
 
-export function PostEditorClient({ blogSlug, categories, initialData }: PostEditorClientProps) {
+export function PostEditorClient({
+  blogSlug,
+  categories,
+  initialData,
+  uploadImage,
+  renderVideoField,
+}: PostEditorClientProps) {
   const router = useRouter();
   const editorRef = useRef<MDXEditorMethods>(null); // MDXEditor의 인스턴스에 접근하기 위한 ref 생성
 
@@ -271,7 +284,7 @@ function helloWorld() {
         </Select>
       </div>
 
-      <VideoUpload value={videoId} onChange={setVideoId} />
+      {renderVideoField({ value: videoId, onChange: setVideoId })}
 
       {/* 박스형 타이틀(a안): 고정 툴바가 타이틀-본문 사이를 끊으므로
           문서형(borderless) 대신 필드형을 유지한다 — 포커스 링은 테마(--ring) 적용.
@@ -307,7 +320,7 @@ function helloWorld() {
             tablePlugin(),
             imagePlugin({
               imageUploadHandler: async (image: File) => {
-                return await uploadImageToR2(image);
+                return await uploadImage(image);
               },
               ImageDialog: CustomImageDialog,
             }),
@@ -373,7 +386,7 @@ function helloWorld() {
 
                             <Separator />
                             <CreateLink />
-                            <CustomInsertImage />
+                            <CustomInsertImage upload={uploadImage} />
                             <Separator />
                             <InsertTable />
                             <InsertThematicBreak />

@@ -1,7 +1,7 @@
 import { getMyBlogs } from '@/features/publishing/api/blogs';
 import { getCategoryTree } from '@/features/publishing/api/categories';
 import { getMyPost } from '@/features/publishing/api/posts';
-import { PostEditorClient } from '@/features/publishing/components/dashboard/editor/PostEditorClient';
+import PostEditor from '../_components/PostEditor';
 import { Metadata } from 'next';
 
 interface EditPostPageProps {
@@ -30,7 +30,5 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
   }
 
   const tree = await getCategoryTree(blog.slug);
-  return (
-    <PostEditorClient blogSlug={blog.slug} categories={tree?.categories ?? []} initialData={post} />
-  );
+  return <PostEditor blogSlug={blog.slug} categories={tree?.categories ?? []} initialData={post} />;
 }

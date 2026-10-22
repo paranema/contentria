@@ -1,4 +1,5 @@
-import { requestVideoPresignedUrlAction } from '@/actions/video';
+import { prepareVideoUploadAction } from '../api/uploads';
+import { mediaErrorMessage } from '../errors';
 
 const ALLOWED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'];
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
@@ -21,15 +22,17 @@ export async function uploadVideoToR2(
     throw new Error('동영상 크기가 500MB 제한을 초과합니다.');
   }
 
-  const { presignedUrl, videoId } = await requestVideoPresignedUrlAction({
+  const prepared = await prepareVideoUploadAction({
     fileName: file.name,
     contentType: file.type,
-    fileSize: file.size,
+    sizeBytes: file.size,
   });
+  if (!prepared.success) throw new Error(mediaErrorMessage(prepared.error));
 
-  await uploadWithProgress(presignedUrl, file, onProgress);
+  // Once the original is in the storage, the bucket tells the worker, which transcodes it.
+  await uploadWithProgress(prepared.data.uploadUrl, file, onProgress);
 
-  return videoId;
+  return prepared.data.videoId;
 }
 
 function uploadWithProgress(

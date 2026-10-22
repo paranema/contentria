@@ -3,7 +3,6 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import { ButtonWithTooltip, insertImage$, usePublisher } from '@mdxeditor/editor';
 import { Image as ImageIcon, Loader2 } from 'lucide-react';
-import { uploadImageToR2 } from '@/lib/uploadImage';
 
 const ACCEPTED_MIME = 'image/png,image/jpeg,image/webp,image/gif';
 
@@ -11,7 +10,10 @@ function deriveAltText(fileName: string): string {
   return fileName.replace(/\.[^/.]+$/, '');
 }
 
-export default function CustomInsertImage() {
+/** Uploads an image and returns its public address. Media's, handed in by the page. */
+export type ImageUploader = (file: File) => Promise<string>;
+
+export default function CustomInsertImage({ upload }: { upload: ImageUploader }) {
   const insertImage = usePublisher(insertImage$);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -23,7 +25,7 @@ export default function CustomInsertImage() {
 
     setUploading(true);
     try {
-      const src = await uploadImageToR2(file);
+      const src = await upload(file);
       insertImage({ src, altText: deriveAltText(file.name) });
     } catch (err) {
       const message = err instanceof Error ? err.message : '이미지 업로드에 실패했습니다.';
