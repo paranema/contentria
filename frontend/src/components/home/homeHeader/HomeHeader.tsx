@@ -7,14 +7,14 @@ import Image from 'next/image';
 import ProfileDropdown from './ProfileDropdown';
 import UserAvatar from './UserAvatar';
 import { PATHS } from '@/shared/constants/paths';
-import { useUserProfile } from '@/hooks/queries/useUserQuery';
+import { useMyProfile } from '@/features/member/hooks/useMyProfile';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { userKeys } from '@/hooks/queries/keys';
-import { logoutAction } from '@/actions/auth';
+import { memberKeys } from '@/features/member/hooks/keys';
+import { logoutAction } from '@/features/member/api/auth';
 
 export default function HomeHeader() {
-  const { data: user } = useUserProfile();
+  const { data: user } = useMyProfile();
 
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function HomeHeader() {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    queryClient.setQueryData(userKeys.profile(), null);
+    queryClient.setQueryData(memberKeys.profile(), null);
     setIsDropdownOpen(false);
 
     await logoutAction();

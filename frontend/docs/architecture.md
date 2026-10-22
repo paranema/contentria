@@ -56,6 +56,7 @@ lint 규칙은 `eslint.config.js`에 있다. `src/features` 아래 폴더를 읽
 | 오류 | 백엔드의 모든 컨텍스트가 `{code, message}`로 답한다. `ApiError.from(status, body)`가 이것을 `ApiError`로 바꾼다. 코드는 `INVALID_REQUEST`, `POST_NOT_FOUND` 같은 이름이다. 모양이 다른 본문(게이트웨이 오류 등)은 `UNKNOWN_ERROR`다 |
 | Server Action의 결과 | 예외를 브라우저로 넘길 수 없어 `ActionResult<T>`로 돌려준다. 실패는 `toActionError(error)`로 만든다 |
 | 세션 쿠키 | 백엔드는 로그인, 갱신, 로그아웃 때 세션 쿠키를 `Set-Cookie`로 직접 심고, 토큰을 본문에 싣지 않는다. Server Action은 Next.js 서버에서 백엔드를 부르므로, 그 `Set-Cookie`를 브라우저 응답에 옮겨 실어야 한다. `apiServer`에 `relaySessionCookies: true`를 주면 `accessToken`, `refreshToken` 두 쿠키만 옮긴다 |
+| 리프레시 토큰 | 서버에서 부르는 요청에는 브라우저의 쿠키가 실리지 않는다. 백엔드가 리프레시 토큰을 읽는 요청(로그아웃)은 `sendRefreshToken: true`로 넘긴다. `proxy.ts`의 갱신은 직접 넘긴다 |
 
 배포에서는 웹과 API가 같은 호스트에 있고 `/api`만 백엔드로 간다. 로컬에서는 포트가 다르지만 쿠키는 포트를 가리지 않는다. 그래서 두 환경 모두 백엔드가 심은 쿠키를 Next.js가 그대로 읽는다.
 
@@ -74,7 +75,7 @@ npm test
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | F0 | `shared/`, 경계 lint 규칙, 새 오류 형식, 세션 쿠키 전달, 테스트 도구 | 완료 |
-| F1 | member: 가입, 로그인, 토큰 갱신, 로그아웃, 프로필, reCAPTCHA | |
+| F1 | member: 가입, 로그인, 토큰 갱신, 로그아웃, 프로필, reCAPTCHA | 완료 |
 | F2 | publishing: 블로그, 카테고리, 글, 쪽 번호 목록 | |
 | F3 | media: 이미지 3단계 올리기, 영상 | |
 | F4 | analytics: 방문 기록, 대시보드 | |

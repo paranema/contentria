@@ -81,6 +81,13 @@ contentria:
     refresh-token-ttl: 7d
     cookie:
       secure: ${MEMBER_COOKIE_SECURE:true}
+    # Asked before sign-up, login and anything that mails a code or link (docs/contexts/member/01-rules.md,
+    # 사람 확인). off only for local development; with google, both secrets must be set.
+    recaptcha:
+      mode: ${MEMBER_RECAPTCHA_MODE:google}
+      v3-secret-key: ${GOOGLE_RECAPTCHA_V3_SECRET_KEY:}
+      v2-secret-key: ${GOOGLE_RECAPTCHA_V2_SECRET_KEY:}
+      minimum-score: ${MEMBER_RECAPTCHA_MINIMUM_SCORE:0.5}
     mail:
       # smtp in every deployed environment. log writes codes to the log and is for local use only.
       mode: ${MEMBER_MAIL_MODE:smtp}

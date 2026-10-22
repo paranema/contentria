@@ -9,11 +9,11 @@ import PopularPostList from './PopularPostList';
 import { Loader2 } from 'lucide-react';
 import TrafficChart, { TRAFFIC_SERIES } from './TrafficChart';
 import StatGroupCard from './StatGroupCard';
-import { User } from '@/types/api/user';
+import { MyProfile } from '@/features/member/types';
 import { BlogInfo } from '@/types/api/blogs';
 
 interface DashboardContentProps {
-  user: User | null;
+  user: MyProfile | null;
   blogInfos: BlogInfo[] | null;
 }
 
@@ -34,7 +34,7 @@ export default function DashboardContent({ user, blogInfos }: DashboardContentPr
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">블로그관리 홈</h1>
         <p className="mt-1 text-sm text-gray-500">
-          안녕하세요, {user?.nickname || '관리자'}님! 오늘의 블로그 현황입니다.
+          안녕하세요, {user?.displayName || '관리자'}님! 오늘의 블로그 현황입니다.
         </p>
       </div>
 

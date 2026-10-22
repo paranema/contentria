@@ -17,6 +17,11 @@ type FetchOptions = RequestInit & {
    * Only from a Server Action (see relaySessionCookies).
    */
   relaySessionCookies?: boolean;
+  /**
+   * Sends the browser's refresh-token cookie, which the API reads only on the requests that end
+   * or renew a session (logout, refresh). A server-to-server call carries no cookie otherwise.
+   */
+  sendRefreshToken?: boolean;
 };
 
 export const apiServer = {
@@ -41,15 +46,19 @@ async function fetchExtended<T>(url: string, options: FetchOptions = {}): Promis
     requireAuth = true,
     shouldRedirectOn401 = true,
     relaySessionCookies: relay = false,
+    sendRefreshToken = false,
     headers: customHeaders,
     ...rest
   } = options;
 
   const headers = new Headers(customHeaders);
   headers.set('Content-Type', 'application/json');
-  if (requireAuth) {
-    const accessToken = (await cookies()).get('accessToken')?.value;
-    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+  if (requireAuth || sendRefreshToken) {
+    const store = await cookies();
+    const accessToken = store.get('accessToken')?.value;
+    if (requireAuth && accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+    const refreshToken = store.get('refreshToken')?.value;
+    if (sendRefreshToken && refreshToken) headers.set('Cookie', `refreshToken=${refreshToken}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${url}`, { ...rest, headers });

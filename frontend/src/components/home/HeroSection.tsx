@@ -1,7 +1,7 @@
 'use client';
 
 import { PATHS } from '@/shared/constants/paths';
-import { useUserProfile } from '@/hooks/queries/useUserQuery';
+import { useMyProfile } from '@/features/member/hooks/useMyProfile';
 import Link from 'next/link';
 import { memo, useRef } from 'react';
 import { TypeAnimation } from 'react-type-animation';
@@ -9,7 +9,7 @@ import { TypeAnimation } from 'react-type-animation';
 const MemoizedTypeAnimation = memo(TypeAnimation);
 
 export default function HeroSection() {
-  const { data: user } = useUserProfile();
+  const { data: user } = useMyProfile();
   const h1Ref = useRef<HTMLHeadingElement>(null);
 
   const triggerWaveAnimation = (element: HTMLSpanElement | null) => {

@@ -3,9 +3,9 @@ import localFont from 'next/font/local';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import ReactQueryProvider from '@/shared/providers/ReactQueryProvider';
-import { getUserProfileAction } from '@/actions/user';
+import { getMyProfileOrNull } from '@/features/member/api/profile';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
-import { userKeys } from '@/hooks/queries/keys';
+import { memberKeys } from '@/features/member/hooks/keys';
 import { getQueryClient } from '@/shared/lib/getQueryClient';
 
 const pretendard = localFont({
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
   await queryClient.prefetchQuery({
-    queryKey: userKeys.profile(),
-    queryFn: () => getUserProfileAction(false),
+    queryKey: memberKeys.profile(),
+    queryFn: () => getMyProfileOrNull(),
   });
 
   const dehydratedState = dehydrate(queryClient);

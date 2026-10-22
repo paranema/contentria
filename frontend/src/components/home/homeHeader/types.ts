@@ -1,7 +1,7 @@
-import { User } from '@/types/api/user';
+import { MyProfile } from '@/features/member/types';
 
 export interface ProfileDropdownProps {
-  user: User;
+  user: MyProfile;
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
@@ -13,6 +13,6 @@ export interface SubscribeModalProps {
 }
 
 export interface UserAvatarProps {
-  user: User | null;
+  user: MyProfile | null;
   size?: 'sm' | 'md';
 }

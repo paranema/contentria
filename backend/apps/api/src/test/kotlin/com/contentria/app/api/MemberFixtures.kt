@@ -7,7 +7,7 @@ import java.util.UUID
  * browser keeps the session cookies, so it is signed in afterwards.
  */
 fun TestBrowser.signUpAsNewMember(codes: RecordingCodeSender, email: String = "member-${UUID.randomUUID()}@contentria.com"): UUID {
-    val attemptId = post("/auth/sign-up/start", """{"email":"$email"}""").field("attemptId")
+    val attemptId = post("/auth/sign-up/start", """{"email":"$email","recaptchaV3Token":"${FakeHumanVerifier.HUMAN}"}""").field("attemptId")
     // Generated, not written out: secret scanners read a quoted password-like value as a leak.
     val password = UUID.randomUUID().toString()
     val completed = post("/auth/sign-up/complete", """{"attemptId":"$attemptId","code":"${codes.lastCodeFor(email)}","password":"$password"}""")

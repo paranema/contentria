@@ -1,5 +1,6 @@
 package com.contentria.member.config
 
+import com.contentria.member.application.service.HumanCheckPolicy
 import com.contentria.member.application.service.SessionPolicy
 import com.contentria.member.domain.profile.DisplayNameGenerator
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -28,4 +29,12 @@ class MemberCoreConfiguration {
 
     @Bean
     fun memberDisplayNameGenerator() = DisplayNameGenerator()
+
+    @Bean
+    fun memberHumanCheckPolicy(properties: MemberProperties): HumanCheckPolicy = with(properties.recaptcha) {
+        check(!required || (v3SecretKey.isNotBlank() && v2SecretKey.isNotBlank())) {
+            "contentria.member.recaptcha needs both secret keys unless its mode is off"
+        }
+        HumanCheckPolicy(required, minimumScore)
+    }
 }

@@ -1,9 +1,12 @@
 package com.contentria.member.adapter.provided.web
 
 import com.contentria.member.api.SessionCookieNames
+import com.contentria.member.application.provided.CheckHumanUseCase
 import com.contentria.member.application.provided.CompleteEmailCodeLoginUseCase
 import com.contentria.member.application.provided.CompleteEmailSignUpCommand
 import com.contentria.member.application.provided.CompleteEmailSignUpUseCase
+import com.contentria.member.application.provided.HumanAction
+import com.contentria.member.application.provided.HumanProof
 import com.contentria.member.application.provided.LoginWithPasswordUseCase
 import com.contentria.member.application.provided.LogoutUseCase
 import com.contentria.member.application.provided.MemberUseCaseException
@@ -33,12 +36,15 @@ class AuthController(
     private val logout: LogoutUseCase,
     private val requestResetLink: RequestPasswordResetLinkUseCase,
     private val resetPassword: ResetPasswordWithLinkUseCase,
+    private val humans: CheckHumanUseCase,
     private val cookies: SessionCookies,
 ) {
 
     @PostMapping("/sign-up/start")
-    fun startSignUp(@Valid @RequestBody request: StartSignUpRequest): ResponseEntity<CodeSentResponse> =
-        ResponseEntity.status(HttpStatus.ACCEPTED).body(CodeSentResponse(startSignUp.start(request.email)))
+    fun startSignUp(@Valid @RequestBody request: StartSignUpRequest): ResponseEntity<CodeSentResponse> {
+        humans.check(HumanProof(request.recaptchaV3Token, request.recaptchaV2Token), HumanAction.SIGN_UP)
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(CodeSentResponse(startSignUp.start(request.email)))
+    }
 
     @PostMapping("/sign-up/complete")
     fun completeSignUp(@Valid @RequestBody request: CompleteSignUpRequest): ResponseEntity<SessionResponse> {
@@ -47,13 +53,17 @@ class AuthController(
     }
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<SessionResponse> =
-        cookies.respond(ResponseEntity.ok(), loginWithPassword.login(request.email, request.password))
+    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<SessionResponse> {
+        humans.check(HumanProof(request.recaptchaV3Token, request.recaptchaV2Token), HumanAction.LOGIN)
+        return cookies.respond(ResponseEntity.ok(), loginWithPassword.login(request.email, request.password))
+    }
 
     /** 202 whether or not an account uses the address (01-rules, 코드 로그인은 계정 존재를 알려주지 않는다). */
     @PostMapping("/login/code/start")
-    fun startCodeLogin(@Valid @RequestBody request: StartCodeLoginRequest): ResponseEntity<CodeSentResponse> =
-        ResponseEntity.status(HttpStatus.ACCEPTED).body(CodeSentResponse(startCodeLogin.start(request.email)))
+    fun startCodeLogin(@Valid @RequestBody request: StartCodeLoginRequest): ResponseEntity<CodeSentResponse> {
+        humans.check(HumanProof(request.recaptchaV3Token, request.recaptchaV2Token), HumanAction.LOGIN_CODE)
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(CodeSentResponse(startCodeLogin.start(request.email)))
+    }
 
     @PostMapping("/login/code/complete")
     fun completeCodeLogin(@Valid @RequestBody request: CompleteCodeLoginRequest): ResponseEntity<SessionResponse> =
@@ -71,6 +81,7 @@ class AuthController(
     /** 202 whether or not an account uses the address, as for a code login. */
     @PostMapping("/password/reset-link")
     fun requestResetLink(@Valid @RequestBody request: PasswordResetLinkRequest): ResponseEntity<Void> {
+        humans.check(HumanProof(request.recaptchaV3Token, request.recaptchaV2Token), HumanAction.PASSWORD_RESET)
         requestResetLink.requestResetLink(request.email)
         return ResponseEntity.accepted().build()
     }

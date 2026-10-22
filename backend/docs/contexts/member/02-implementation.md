@@ -125,6 +125,7 @@
 | 세션 갱신 | `RefreshSessionUseCase` | `SessionService` | `POST /auth/refresh` (리프레시 토큰 쿠키) |
 | 공통 로그아웃 | `LogoutUseCase` | `SessionService` | `POST /auth/logout` → 항상 204, 쿠키 만료. 그 리프레시 토큰 하나만 지운다. 액세스 토큰은 만료까지 통과하지만 브라우저는 쿠키와 함께 버린다 |
 | 흐름 5 내 프로필 | `GetMyProfileQuery`, `RenameProfileUseCase` | `ProfileService` | `GET`, `PATCH /me/profile` |
+| 사람 확인 | `CheckHumanUseCase` | `HumanCheckService` | 가입 시작, 비밀번호 로그인, 코드 로그인 시작, 재설정 링크 요청의 컨트롤러가 유스케이스보다 먼저 부른다 |
 | 요청 인증 | `AuthenticateAccessTokenQuery` (`member-api`) | `AccessTokenAuthenticationService` | `apps/api`의 필터가 호출 |
 | 다른 컨텍스트에 계정 상태 공개 | `GetAccountStatusQuery` (`member-api`) | `AccountStatusQueryService` | 출판의 번역 계층이 호출. 자기 읽기 전용 트랜잭션에서 동작하고, 탈퇴(DELETED)는 `CLOSED`로 내보낸다 |
 
@@ -175,6 +176,19 @@
 | 관리 유스케이스의 계정 상태 | 액세스 토큰은 정지 뒤에도 만료까지 통과하므로, 계정을 바꾸는 유스케이스는 상태를 다시 확인한다(`loadActive`). 정지된 계정은 403 `ACCOUNT_NOT_ACTIVE`다 |
 | 탈퇴 뒤 정리 | 탈퇴 시도, 이메일 변경 시도, 옛 주소의 로그인 시도, 비밀번호 토큰, 리프레시 토큰을 모두 지운다. 응답은 두 세션 쿠키를 만료시킨다 |
 
+### 사람 확인에서 정한 것
+
+| 항목 | 내용 |
+|---|---|
+| 공급자 | Google reCAPTCHA. 보이지 않는 확인은 v3, 체크박스는 v2이고 비밀키가 각각이다. `adapter/required/captcha/RecaptchaVerifier`가 `siteverify`를 JDK `HttpClient`로 부른다(5초) |
+| 나누기 | 어댑터(`HumanVerifier`)는 공급자의 답(점수, 동작, 받아들임)만 돌려준다. 기준 점수와 동작 비교는 `HumanCheckService`가 한다 |
+| 요청 | 네 요청에 `recaptchaV3Token`, `recaptchaV2Token`(둘 다 선택, 4096자까지)을 더했다. 동작 이름은 `sign_up`, `login`, `login_code`, `password_reset`이다. 화면도 같은 이름으로 v3 토큰을 만든다 |
+| 응답 | 체크박스 요구는 403 `RECAPTCHA_CHALLENGE_REQUIRED`, 체크박스 실패는 403 `RECAPTCHA_FAILED`, 공급자 장애는 503 `RECAPTCHA_UNAVAILABLE` |
+| 동작 비교 | 공급자가 동작을 알려 줄 때만 비교한다. v3 토큰에는 늘 동작이 있다. 동작이 없는 답(v2 토큰을 v3로 보낸 경우)은 점수도 없어서 어차피 통과하지 못한다 |
+| 설정 | `contentria.member.recaptcha`: `mode`(`google`, 로컬 개발만 `off`), `v3-secret-key`, `v2-secret-key`, `minimum-score`(0.5). `google`인데 비밀키가 비면 뜨지 않는다 |
+| 레거시와 다른 점 | 레거시는 기준 점수가 1.0이라 거의 언제나 체크박스를 띄웠다. 여기서는 0.5에서 시작하고 설정으로 바꾼다 |
+| 테스트 | `apps/api`는 `FakeHumanVerifier`로 Google을 대신한다. 토큰 `human`은 통과, `bot`은 점수가 낮다 |
+
 ### 아직 없는 것
 
 | 항목 | 상태 |
@@ -182,7 +196,7 @@
 | 코드 로그인 응답 시간 차이. 있는 주소만 메일을 보내므로 응답이 늦다 | 범위 밖. 가입이 이미 가입 여부를 알려주므로([01, 가입은 가입 여부를 알려준다](01-rules.md#가입은-가입-여부를-알려준다)) 이것만 막아서는 얻는 것이 없다 |
 | 정지와 해제 API, 정지 시 세션 무효화 | 관리자 기능과 함께 정한다. 도메인 메서드(`suspend`, `reinstate`)만 있다 |
 | 무효화 직후의 액세스 토큰 차단 | 범위 밖. 최대 15분을 받아들인다. 막으려면 토큰마다 서버 조회가 필요하다 |
-| 속도 제한, reCAPTCHA, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다 |
+| 속도 제한, 리프레시 토큰 유예 구간, 만료된 시도와 토큰 정리 배치 | 범위 밖. 필요할 때 따로 정한다. 코드 메일 폭주는 지금 사람 확인만 막는다 |
 
 ## 현재 코드와의 차이
 
