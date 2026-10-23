@@ -1,0 +1,7 @@
+/context/
+/artifacts/
+/inventories/*/hosts.yml
+/inventories/*/host_vars/
+/inventories/*/group_vars/all/local.yml
+/ansible-navigator.log
+/*-artifact-*.json

@@ -1,0 +1,16 @@
+---
+ansible-navigator:
+  mode: stdout
+  execution-environment:
+    enabled: true
+    container-engine: docker
+    # runner는 Docker에 호스트 UID를 넘긴다. Colima의 /runner 마운트 권한을 맞춘다.
+    container-options:
+      - --user=0
+    image: contentria-ansible:ks2.31.0-1
+    pull:
+      policy: never
+  playbook-artifact:
+    enable: false
+  logging:
+    level: warning

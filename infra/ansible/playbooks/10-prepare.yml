@@ -1,0 +1,19 @@
+---
+- name: 공통 OS를 준비한다
+  hosts: k8s_cluster:etcd
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Python이 없는 최소 설치에 실행 기반을 준비한다
+      ansible.builtin.raw: test -x /usr/bin/python3 || (dnf -y install python3 && echo CONTENTRIA_PYTHON_INSTALLED)
+      register: bootstrap_python
+      retries: 30
+      delay: 10
+      until: bootstrap_python.rc == 0
+      changed_when: "'CONTENTRIA_PYTHON_INSTALLED' in bootstrap_python.stdout"
+      when: not ansible_check_mode
+    - name: OS 정보를 읽는다
+      ansible.builtin.setup:
+  roles:
+    - os_prepare

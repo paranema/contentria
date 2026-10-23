@@ -11,7 +11,7 @@ output "nodes" {
 }
 
 output "ansible_inventory" {
-  description = "Kubespray용 YAML 인벤토리. 기본적으로 모든 노드가 control plane, etcd, worker다."
+  description = "Kubespray용 YAML 인벤토리. 모든 노드가 control plane·worker이며 etcd는 1대 또는 3대다."
   value = yamlencode({
     all = {
       hosts = {
@@ -28,7 +28,7 @@ output "ansible_inventory" {
       children = {
         kube_control_plane = { hosts = { for name in keys(local.nodes) : name => {} } }
         kube_node          = { hosts = { for name in keys(local.nodes) : name => {} } }
-        etcd               = { hosts = { for name in keys(local.nodes) : name => {} } }
+        etcd               = { hosts = { for name in slice(keys(local.nodes), 0, var.node_count < 3 ? 1 : 3) : name => {} } }
         k8s_cluster = {
           children = {
             kube_control_plane = {}

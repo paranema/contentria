@@ -1,0 +1,7 @@
+---
+cluster_environment: cloud-test
+# AWS VPC에서는 LAN의 ARP VIP를 사용하지 않는다.
+kube_vip_enabled: false
+loadbalancer_apiserver_localhost: true
+# kubectl을 각 EC2 공인 IP로 사용해도 인증서 검증이 가능하게 한다.
+supplementary_addresses_in_ssl_keys: "{{ groups['kube_control_plane'] | map('extract', hostvars, 'ansible_host') | list }}"

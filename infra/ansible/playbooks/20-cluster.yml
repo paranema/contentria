@@ -1,0 +1,59 @@
+---
+- name: 환경별 클러스터 설정을 확인한다
+  hosts: k8s_cluster
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: 환경과 노드 역할을 확인한다
+      ansible.builtin.assert:
+        that:
+          - cluster_environment in ['home', 'cloud-test']
+          - groups.get('kube_control_plane', []) | length > 0
+          - groups.get('etcd', []) | length in [1, 3, 5]
+          - groups['etcd'] | difference(groups['kube_control_plane']) | length == 0
+          - groups['kube_control_plane'] | difference(groups['kube_node']) | length == 0
+          - cluster_environment != 'cloud-test' or not (kube_vip_enabled | bool)
+    - name: 홈 네트워크의 VIP 설정을 확인한다
+      ansible.builtin.assert:
+        that:
+          - kube_vip_address | default('') | length > 0
+          - kube_vip_interface | default('') | length > 0
+        fail_msg: local.yml에 미사용 VIP를, 각 host에 실제 NIC 이름을 설정한다.
+      when: kube_vip_enabled | bool
+    - name: 단일 etcd의 장애 특성을 알린다
+      ansible.builtin.debug:
+        msg: 단일 etcd 서버가 중단되면 클러스터 관리가 중단된다. 3대 이상에서 etcd 3멤버로 확장한다.
+      when: groups['etcd'] | length == 1
+      run_once: true
+
+- name: EE에 고정한 Kubespray로 클러스터를 구성한다
+  ansible.builtin.import_playbook: /opt/kubespray/cluster.yml
+
+- name: 두 역할을 가진 노드에 워크로드를 허용한다
+  hosts: kube_control_plane[0]
+  become: true
+  gather_facts: false
+  tasks:
+    - name: 노드의 현재 taint를 읽는다
+      ansible.builtin.command:
+        argv: [/usr/local/bin/kubectl, --kubeconfig=/etc/kubernetes/admin.conf, get, nodes, -o, json]
+      register: cluster_nodes
+      changed_when: false
+      check_mode: false
+    - name: control plane의 NoSchedule taint만 제거한다
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/kubectl
+          - --kubeconfig=/etc/kubernetes/admin.conf
+          - taint
+          - node
+          - "{{ item.metadata.name }}"
+          - node-role.kubernetes.io/control-plane:NoSchedule-
+      loop: "{{ (cluster_nodes.stdout | from_json)['items'] }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      when:
+        - item.metadata.name in groups['kube_control_plane']
+        - item.metadata.name in groups['kube_node']
+        - item.spec.taints | default([]) | selectattr('key', 'equalto', 'node-role.kubernetes.io/control-plane') | selectattr('effect', 'equalto', 'NoSchedule') | list | length > 0
+      changed_when: true

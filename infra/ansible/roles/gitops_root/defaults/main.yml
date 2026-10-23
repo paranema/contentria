@@ -1,0 +1,13 @@
+---
+gitops_env: dev
+gitops_repo_url: https://github.com/seung7642/contentria.git
+gitops_revision: main
+required_secrets:
+  - {namespace: database, name: postgres-contentria}
+  - {namespace: database, name: postgres-keycloak}
+  - {namespace: database, name: postgres-openfga}
+  - {namespace: keycloak, name: keycloak-admin}
+  - {namespace: keycloak, name: keycloak-db}
+  - {namespace: openfga, name: openfga-datastore}
+  - {namespace: blog, name: blog-backend-api}
+  - {namespace: blog, name: blog-backend-batch}
