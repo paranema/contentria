@@ -1,5 +1,5 @@
-import HeroSection from '@/components/home/HeroSection';
-import EditorShowcaseSection from '@/components/home/EditorShowcaseSection';
+import HeroSection from '@/app/(home)/_components/HeroSection';
+import EditorShowcaseSection from '@/app/(home)/_components/EditorShowcaseSection';
 import { getRecentPosts } from '@/features/publishing/api/posts';
 import RecentPostsSection, {
   RecentPostCard,

@@ -1,6 +1,6 @@
-import Footer from '@/components/home/Footer';
-import SkeletonHeader from '@/components/home/SkeletonHeader';
-import SkeletonMain from '@/components/home/SkeletonMain';
+import Footer from '@/app/_components/Footer';
+import SkeletonHeader from '@/app/(home)/_components/SkeletonHeader';
+import SkeletonMain from '@/app/(home)/_components/SkeletonMain';
 
 export default function Loading() {
   return (

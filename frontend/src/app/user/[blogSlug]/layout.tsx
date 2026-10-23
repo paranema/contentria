@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import BlogHeader from '@/components/blog/header';
-import Footer from '@/components/home/Footer';
+import BlogHeader from '@/app/user/[blogSlug]/_components/BlogHeader';
+import Footer from '@/app/_components/Footer';
 import { notFound } from 'next/navigation';
 import { getBlogLayoutData } from '../../_composition/blog';
 

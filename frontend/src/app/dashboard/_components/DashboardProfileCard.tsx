@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import UserAvatar from '@/components/dashboard/header/UserAvatar';
+import UserAvatar from '@/app/_components/UserAvatar';
 import { useMyProfile } from '@/features/member/hooks/useMyProfile';
 
 interface DashboardProfileCardProps {

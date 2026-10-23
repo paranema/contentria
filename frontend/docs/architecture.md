@@ -8,7 +8,9 @@
 ```
 src/
 ├── app/                 라우팅과 페이지. 여러 기능을 모아 화면을 만든다
-│   └── _composition/    여러 기능의 API를 모으는 서버 함수 (라우트가 아니다)
+│   ├── _composition/    여러 기능의 API를 모으는 서버 함수 (라우트가 아니다)
+│   ├── _components/     여러 라우트 묶음이 함께 쓰는 화면 조각 (푸터, 헤더의 프로필 메뉴)
+│   └── <경로>/_components/  그 경로 아래에서만 쓰는 화면 조각 (대시보드 헤더와 사이드바, 블로그 헤더)
 ├── features/
 │   └── <기능>/
 │       ├── api/         Server Actions와 서버에서 부르는 함수. 백엔드 API를 부르는 곳은 여기뿐이다
@@ -22,10 +24,13 @@ src/
 │   ├── providers/       React Query 공급자
 │   ├── lib/             cn(), 날짜 형식, QueryClient
 │   └── constants/       화면 경로
+├── types/               환경 변수 타입 선언
 └── proxy.ts             요청마다 세션 쿠키를 보고 토큰 갱신과 보호 경로를 처리한다
 ```
 
 기능 안의 하위 폴더는 필요할 때 만든다. 빈 폴더를 미리 두지 않는다.
+
+여러 기능을 함께 보여 주는 컴포넌트(헤더는 프로필, 알림, 블로그를 함께 쓴다)는 어느 기능에도 넣지 않고 `app/` 아래 `_components/`에 둔다. 한 경로에서만 쓰면 그 경로의 `_components/`에, 여러 경로 묶음이 쓰면 `app/_components/`에 둔다. 밑줄로 시작하는 폴더는 Next.js가 라우트로 보지 않는다.
 
 | 기능 | 백엔드 컨텍스트 | 담는 것 |
 |---|---|---|
@@ -45,6 +50,7 @@ src/
 | `shared/`는 기능과 `app/`을 모른다 | 공용 코드가 특정 기능에 묶이지 않게 한다 | ESLint `no-restricted-imports` |
 | 기능과 `shared/` 밖을 가리킬 때는 `@/`로 import한다 | lint 규칙이 경로 문자열을 보고 판단한다. `../../`로 기능 밖에 나가면 규칙이 보지 못한다 | 리뷰 |
 | 백엔드 API는 각 기능의 `api/`에서 `shared/api/apiServer`로만 부른다 | 주소, 인증 헤더, 오류 형식을 한곳에서 다룬다 | 리뷰 |
+| 마크업이 있는 폴더는 Tailwind의 `content`에 넣는다 | Tailwind는 `content`의 파일에 나오는 클래스만 만든다. 빠진 폴더에만 쓴 클래스(`shared/ui`의 `bg-background` 같은 것)는 화면에 적용되지 않는다 | `tailwind.config.ts` |
 
 lint 규칙은 `eslint.config.js`에 있다. `src/features` 아래 폴더를 읽어 기능마다 경계를 만든다. 기능을 더할 때 설정을 고칠 필요가 없다.
 
@@ -81,9 +87,9 @@ React와 Next.js 실행 환경이 필요 없는 코드(`shared/api`의 파싱, �
 npm test
 ```
 
-## 옮기는 중
+## 옮긴 과정
 
-새 백엔드 API로 옮기면서 기능 하나씩 `features/`로 옮긴다. 옮기기 전의 코드는 예전 폴더(`actions/`, `components/<기능>/`, `hooks/`, `types/api/`, `lib/`, `store/`, `constants/`)에 남아 있다.
+새 백엔드 API로 옮기면서 기능 하나씩 `features/`로 옮겼다. 예전 폴더(`actions/`, `components/`, `hooks/`, `types/api/`, `lib/`, `store/`, `constants/`)는 모두 비워 지웠다.
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
@@ -95,5 +101,4 @@ npm test
 | F5 | 새 화면: 구독, 좋아요와 수, 댓글 | 완료 |
 | F5 | 새 화면: 알림함 | 완료 |
 | F5 | 새 화면: 계정 설정(로그인 방법, 비밀번호, 이메일 바꾸기, 탈퇴), 비밀번호 재설정 | 완료 |
-
-여러 기능을 함께 보여 주는 컴포넌트(헤더, 대시보드의 프로필 카드와 사이드바)는 아직 예전 `components/`에 있다. 기능을 옮기는 동안에는 그대로 두고, 마지막에 `app/` 아래로 옮긴다. 예전 폴더가 모두 비면 이 절을 지운다.
+| 정리 | 여러 기능을 함께 쓰는 컴포넌트를 `app/` 아래 `_components/`로 옮기고, 쓰지 않는 예전 컴포넌트와 zustand를 지운다 | 완료 |
