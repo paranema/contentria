@@ -1,0 +1,67 @@
+name: Backend images
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'backend-images-*'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: backend-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Build four AMD64 images
+        shell: bash
+        run: |
+          set -euo pipefail
+          for app in api batch worker migrator; do
+            docker build --platform linux/amd64 \
+              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              --label "org.opencontainers.image.title=contentria-$app" \
+              -f "backend/apps/$app/Dockerfile" -t "contentria/$app:smoke" backend/
+          done
+
+      - name: Verify images with PostgreSQL, Kafka, MinIO and queue fixture
+        run: python3 backend/scripts/image-smoke/run.py
+
+      - name: Sign in to GHCR
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish and verify registry manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          version="sha-${GITHUB_SHA:0:12}"
+          printf '## Backend images\n\nAMD64 images passed the container smoke checks before publication.\n\n| App | Image |\n|---|---|\n' >> "$GITHUB_STEP_SUMMARY"
+          for app in api batch worker migrator; do
+            image="ghcr.io/$owner/contentria-$app:$version"
+            docker tag "contentria/$app:smoke" "$image"
+            docker push "$image"
+            docker buildx imagetools inspect "$image"
+            printf '| %s | `%s` |\n' "$app" "$image" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Sign out of GHCR
+        if: always()
+        run: docker logout ghcr.io

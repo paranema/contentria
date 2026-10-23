@@ -66,3 +66,13 @@ python3 backend/scripts/image-smoke/run.py --build
 Linux ARM64(Colima)에서 네 이미지의 빌드와 위 실행 검증을 통과했다. AMD64 실행과 실제 클라우드 연동은 아직 확인하지 않았다.
 
 성공·실패 시 이 실행이 생성한 컨테이너, 익명 볼륨과 네트워크를 정리한다. 강제 종료나 Docker 장애로 정리가 중단되면 `contentria.image-smoke` label로 해당 실행의 리소스를 확인한다. 빌드한 이미지와 BuildKit 캐시는 이후 재사용을 위해 남긴다. 실제 R2·Cloudflare API, SMTP·Google 로그인, Kubernetes 배포와 장애 복구를 검증하는 테스트는 아니다.
+
+## GHCR 게시
+
+[Backend images 워크플로](../../.github/workflows/backend-images.yml)는 GitHub의 Ubuntu AMD64 runner에서 네 이미지를 빌드하고 위 실행 검증을 통과한 뒤 GHCR에 게시한다. 개인 토큰 대신 저장소의 `GITHUB_TOKEN`과 `packages: write` 권한을 사용한다.
+
+기본 브랜치에 워크플로가 들어간 뒤 GitHub Actions에서 `Backend images` → `Run workflow`로 실행할 수 있다. 특정 커밋을 게시하려면 해당 커밋에 `backend-images-`로 시작하는 태그를 push해 실행할 수도 있다. 일반 브랜치 push만으로 이미지를 게시하지 않는다.
+
+이미지는 `ghcr.io/seung7642/contentria-<app>:sha-<커밋앞12자리>`로 게시한다. source·revision OCI label로 저장소와 커밋을 연결하고 `latest` 태그는 만들지 않는다. GHCR의 최초 공개 범위는 기본 비공개이며, 공개 범위를 바꾸는 작업은 워크플로에 포함하지 않는다.
+
+GitHub 저장소 오른쪽 `Packages`, 또는 사용자 프로필의 `Packages` 탭에서 패키지와 버전을 확인한다. 비공개 이미지를 Kubernetes에서 받으려면 별도의 read:packages 자격 증명을 imagePullSecret으로 준비해야 한다. 업로드가 Kubernetes 배포를 자동으로 변경하지는 않는다.
