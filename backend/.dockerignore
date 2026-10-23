@@ -1,0 +1,13 @@
+**/.git
+**/.gradle
+**/.kotlin
+**/build
+**/.idea
+**/.vscode
+**/.env*
+**/application-local.*
+**/*.pem
+**/*.key
+**/src/test
+/docs
+/services
