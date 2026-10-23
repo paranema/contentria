@@ -14,3 +14,16 @@ export function startGoogleLogin(): void {
     console.error('External API base URL is not configured.');
   }
 }
+
+/**
+ * Links Google to the signed-in account (01-rules 흐름 3). The API sends the browser back to the
+ * settings page with `?linked=true` or `?error=<code>`.
+ */
+export function startGoogleLink(): void {
+  const baseUrl = process.env.NEXT_PUBLIC_EXTERNAL_API_BASE_URL;
+  if (baseUrl) {
+    window.location.href = `${baseUrl}/oauth2/authorization/google?intent=link`;
+  } else {
+    console.error('External API base URL is not configured.');
+  }
+}

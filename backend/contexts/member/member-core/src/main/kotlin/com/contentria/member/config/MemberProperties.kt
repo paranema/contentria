@@ -51,6 +51,6 @@ data class MemberProperties(
     data class Social(
         val loginSuccessUrl: String = "http://localhost:3000/login/callback",
         val loginFailureUrl: String = "http://localhost:3000/login",
-        val linkResultUrl: String = "http://localhost:3000/settings/account",
+        val linkResultUrl: String = "http://localhost:3000/dashboard/settings",
     )
 }
