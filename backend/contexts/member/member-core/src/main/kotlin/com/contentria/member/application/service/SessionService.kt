@@ -15,7 +15,7 @@ import java.time.Clock
 import java.util.UUID
 
 /**
- * Starts and rotates sessions (docs/conventions/security.md, Refresh Token Rotation).
+ * Starts and rotates sessions (docs/conventions/security.md, 리프레시 토큰 회전).
  *
  * A presented refresh token is deleted before a new one is issued, so a token that has already
  * been rotated is simply unknown. Concurrent refreshes with the same token are not given a grace

@@ -4,7 +4,7 @@ import com.contentria.member.domain.account.PasswordHasher
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Component
 
-/** docs/conventions/security.md, Password Handling: BCrypt. */
+/** docs/conventions/security.md, 비밀번호: BCrypt. */
 @Component
 class BCryptPasswordHasher : PasswordHasher {
 

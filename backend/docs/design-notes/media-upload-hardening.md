@@ -1,214 +1,170 @@
-# Media Upload Hardening
+# 미디어 업로드 강화
 
-> 레거시(`legacy-final` 태그) 구현의 기록이다. 새 구조에서 같은 기능을 만들 때 참고한다.
+> **강화(hardening)** 는 공격 면을 줄이고 방어층을 더하는 일이다. 기본 상태로도 기능은 동작하지만, 의도적인 오용이나 예상하지 못한 입력에도 안전하게 만든다.
 
-> **Hardening** is a security term meaning "to reduce the attack surface and add defensive layers to a system." A feature may work correctly in its default state, but hardening ensures it remains secure against intentional misuse or unexpected input.
+이미지 업로드에서 찾은 보안 문제와, 대안을 비교해 정한 이유를 적는다.
+레거시(`legacy-final` 태그)에서 처음 정했고, 새 구조로 옮기며 일부를 바꿨다. 각 절의 "지금"이 새 구조의 상태다. 업로드 흐름과 값은 [contexts/media/01-rules.md](../contexts/media/01-rules.md)에 있다.
 
-| Before (default) | After (hardened) |
+| 위협 | 방어 | 지금 |
+|---|---|---|
+| 업로드로 저장 공간을 채운다 | 하루 용량, 파일 크기, 글당 이미지 수 제한 | 있다. 요청 수 제한은 보류 |
+| 이미지라고 선언한 다른 파일(HTML 등)을 올린다 | 파일 앞부분(시그니처) 검증 | 있다 |
+| 사진 정보(EXIF)로 위치와 기기가 새어 나간다 | JPEG를 다시 저장해 지운다 | 있다 |
+| 브라우저가 형식을 추측해 다른 형식으로 실행한다 | `X-Content-Type-Options: nosniff` | Next.js 응답에는 있다. 이미지 도메인은 보류 |
+
+---
+
+## 1. 요청 수와 용량 제한
+
+### 문제
+
+한 회원이 업로드 주소를 끝없이 받아 저장 공간을 채울 수 있다. 하루에 올리는 양에도, 글 하나의 이미지 수에도 한도가 없으면 저장과 화면 비용이 함께 커진다.
+
+### 지금
+
+| 제한 | 값 | 위치 |
+|---|---|---|
+| 파일 크기 | 10MB 이하 | `Media.prepare`(도메인) |
+| 하루 업로드 양 | 회원마다 100MB 이하. 업로드를 준비할 때 그날 준비한 양을 더해 본다 | `ImageUploadService.prepare`(앱) |
+| 글당 이미지 수 | 20개 이하. 출판이 본문으로 센다 | `PostImageLinks.MAX_IMAGES`(출판) |
+| 요청 수 | 없다. 보류 | [contexts/media/01-rules.md](../contexts/media/01-rules.md)의 "보류" |
+
+하루 한도는 DB의 합계를 읽어야 하므로 필터가 아니라 애플리케이션에서 본다. 같은 순간 준비한 두 업로드가 함께 한도를 넘을 수 있다. 한도는 장부가 아니라 방어선이라 받아들인다.
+
+### 요청 수 제한의 선택지
+
+레거시는 회원마다 분당 30회와 하루 100회를 두었다. 새 구조에 붙일 때 다시 고른다.
+
+| 방식 | 장점 | 단점 |
+|---|---|---|
+| Nginx, Cloudflare의 IP 제한 | 코드가 필요 없다 | 회원을 구분하지 못한다. 같은 IP(NAT, VPN)의 사람들이 함께 막힌다 |
+| `HandlerInterceptor`와 메모리 카운터 | 회원마다 센다. 빠르다 | 재시작하면 사라진다. 인스턴스가 여럿이면 따로 센다 |
+| **Bucket4j + Caffeine JCache (레거시가 고름)** | 회원마다 토큰 버킷. 짧은 폭주와 하루 한도를 한 필터에 둔다 | 의존성이 는다. 인스턴스가 여럿이면 따로 센다 |
+| Redis 기반 분산 제한 | 인스턴스 여러 개에서 통한다 | 한 인스턴스에는 과하다. 인프라가 는다 |
+
+---
+
+## 2. 파일 시그니처 검증
+
+### 문제
+
+브라우저가 선언한 `Content-Type`을 그대로 믿으면, `image/jpeg`로 선언한 HTML(XSS 내용)이 CDN에서 그대로 나간다.
+
+### 선택지
+
+| 방식 | 장점 | 단점 |
+|---|---|---|
+| 확장자만 본다 | 쉽다 | `.html`을 `.jpg`로 바꾸면 통과한다 |
+| 파일 전체를 디코드한다 | 이미지임을 증명한다 | 전체를 내려받아야 하고 느리다 |
+| **앞 12바이트(시그니처)를 본다** | 빠르다. 흔한 위장을 잡는다 | 두 형식으로 동시에 해석되는 파일(폴리글랏)까지는 못 잡는다 |
+| Apache Tika | 형식 판별이 넓다 | 좁은 용도에 비해 의존성이 무겁다 |
+
+시그니처를 고른다. 폴리글랏은 `nosniff`(4절)가 브라우저 쪽에서 막는다.
+
+### 지금
+
+| 쪽 | 처리 | 코드 |
+|---|---|---|
+| 서버(기준) | 업로드 완료 때 파일을 읽어 크기와 앞 12바이트를 선언한 형식과 비교한다. JPEG, PNG, WebP(`RIFF`와 8번째 바이트의 `WEBP`), GIF | `ImageFormat.matches`, `ImageUploadService.complete` |
+| 브라우저(빠른 안내) | 올리기 전에 앞 12바이트를 보고 맞지 않으면 바로 거부한다 | `frontend/src/features/media/upload/uploadImage.ts` |
+
+검증에 실패하면 이미지 기록과 파일을 지운다. 화면은 완료가 성공한 뒤에 본문에 이미지를 넣으므로, 깨진 이미지가 본문에 남지 않는다.
+
+레거시와 다른 점:
+
+| 항목 | 레거시 | 지금 | 바꾼 이유 |
+|---|---|---|---|
+| 시점 | 글을 저장할 때 임시 위치에서 옮기며(승격) | 업로드를 마칠 때 | 주소가 처음부터 정해져 승격이 없다 |
+| 읽는 양 | Range 요청으로 12바이트 | 파일 전체 | 크기를 함께 맞춰 보고, JPEG는 어차피 전체를 다시 저장한다 |
+| 실패한 파일 | 지우지 않았다. 편집기에 이미 들어간 이미지가 깨지기 때문이다 | 지운다 | 본문에 들어가기 전이다 |
+
+---
+
+## 3. EXIF 제거
+
+### 문제
+
+JPEG의 EXIF에는 개인정보가 담길 수 있다.
+
+| 정보 | 예 |
 |---|---|
-| Client-declared `Content-Type` trusted as-is | Magic number validation verifies actual file content (#10) |
-| No upload rate or volume limits | Bucket4j rate limiting + daily byte quota (#9) |
-| EXIF metadata (GPS, device info) served to every visitor | ImageIO re-encoding strips all metadata (#11) |
-| CDN serves default response headers | `X-Content-Type-Options: nosniff` prevents MIME sniffing (#12) |
+| 위치 | 찍은 곳의 GPS 좌표 |
+| 기기 | 모델, 일련번호 |
+| 시각 | 찍은 날짜와 시각 |
+| 미리보기 | 자르기 전의 원본 이미지 |
 
-This document records the security problems identified in the image upload pipeline, the analysis behind each decision, the actions taken, and their results. Covers issues #9 through #12, all follow-ups to the initial R2 presigned URL upload feature (#7/#8).
+그대로 내보내면 모든 독자에게 새어 나간다.
 
----
+### 선택지
 
-## 1. Rate Limiting and Per-User Quotas (#9)
+| 방식 | 장점 | 단점 |
+|---|---|---|
+| metadata-extractor로 읽고 바이트를 직접 고친다 | 원본 화질을 그대로 둔다 | APP1, APP13 등 모든 구간을 다뤄야 한다. 파일이 깨질 위험이 있다 |
+| Cloudflare Image Resizing(Polish) | 백엔드 코드가 없다 | 유료다. 처리를 볼 수 없다 |
+| **JDK ImageIO로 다시 저장** | 외부 의존이 없다. 픽셀만 다시 쓰므로 모든 메타데이터가 사라진다 | 손실 압축이라 화질이 조금 준다 |
+| 브라우저에서만 다시 저장 | 서버 비용이 없다 | 우회할 수 있다. 기준이 될 수 없다 |
 
-### Problem
+### 지금
 
-The presigned URL endpoint (`POST /api/media/presigned-url`) had no rate limiting. A single authenticated user could:
+| 쪽 | 처리 | 코드 |
+|---|---|---|
+| 서버(기준) | 업로드 완료 때 JPEG를 픽셀로 디코드해 품질 0.9로 다시 저장하고, 같은 키에 덮어쓴다. EXIF, IPTC, XMP, 미리보기가 사라진다 | `ImageIoCleaner`, `ImageUploadService.complete` |
+| 서버 | ImageIO가 디코드하지 못하는 JPEG(CMYK 등)는 형식이 틀린 파일처럼 거부한다 | `ImageIoCleaner` |
+| 브라우저(겹 방어) | `browser-image-compression`이 캔버스로 다시 저장하므로 EXIF가 빠진다. GIF는 움직임을 지키려고 압축하지 않는다 | `uploadImage.ts` |
 
-- Flood the endpoint to generate unlimited presigned URLs, consuming R2 storage.
-- Upload an unbounded total volume of data per day.
-- Attach an unlimited number of images to a single post, inflating storage and rendering costs.
-
-### Analysis
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| Nginx/Cloudflare IP-based rate limit | Simple, no code changes | Cannot distinguish per-user; shared IPs (NAT, VPN) cause false positives |
-| Spring `HandlerInterceptor` with in-memory counter | Per-user, low latency | Resets on restart; no cluster-safe option |
-| **Bucket4j + JCache (Caffeine)** | Per-user token-bucket, Spring Boot auto-configuration, proven library | Additional dependency |
-| Redis-based distributed rate limiter | Cluster-safe | Overkill for single-instance deployment; adds infrastructure |
-
-**Decision:** Bucket4j with Caffeine JCache. The blog runs as a single instance, so in-memory caching is sufficient and avoids external infrastructure. Bucket4j's token-bucket algorithm allows both burst (30 req/min) and sustained (100 req/day) limits in a single filter chain. Per-user keying is done via `SecurityContextHolder` through a custom `UserIdResolver`.
-
-Daily byte quota (100 MB/day) and per-post image limit (20 images) are enforced at the application layer in `MediaService`, not in the filter, because they require DB queries (`SUM(fileSize)` and `COUNT(*)`).
-
-### Action
-
-- Added Bucket4j + JCache (Caffeine) dependency to `blog-api`.
-- Configured `mediaRateLimitingFilter` in `application.yml` (30/min burst + 100/day sustained, filter-order 90).
-- Created `UserIdResolver` to extract userId from `SecurityContextHolder` for per-user bucket keys.
-- Added `dailyUploadLimitBytes` (100 MB) and `maxImagesPerPost` (20) to `AppProperties.R2Properties`.
-- Added `validateDailyUploadQuota()` and `validatePostImageLimit()` in `MediaService`.
-- Added error codes: `ME0004` (daily quota exceeded), `ME0005` (post image limit exceeded).
-
-### Result
-
-- Presigned URL endpoint is protected by two-tier token-bucket rate limiting (burst + daily).
-- Application-layer quotas prevent storage abuse even if the rate limiter is bypassed.
-- Error responses include specific error codes so the frontend can display meaningful messages.
+PNG, WebP, GIF는 다시 저장하지 않는다. EXIF를 담는 일이 드물고, GIF를 다시 저장하면 움직임이 사라진다. 품질 0.9는 웹 크기에서 원본과 구분되지 않는다.
 
 ---
 
-## 2. Magic Number (File Signature) Validation (#10)
+## 4. 응답 헤더
 
-### Problem
+### 문제
 
-The upload flow trusted the client-declared `Content-Type` without verification. An attacker could upload a malicious file (e.g., HTML containing XSS payload) with `Content-Type: image/jpeg`, and it would be served from the CDN as-is.
+이미지는 R2의 공개 도메인에서 나간다. 보안 헤더가 없으면:
 
-### Analysis
+| 위험 | 설명 |
+|---|---|
+| 형식 추측 | 브라우저가 `Content-Type`을 무시하고 내용을 보고 추측해, 위장한 HTML이나 스크립트를 실행할 수 있다 |
+| XSS | 검증을 우회한 파일이 있을 때 브라우저가 실행할 여지가 가장 크다 |
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Extension-only check | Trivial to implement | Trivial to bypass (rename `.html` to `.jpg`) |
-| Full file decode (ImageIO.read) | Proves the file is a valid image | Requires downloading the full file; slow for large files |
-| **Magic number (header bytes) check** | Fast (only reads first 12 bytes via Range request); catches the most common spoofing | Cannot catch every edge case (e.g., polyglot files) |
-| External library (Apache Tika) | Comprehensive MIME detection | Heavy dependency for a narrow use case |
+### 선택지
 
-**Decision:** Magic number validation on first 12 bytes, implemented on both client and server side. This is the best cost/accuracy trade-off — a 12-byte `Range` GET is near-free on R2, and it catches all common spoofing vectors. Combined with CDN-level `X-Content-Type-Options: nosniff` (#12), polyglot attacks are also mitigated.
+| 헤더 | 목적 | 비용 |
+|---|---|---|
+| `X-Content-Type-Options: nosniff` | 형식 추측을 막고 선언한 형식을 따르게 한다 | 이미지 전용 도메인에서는 없다 |
+| 이미지를 보여 주는 화면의 `Content-Security-Policy` | 화면에서 실행될 수 있는 스크립트와 스타일을 좁힌다 | 화면마다 따져야 한다. 잘못 좁히면 기능이 깨진다 |
+| `Content-Disposition: attachment` | 화면에 그리지 않고 내려받게 한다 | `<img>`가 깨진다. 이미지가 아닌 파일에만 맞다 |
 
-**Client-side validation** was added to `uploadImage.ts` to reject mismatched files instantly before any network request, providing better UX. Server-side validation in `promoteTemporaryMedia` acts as the authoritative gate.
+`nosniff`를 고른다. 서버의 시그니처 검증(2절)을 브라우저 쪽에서 보완한다. 폴리글랏 파일이 서버 검증을 지나도 브라우저가 `image/jpeg`를 `text/html`로 다시 해석하지 않는다.
+`nosniff`는 네트워크 중간의 헤더 변조를 막지 않는다. 그것은 HTTPS가 막는다. `nosniff`가 막는 것은 브라우저 스스로의 추측이다.
 
-**On validation failure**, the server does NOT delete the R2 object or DB record. The `tmp/` lifecycle rule (24h expiry) handles cleanup. Deleting immediately would leave a broken `<img>` URL in the editor with no way for the user to recover — they would see a broken image but not understand why saving failed.
+### 지금
 
-### Action
+| 위치 | 헤더 | 상태 |
+|---|---|---|
+| Next.js 응답 전체 | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy: frame-ancestors 'self' https://accounts.google.com` | 있다(`frontend/next.config.ts`의 `headers()`) |
+| R2 이미지 도메인 | `X-Content-Type-Options: nosniff` | 보류. 레거시는 Cloudflare Transform Rule로 붙였다. 새 구조에서는 인프라 작업 때 한다([contexts/media/01-rules.md](../contexts/media/01-rules.md)의 "보류"). 지금 Cloudflare에 규칙이 남아 있는지는 저장소에서 확인할 수 없다 |
 
-- Created `MediaValidator` in `application/` layer with magic number signatures for JPEG, PNG, GIF, WebP (including dual-offset RIFF+WEBP check).
-- Added `getObjectHeadBytes()` to `R2StorageClient` for 12-byte Range GET.
-- Added `validateMediaContent()` in `MediaService.promoteTemporaryMedia`.
-- Added browser-side `validateMagicNumber()` in `uploadImage.ts` using `FileReader` + `ArrayBuffer`.
-- Added error code `ME0006` (content type mismatch).
-- Updated `PostEditorClient.tsx` to show backend error messages instead of a generic failure toast.
-
-**Why `MediaValidator` lives in `application/`, not `domain/`:** It contains technical file-format knowledge (byte signatures, offsets), not business rules. It is analogous to `MarkdownService` — a utility class used within a single bounded context. Per the project's architecture rules, this is the correct placement.
-
-### Result
-
-- Dual-layer validation: browser catches most mismatches instantly; server catches anything that bypasses the browser.
-- Graceful failure: user sees a specific error message and can remove/replace the invalid image in the editor.
-- Minimal R2 cost: only 12 bytes per validation via Range request.
+`Referrer-Policy`는 다른 사이트의 자원에 `Referer`로 글 주소와 쿼리가 새지 않게 한다.
+`frame-ancestors` 밖의 CSP 강화는 미디어 업로드보다 넓은 문제라 미뤘다. 화면마다 따져야 한다.
 
 ---
 
-## 3. EXIF Metadata Stripping (#11)
-
-### Problem
-
-JPEG images contain EXIF metadata that may include personally identifiable information:
-
-- **GPS coordinates** — exact location where the photo was taken.
-- **Camera/device info** — device model, serial number.
-- **Timestamps** — original capture date/time.
-- **Thumbnails** — may contain the original uncropped image.
-
-Serving user-uploaded images with EXIF intact leaks this data to every visitor.
-
-### Analysis
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| External library (metadata-extractor + manual byte rewrite) | Preserves original quality exactly | Complex implementation; must handle all APP1/APP13 segments; risk of corrupted output |
-| Cloudflare Image Resizing (Polish) | Zero backend code | Paid add-on; not available on all R2 plans; opaque processing |
-| **JDK ImageIO re-encoding** | Zero external dependencies; strips ALL metadata by nature (pixel-only re-encode); built into every JVM | Lossy re-encoding (quality loss at any setting < 1.0); slightly larger/smaller file size |
-| Client-side only (canvas re-encoding) | No server cost | Can be bypassed; not authoritative |
-
-**Decision:** JDK ImageIO re-encoding at 0.9 quality on the server, combined with client-side `browser-image-compression` canvas re-encoding.
-
-- **Server-side (authoritative):** During `tmp/` → `media/` promotion, JPEG files are downloaded, decoded via `ImageIO.read()` (which discards all non-pixel data), and re-encoded with `ImageWriteParam.compressionQuality = 0.9f`. The result is a clean JPEG with no EXIF, APP1, or APP13 segments. Quality 0.9 is visually indistinguishable from the original for web-sized images.
-- **Client-side (defense in depth):** `browser-image-compression` already re-encodes via HTML Canvas, which inherently strips EXIF. No additional frontend code was needed.
-- **Non-JPEG formats:** PNG, WebP, and GIF do not carry EXIF in the same way (PNG uses tEXt chunks which are less sensitive; WebP/GIF rarely contain PII metadata). These continue using the existing `copyObject` path without re-encoding.
-
-### Action
-
-- Added `getObjectBytes()` and `putObject()` to `R2StorageClient` for full object download/upload.
-- Added `stripExifMetadata()` private method in `MediaService` using `ImageIO` + `ImageWriteParam`.
-- Modified `promoteTemporaryMedia` loop: JPEG → download, strip, putObject; others → copyObject (unchanged).
-- Added `JPEG_REENCODING_QUALITY = 0.9f` constant.
-
-### Result
-
-- All JPEG images served from `media/` are guaranteed EXIF-free.
-- Zero external dependencies — uses only JDK's `javax.imageio`.
-- Client-side stripping provides defense in depth but is not relied upon as the sole protection.
-- Non-JPEG images are unaffected (no unnecessary re-encoding).
-
----
-
-## 4. CDN Response Headers Hardening (#12)
-
-### Problem
-
-User-uploaded images are served from `images.contentria.com` (Cloudflare R2 custom domain) with default response headers. Without explicit security headers:
-
-- **MIME sniffing:** A browser may ignore the `Content-Type` and "sniff" the content, potentially executing a disguised HTML/JS payload as a script.
-- **XSS surface:** If a malicious file bypasses validation, the absence of security headers gives the browser maximum latitude to execute it.
-
-### Analysis
-
-| Header | Purpose | Trade-off |
-|--------|---------|-----------|
-| `X-Content-Type-Options: nosniff` | Prevents browsers from MIME-sniffing; forces trust in declared Content-Type | None for image-only domains; universally recommended |
-| `Content-Security-Policy` on image pages | Restricts what scripts/styles can execute on pages rendering user images | Must be carefully scoped to avoid breaking legitimate functionality |
-| `Content-Disposition: attachment` | Forces download instead of inline rendering | Breaks `<img>` tags; only appropriate for non-image file types |
-
-**Decision:** Apply `X-Content-Type-Options: nosniff` in two places:
-
-1. **Cloudflare Transform Rules** on `images.contentria.com` — covers all R2-served image responses.
-2. **Next.js `headers()` config** — covers all responses served from the Next.js app itself (pages, API routes, static assets).
-
-This is the browser-side complement to server-side magic number validation (#10). Even if a polyglot file bypasses server validation, the browser will not re-interpret `image/jpeg` as `text/html`.
-
-**Trust model note:** `nosniff` does not defend against network-layer MITM header tampering — that concern is already handled by HTTPS/TLS integrity guarantees. `nosniff` defends against the browser's own "helpful" MIME sniffing behavior when a server-declared `Content-Type` looks suspicious to the browser.
-
-`Referrer-Policy: strict-origin-when-cross-origin` was also added to prevent leaking post slugs and query parameters to third-party resources via the `Referer` header.
-
-CSP tightening on the Next.js side (beyond `frame-ancestors`) is deferred — it is a broader concern than media uploads and requires per-page evaluation to avoid breaking legitimate functionality.
-
-`Content-Disposition: attachment` is not applicable today since only image formats are served inline via `<img>` tags.
-
-### Action
-
-- **Cloudflare Dashboard** (manual): Configure a Transform Rule adding `X-Content-Type-Options: nosniff` to all responses from `images.contentria.com`.
-- **`frontend/next.config.ts`**: Add `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` to the global `headers()` configuration.
-
-### Result
-
-- Browser MIME sniffing is disabled for both CDN-served assets and Next.js app responses.
-- Cross-origin `Referer` leakage is limited to origin-only on cross-origin navigations.
-- Combined with magic number validation (#10), the attack surface for file-type spoofing is closed at both server and browser layers.
-
----
-
-## Summary: Defense-in-Depth Layers
+## 정리: 겹겹의 방어
 
 ```
-Upload Request
+업로드
+  ├─ [브라우저] 형식, 크기, 시그니처 검사 (즉시 안내)
+  ├─ [브라우저] 캔버스로 다시 저장해 EXIF 제거
   │
-  ├─ [Browser]   Type / size / magic number validation (instant feedback)
-  ├─ [Browser]   Canvas re-encoding strips EXIF (browser-image-compression)
+  ├─ [준비]    형식과 크기 검사, 하루 100MB 한도
+  ├─ [저장소]  미리 서명된 주소가 선언한 형식과 크기만 받는다
   │
-  ├─ [Server]    Bucket4j rate limiting (30/min + 100/day per user)
-  ├─ [Server]    File type + size validation on presigned URL creation
-  ├─ [Server]    Daily byte quota (100 MB) + per-post image limit (20)
+  ├─ [완료]    크기와 시그니처 검증, 틀리면 기록과 파일을 지운다
+  ├─ [완료]    JPEG를 다시 저장해 메타데이터 제거
   │
-  ├─ [Promotion] Magic number validation (12-byte Range GET)
-  ├─ [Promotion] EXIF stripping via ImageIO re-encoding (JPEG only)
+  ├─ [글 저장] 글당 이미지 20개 (출판)
+  ├─ [정리]    완료하지 않은 업로드 24시간, 쓰이지 않는 이미지 7일 뒤 삭제
   │
-  ├─ [CDN]       X-Content-Type-Options: nosniff
-  ├─ [CDN]       R2 Object Lifecycle Rule (24h expiry on tmp/)
-  │
-  └─ [Served]    Clean image, no metadata, correct Content-Type, no MIME sniffing
+  └─ [응답]    Next.js의 nosniff. 이미지 도메인의 nosniff는 보류
 ```
-
-| Layer | Threat Mitigated | Issue |
-|-------|-----------------|-------|
-| Rate limiting + quotas | Resource exhaustion, storage abuse | #9 |
-| Magic number validation | File type spoofing, XSS via disguised files | #10 |
-| EXIF stripping | PII leakage (GPS, device info, timestamps) | #11 |
-| CDN `nosniff` header | Browser MIME sniffing, polyglot file execution | #12 |
-| tmp/ lifecycle rule | Orphaned object accumulation | #7 (R2 dashboard) |

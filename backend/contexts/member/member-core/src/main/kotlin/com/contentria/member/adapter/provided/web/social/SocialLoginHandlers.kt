@@ -26,7 +26,7 @@ import org.springframework.web.util.UriComponentsBuilder
  * The provider has sent the browser back and Spring Security has checked the ID token. This
  * turns the token into a [VerifiedSocialIdentity], runs 흐름 2 or 흐름 3, and redirects to the
  * frontend. Failures become a predefined code in the query string, never an exception message
- * (docs/conventions/security.md, OAuth2 Error Handling).
+ * (docs/conventions/security.md, 소셜 로그인 실패).
  */
 @Component
 class SocialLoginSuccessHandler(

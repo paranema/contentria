@@ -1,49 +1,42 @@
-# Cloudflare Setup — Video Transcoding Pipeline
+# Cloudflare 설정: 영상 변환 파이프라인
 
-> 레거시(`legacy-final` 태그) 구현의 기록이다. 새 구조에서 같은 기능을 만들 때 참고한다.
-
-This is a self-contained runbook for the Cloudflare-side infrastructure of the video
-feature. The original upload lands in R2, R2 emits an event, and `blog-worker` learns
-about it by **pulling a Cloudflare Queue directly** over HTTP — there is no Cloudflare
-Worker and no inbound webhook.
+영상 기능이 쓰는 Cloudflare 쪽 설정 절차다. 원본이 R2에 올라오면 R2가 이벤트를 내고, `apps/worker`가 **Cloudflare Queue를 HTTP로 직접 가져와**(pull) 알게 된다. Cloudflare Worker와 웹훅은 없다.
 
 ```
-Frontend ──PUT (presigned)──▶ R2 (raw/{id}/original.ext)
-                                  │  object-create event
-                                  ▼
-                          Cloudflare Queue ──(retries 3 → DLQ)
-                                  │  HTTP pull (http_pull consumer)
-                                  ▼
-                             blog-worker ──transcode──▶ R2 (hls/{id}/...)
+프론트엔드 ──PUT (미리 서명된 주소)──▶ R2 (raw/{영상 ID}/original.{확장자})
+                                         │  object-create 이벤트
+                                         ▼
+                                 Cloudflare Queue ──(3번 실패 → DLQ)
+                                         │  HTTP pull (http_pull 소비자)
+                                         ▼
+                                   apps/worker ──변환──▶ R2 (hls/{영상 ID}/...)
 ```
 
-**Why pull instead of a Worker:** removes the Worker component (no JS deploy, no inbound
-webhook endpoint to secure) and lets the queue own retries, dead-lettering, and
-visibility-timeout crash recovery. The remaining Cloudflare dependency is R2 + Queues.
+**Worker 대신 pull을 쓰는 이유:** 자바스크립트 배포와, 보호해야 할 웹훅 엔드포인트가 없어진다. 재시도, DLQ, 처리 중에 죽은 작업의 재전달(가시성 타임아웃)은 큐가 맡는다. Cloudflare 의존은 R2와 Queues만 남는다.
+
+영상의 상태와 규칙은 [contexts/media/01-rules.md](../contexts/media/01-rules.md)의 흐름 V2, 코드 배치는 [02-implementation.md](../contexts/media/02-implementation.md)에 있다.
 
 ---
 
-## 1. Resources to create
+## 1. 만들 자원
 
-All of the following can be done in the Cloudflare dashboard or via `wrangler`. Names are
-suggestions — keep them in sync with the worker config (§3).
+대시보드나 `wrangler`로 만든다. 이름은 예시다. 바꾸면 워커 설정(3절)도 맞춘다.
 
-### 1.1 Queue + dead-letter queue
+### 1.1 큐와 DLQ
 
-| Resource | Name | Notes |
+| 자원 | 이름 | 설명 |
 |---|---|---|
-| Work queue | `contentria-video-transcode` | Receives R2 object-create events. |
-| Dead-letter queue | `contentria-video-transcode-dlq` | Poison messages land here after max retries. |
+| 작업 큐 | `contentria-video-transcode` | R2의 object-create 이벤트를 받는다 |
+| DLQ | `contentria-video-transcode-dlq` | 재시도를 다 쓴 메시지가 쌓인다 |
 
 ```bash
 wrangler queues create contentria-video-transcode
 wrangler queues create contentria-video-transcode-dlq
 ```
 
-### 1.2 HTTP pull consumer
+### 1.2 HTTP pull 소비자
 
-The worker is a **pull** consumer (not a Worker push consumer). Configure the work queue
-with an `http_pull` consumer, message retries = 3, and the DLQ as the dead-letter target.
+워커는 **pull** 소비자다(Worker push 소비자가 아니다). 작업 큐에 `http_pull` 소비자를 붙이고, 재시도 3회와 DLQ를 지정한다.
 
 ```bash
 wrangler queues consumer http add contentria-video-transcode \
@@ -52,15 +45,14 @@ wrangler queues consumer http add contentria-video-transcode \
   --dead-letter-queue contentria-video-transcode-dlq
 ```
 
-- **`--message-retries 3`** → after 3 failed deliveries the message goes to the DLQ.
-  (The flag is `--message-retries`; `--max-retries` does not exist.)
-- **`--visibility-timeout-secs 1800`** sets the consumer-level default (30 min). The
-  worker also sends `visibility_timeout_ms` on every pull (see §3); keeping both at
-  30 min means the design holds even if one of them is omitted.
+| 옵션 | 뜻 |
+|---|---|
+| `--message-retries 3` | 세 번 전달에 실패하면 DLQ로 간다. 옵션 이름은 `--message-retries`다. `--max-retries`는 없다 |
+| `--visibility-timeout-secs 1800` | 소비자의 기본 가시성 타임아웃(30분). 워커도 가져올 때마다 `visibility_timeout_ms`를 보낸다(3절). 둘 다 30분이므로 하나가 빠져도 설계가 유지된다 |
 
-### 1.3 R2 event notification
+### 1.3 R2 이벤트 알림
 
-Notify the queue when a new object is created under the `raw/` prefix.
+`raw/` 접두사에 새 객체가 생기면 큐에 알린다.
 
 ```bash
 wrangler r2 bucket notification create <R2_BUCKET_NAME> \
@@ -69,37 +61,29 @@ wrangler r2 bucket notification create <R2_BUCKET_NAME> \
   --queue contentria-video-transcode
 ```
 
-- **Event type `object-create`** covers `PutObject` (single upload) and
-  `CompleteMultipartUpload` (multipart, when added later). The action is in the message
-  body (`action`); the worker should act on those two and may ignore others (e.g.
-  `CopyObject`).
-- **Prefix `raw/` is mandatory.** ⚠️ The worker writes transcoded outputs to `hls/` in
-  the **same bucket**, which also emits `object-create` events. Without the `raw/`
-  filter, the worker would re-transcode its own outputs (infinite feedback loop). If a
-  separate output bucket is ever used instead, this filter becomes optional.
+- **`object-create`** 는 `PutObject`(한 번에 올리기)와 `CompleteMultipartUpload`(나눠 올리기)를 포함한다. 종류는 메시지 본문의 `action`에 있다. 워커는 이 둘만 변환하고 나머지(`CopyObject` 등)는 받은 것으로 처리하고 넘긴다.
+- **`raw/` 접두사는 반드시 건다.** 워커는 변환 결과를 **같은 버킷**의 `hls/`에 쓰고, 이것도 object-create 이벤트를 낸다. 거르지 않으면 워커가 자기 결과를 다시 변환하는 무한 반복이 생긴다. 워커도 `raw/`로 시작하지 않는 키는 변환하지 않고 넘기지만(`VideoQueuePoller`), 큐에 쌓이지 않게 R2에서 먼저 거른다. 결과를 다른 버킷에 쓰게 되면 이 필터는 없어도 된다.
 
-### 1.4 API token (for the worker)
+### 1.4 워커의 API 토큰
 
-The worker needs a Cloudflare **API token** to pull/ack the queue:
+워커가 큐를 가져오고 확인(ack)하려면 Cloudflare **API 토큰**이 필요하다.
 
-- Permission: **Account → Queues → Edit** (pull + ack require write).
-- Scope it to this account only; rotate periodically.
-- Store it as a Kubernetes Secret / env var for `blog-worker` — **never commit it**.
+- 권한: **Account → Queues → Edit**. 가져오기와 확인 모두 쓰기 권한이다.
+- 이 계정으로만 범위를 좁히고 주기적으로 바꾼다.
+- Kubernetes Secret이나 환경 변수로 넣는다. **커밋하지 않는다.**
 
-### 1.5 R2 lifecycle rule (raw/ backstop)
+### 1.5 R2 수명 규칙 (raw/ 안전망)
 
-The worker deletes the original explicitly after a successful transcode. As a backstop
-for failed/incomplete jobs, add a lifecycle rule:
+워커는 변환에 성공하면 원본을 직접 지운다. 실패했거나 끝나지 않은 작업의 원본을 위해 수명 규칙을 둔다.
 
-- Prefix `raw/`, **expire after 7 days**.
-- (When multipart upload is added later) also enable **abort incomplete multipart
-  uploads** after N days to clean orphaned parts.
+- 접두사 `raw/`, **7일 뒤 만료**.
+- 나눠 올리기를 도입하면 **끝나지 않은 multipart 업로드 중단**도 N일로 켠다. 남은 조각을 치운다.
 
 ---
 
-## 2. Message shape
+## 2. 메시지 형태
 
-An R2 event-notification message delivered to the queue looks like:
+큐에 들어오는 R2 이벤트 알림은 다음과 같다.
 
 ```json
 {
@@ -111,48 +95,52 @@ An R2 event-notification message delivered to the queue looks like:
 }
 ```
 
-The worker uses `object.key` to find the `videos` row via `raw_key` (the DB has a unique
-constraint on `raw_key`). Lookup is by `raw_key`, so the key does not need to embed the
-video id.
+워커는 `object.key`와 `action`만 읽는다. `object.key`로 `videos`의 `raw_key`를 찾는다(DB에서 고유하다). 키로 찾으므로 키에서 영상 ID를 해석할 필요가 없다.
 
 ---
 
-## 3. Config the worker (#4) will consume
+## 3. 워커 설정
 
-`blog-worker` reads these (names illustrative; wire via K8s Secret / env):
+`apps/worker`의 `application.yml`이 환경 변수를 `contentria.media.worker`에 묶는다(`MediaWorkerProperties`).
 
-| Key | Example | Purpose |
+| 환경 변수 | 속성 | 예 | 용도 |
+|---|---|---|---|
+| `CLOUDFLARE_ACCOUNT_ID` | `queue.account-id` | `<account_id>` | REST API 경로 |
+| `CF_QUEUE_ID` | `queue.queue-id` | `<queue_id>` | 가져올 작업 큐 |
+| `CF_API_TOKEN` | `queue.api-token` | `<token>` | Queues Edit 권한. 비밀값이다 |
+| `WORKER_POLL_INTERVAL` | `poll-interval` | `5s`(기본) | 큐를 가져오는 간격 |
+| `FFMPEG_PATH`, `FFPROBE_PATH` | `transcode.ffmpeg-path`, `transcode.ffprobe-path` | `ffmpeg`, `ffprobe`(기본) | 변환 도구 경로 |
+
+코드의 기본값을 쓰는 값:
+
+| 속성 | 기본값 | 이유 |
 |---|---|---|
-| `CLOUDFLARE_ACCOUNT_ID` | `<account_id>` | REST API path. |
-| `CF_QUEUE_ID` | `<queue_id>` | The work queue to pull. |
-| `CF_API_TOKEN` | `<token>` | Queues edit (pull/ack). Secret. |
-| pull batch size | `1` | One job at a time per pod (concurrency 1/pod). |
-| pull visibility timeout | `1800000` ms (30 min) | Must exceed worst-case transcode (~10 min+) so a live job is never redelivered. |
+| `queue.batch-size` | `1` | 워커 하나가 한 번에 한 작업만 한다 |
+| `queue.visibility-timeout` | 30분 | 가장 긴 변환보다 길어야 처리 중인 작업이 다시 전달되지 않는다 |
 
-Pull / ack endpoints:
+가져오기와 확인 엔드포인트:
 
 ```
 POST https://api.cloudflare.com/client/v4/accounts/{account_id}/queues/{queue_id}/messages/pull
-  body: { "visibility_timeout_ms": 1800000, "batch_size": 1 }
-  → returns messages, each with a lease_id
+  본문: { "visibility_timeout_ms": 1800000, "batch_size": 1 }
+  → 메시지마다 lease_id가 온다
 
 POST .../messages/ack
-  body: { "acks": [ { "lease_id": "..." } ], "retries": [ ... ] }
+  본문: { "acks": [ { "lease_id": "..." } ] }
 ```
 
-- **Success** → ack the `lease_id`.
-- **Transient failure** → do not ack; the message is redelivered after the visibility
-  timeout, and after `max_retries` (3) it goes to the DLQ.
-- **Permanent failure** (e.g. ffprobe rejects a >5 min or non-video input) → mark the
-  `videos` row `FAILED` and ack (no point retrying a bad input).
+| 결과 | 처리 |
+|---|---|
+| 성공 | `lease_id`를 확인한다 |
+| 영구 실패(영상이 아니거나 5분을 넘음) | 영상을 "실패"로 바꾸고 확인한다. 같은 입력은 다시 해도 실패한다 |
+| 일시 실패(네트워크, 저장소) | 확인하지 않는다. 가시성 타임아웃 뒤 다시 오고, 3번 실패하면 DLQ로 간다 |
+| 변환 대상이 아님(`raw/` 밖의 키, 다른 `action`, 기록이 없는 원본, 이미 끝난 영상) | 확인하고 넘긴다 |
 
 ---
 
-## 4. Verification
+## 4. 확인 절차
 
-1. Upload a small video via the presigned flow → confirm an object appears under `raw/`.
-2. Confirm a message lands in `contentria-video-transcode` (dashboard → queue → metrics,
-   or a manual `messages/pull`).
-3. Confirm writing an object under `hls/` does **not** enqueue a message (prefix filter
-   works — no feedback loop).
-4. Force a failure 3× → confirm the message lands in the DLQ.
+1. 미리 서명된 주소로 작은 영상을 올린다. `raw/` 아래에 객체가 생기는지 본다.
+2. `contentria-video-transcode`에 메시지가 들어오는지 본다(대시보드의 큐 지표, 또는 직접 `messages/pull`).
+3. `hls/` 아래에 객체를 써도 메시지가 생기지 **않는지** 본다(접두사 필터가 동작한다).
+4. 일부러 세 번 실패시켜 메시지가 DLQ로 가는지 본다.
