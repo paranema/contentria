@@ -1,0 +1,51 @@
+---
+- name: 저장소에 존재하는 배포 환경인지 확인한다
+  ansible.builtin.assert:
+    that:
+      - gitops_env == 'dev'
+      - required_secrets | length > 0
+    fail_msg: 현재 GitOps에는 dev만 있다. 환경을 추가할 때 이 검사와 시크릿 목록도 변경한다.
+
+- name: 시크릿의 이름만 조회한다
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - secret
+      - "{{ item.name }}"
+      - --namespace
+      - "{{ item.namespace }}"
+      - -o
+      - name
+  loop: "{{ required_secrets }}"
+  register: secret_checks
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: 누락된 시크릿이 있으면 root 앱 적용 전에 중단한다
+  ansible.builtin.assert:
+    that: secret_checks.results | selectattr('rc', 'ne', 0) | list | length == 0
+    fail_msg: >-
+      조회하지 못한 시크릿: {{ secret_checks.results | selectattr('rc', 'ne', 0) | map(attribute='item') | list }}.
+      infra/secrets/README.md에 따라 값을 준비하고 클러스터에 적용한다.
+
+- name: root 앱 매니페스트를 배치한다
+  ansible.builtin.template:
+    src: root-application.yml.j2
+    dest: /etc/kubernetes/contentria-root.yml
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: root 앱을 적용한다
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - apply
+      - -f
+      - /etc/kubernetes/contentria-root.yml
+  register: root_apply
+  changed_when: "'created' in root_apply.stdout or 'configured' in root_apply.stdout"

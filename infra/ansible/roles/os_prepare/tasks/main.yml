@@ -1,0 +1,38 @@
+---
+- name: Rocky Linux 10인지 확인한다
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Rocky'
+      - ansible_distribution_major_version == '10'
+    fail_msg: Rocky Linux 10을 설치한 노드에 실행한다.
+
+- name: 공통 도구와 Helm 모듈의 Python 의존성을 설치한다
+  ansible.builtin.dnf:
+    name:
+      - ca-certificates
+      - curl
+      - rsync
+      - tar
+      - unzip
+      - python3-pyyaml
+    state: present
+
+- name: 현재 커널과 일치하는 추가 모듈을 설치한다
+  ansible.builtin.dnf:
+    name: "kernel-modules-extra-{{ ansible_kernel }}"
+    state: present
+
+- name: 시간대를 UTC로 맞춘다
+  community.general.timezone:
+    name: UTC
+
+- name: firewalld 상태를 읽는다
+  ansible.builtin.service_facts:
+
+# Kubespray의 CNI 규칙과 충돌하지 않도록 전용 노드의 방화벽은 상위 네트워크에서 관리한다.
+- name: 전용 Kubernetes 노드의 firewalld를 중지한다
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: stopped
+    enabled: false
+  when: "'firewalld.service' in ansible_facts.services"

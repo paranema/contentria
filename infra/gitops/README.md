@@ -1,15 +1,17 @@
 # GitOps
 
-ArgoCD가 감시하는 배포 매니페스트 모음이다. 클러스터 구축과 ArgoCD 설치는 `infra/ansible`이 담당하고, 그 이후의 배포는 ArgoCD가 이 폴더를 기준으로 동기화한다.
+ArgoCD가 감시하는 배포 매니페스트 모음이다. 클러스터 구축과 ArgoCD 설치는 [Ansible EE](../ansible/README.md)가 담당하고, 그 이후의 배포는 ArgoCD가 이 폴더를 기준으로 동기화한다.
 
 ## 배포 흐름
 
 | 단계 | 도구                | 작업                                                                                         |
 | ---- | ------------------- | -------------------------------------------------------------------------------------------- |
-| 1    | Terraform           | VM, 네트워크, DNS 생성                                                                       |
+| 1    | Terraform           | AWS 테스트 VM과 네트워크 생성                                                                       |
 | 2    | Ansible (kubespray) | 쿠버네티스 클러스터 구축, kube-vip 설정                                                      |
 | 3    | Ansible             | ArgoCD 설치, 시크릿 존재 확인, 환경별 root 앱 적용                                           |
 | 4    | ArgoCD              | root 앱이 `01-bootstrap/<env>/`를 감시하고, 그 안의 Application이 platform과 services를 배포 |
+
+Ansible은 OS 준비, Kubespray, Argo CD 설치, root 앱 적용을 별도 플레이북으로 제공한다. root 앱을 적용하기 전에 시크릿과 스토리지, LoadBalancer IP 할당을 준비한다. 자세한 실행 순서는 [Ansible 문서](../ansible/README.md)를 따른다.
 
 ## 디렉토리 구조
 

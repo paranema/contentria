@@ -1,0 +1,15 @@
+---
+- name: 고정 버전 Helm 차트로 Argo CD를 설치한다
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo-cd
+    chart_repo_url: https://argoproj.github.io/argo-helm
+    chart_version: "{{ argocd_chart_version }}"
+    release_namespace: "{{ argocd_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    binary_path: /usr/local/bin/helm
+    wait: true
+    atomic: true
+    timeout: 10m0s
+    values: "{{ lookup('ansible.builtin.file', role_path + '/files/values.yml') | from_yaml }}"

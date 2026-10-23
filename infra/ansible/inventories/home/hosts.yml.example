@@ -1,0 +1,31 @@
+---
+all:
+  hosts:
+    home-01:
+      ansible_host: 192.168.1.11
+      ip: 192.168.1.11
+      access_ip: 192.168.1.11
+      kube_vip_interface: enp1s0
+    home-02:
+      ansible_host: 192.168.1.12
+      ip: 192.168.1.12
+      access_ip: 192.168.1.12
+      kube_vip_interface: enp1s0
+  vars:
+    ansible_user: rocky
+  children:
+    kube_control_plane:
+      hosts:
+        home-01: {}
+        home-02: {}
+    kube_node:
+      hosts:
+        home-01: {}
+        home-02: {}
+    etcd:
+      hosts:
+        home-01: {}
+    k8s_cluster:
+      children:
+        kube_control_plane: {}
+        kube_node: {}

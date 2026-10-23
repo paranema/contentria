@@ -1,0 +1,7 @@
+---
+- name: 시크릿을 확인하고 GitOps root 앱을 적용한다
+  hosts: kube_control_plane[0]
+  become: true
+  gather_facts: false
+  roles:
+    - gitops_root

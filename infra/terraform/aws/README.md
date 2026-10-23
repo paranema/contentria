@@ -1,6 +1,6 @@
 # AWS 테스트 노드
 
-Rocky Linux 10 VM을 만들어 Ansible/Kubespray를 시험한다. 기본값은 서울 리전의 같은 가용 영역에 있는 노드 2대다. Kubernetes나 Argo CD를 설치하는 코드는 아직 없다.
+Rocky Linux 10 VM을 만들어 Ansible/Kubespray를 시험한다. 기본값은 서울 리전의 같은 가용 영역에 있는 노드 2대다. Kubernetes와 Argo CD 설치는 [Ansible](../../ansible/README.md)에서 진행한다.
 
 ## 만드는 리소스
 
@@ -64,7 +64,7 @@ ssh -i ~/.ssh/id_ed25519 rocky@공인IP
 
 ## Ansible과의 경계
 
-생성된 YAML은 Kubespray의 `kube_control_plane`, `kube_node`, `etcd`, `k8s_cluster` 그룹을 포함한다. 모든 노드를 세 역할에 넣으며 노드 수는 1~10대로 변경할 수 있다. 기본 2멤버 etcd는 한 대 장애를 허용하지 않는다. 3대로 늘려도 모두 같은 AZ이므로 AZ 장애를 견디는 운영 구성이 아니다.
+생성된 YAML은 Kubespray의 `kube_control_plane`, `kube_node`, `etcd`, `k8s_cluster` 그룹을 포함한다. 모든 노드를 control plane·worker로 지정하며 노드 수는 1~10대로 변경할 수 있다. Kubespray는 짝수 etcd 구성을 거부하므로 1~2노드에서는 첫 노드만, 3노드 이상에서는 처음 3노드만 etcd로 지정한다. 기본 단일 etcd 서버가 중단되면 클러스터 관리도 중단된다. 3대로 늘려도 모두 같은 AZ이므로 AZ 장애를 견디는 운영 구성이 아니다.
 
 인벤토리를 만들었다고 클러스터가 설치되거나 control plane taint가 제거되지는 않는다. 다음 작업은 Ansible에서 한다.
 

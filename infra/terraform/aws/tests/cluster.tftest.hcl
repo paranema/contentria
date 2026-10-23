@@ -76,6 +76,10 @@ run "reject_empty_admin_access" {
 # mock provider의 apply이며 실제 AWS API나 리소스를 사용하지 않는다.
 run "inventory" {
   command = apply
+  assert {
+    condition     = keys(yamldecode(output.ansible_inventory).all.children.etcd.hosts) == ["node-01"]
+    error_message = "2노드에서는 Kubespray의 홀수 멤버 조건에 맞춰 etcd를 첫 노드에 둔다."
+  }
 
   assert {
     condition = (
@@ -89,9 +93,18 @@ run "inventory" {
   }
   assert {
     condition = alltrue([
-      for group in ["kube_control_plane", "kube_node", "etcd"] :
+      for group in ["kube_control_plane", "kube_node"] :
       keys(yamldecode(output.ansible_inventory).all.children[group].hosts) == ["node-01", "node-02"]
     ])
-    error_message = "두 노드 모두 control plane, worker, etcd 그룹에 속해야 한다."
+    error_message = "두 노드 모두 control plane, worker 그룹에 속해야 한다."
+  }
+}
+
+run "etcd_three" {
+  command = apply
+  variables { node_count = 3 }
+  assert {
+    condition     = keys(yamldecode(output.ansible_inventory).all.children.etcd.hosts) == ["node-01", "node-02", "node-03"]
+    error_message = "3노드부터는 etcd 3멤버를 구성해야 한다."
   }
 }
