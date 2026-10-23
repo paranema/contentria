@@ -10,7 +10,12 @@ import org.flywaydb.core.api.output.MigrateResult
 data class ContextSchema(val context: String) {
     val schema: String get() = context
     val location: String get() = "classpath:db/migration/$context"
+    val usernameVariable: String get() = "${context.uppercase()}_MIGRATOR_USERNAME"
+    val passwordVariable: String get() = "${context.uppercase()}_MIGRATOR_PASSWORD"
 }
+
+/** Read by [main] along with each context's credentials; apps/migrator/.env.sample lists them all. */
+const val DATABASE_URL_VARIABLE = "MIGRATION_DATABASE_URL"
 
 data class Credentials(val username: String, val password: String)
 
@@ -66,9 +71,8 @@ fun main() {
     fun required(name: String): String =
         environment[name]?.takeIf { it.isNotBlank() } ?: error("Environment variable $name is not set")
 
-    val migrator = Migrator(required("MIGRATION_DATABASE_URL")) { context ->
-        val prefix = context.context.uppercase()
-        Credentials(required("${prefix}_MIGRATOR_USERNAME"), required("${prefix}_MIGRATOR_PASSWORD"))
+    val migrator = Migrator(required(DATABASE_URL_VARIABLE)) { context ->
+        Credentials(required(context.usernameVariable), required(context.passwordVariable))
     }
 
     migrator.migrateAll().forEach { result ->

@@ -92,17 +92,19 @@ backend/
 
 ### 설정
 
-기본값이 없는 값은 빠지면 프로세스가 뜨지 않는다. 비밀 값은 저장소에 두지 않는다.
+프로세스마다 읽는 환경 변수는 그 app 폴더의 `.env.sample`에 있다. 필수인 값, 비밀인 값, 기본값과 로컬용 값을 함께 적었다.
 
-| 프로세스 | 기본값 없는 환경 변수 |
+| 프로세스 | 샘플 |
 |---|---|
-| `apps/api` | `DATABASE_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MEMBER_ACCESS_TOKEN_SECRET`(Base64, 256비트 이상), `ANALYTICS_VISITOR_KEY_SECRET`, `MEDIA_PUBLIC_BASE_URL`, `R2_ENDPOINT`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `GOOGLE_RECAPTCHA_V3_SECRET_KEY`, `GOOGLE_RECAPTCHA_V2_SECRET_KEY` |
-| `apps/batch` | `DATABASE_PASSWORD`, `MEDIA_PUBLIC_BASE_URL`, `R2_*` 네 개 |
-| `apps/worker` | `DATABASE_PASSWORD`, `MEDIA_PUBLIC_BASE_URL`, `R2_*` 네 개, `CLOUDFLARE_ACCOUNT_ID`, `CF_QUEUE_ID`, `CF_API_TOKEN` |
-| `apps/migrator` | `MIGRATION_DATABASE_URL`, 컨텍스트마다 `<컨텍스트>_MIGRATOR_USERNAME`, `<컨텍스트>_MIGRATOR_PASSWORD` |
+| `apps/api` | [apps/api/.env.sample](apps/api/.env.sample) |
+| `apps/batch` | [apps/batch/.env.sample](apps/batch/.env.sample) |
+| `apps/worker` | [apps/worker/.env.sample](apps/worker/.env.sample) |
+| `apps/migrator` | [apps/migrator/.env.sample](apps/migrator/.env.sample) |
 
-`DATABASE_URL`은 `jdbc:postgresql://localhost:5432/contentria_v2`, `KAFKA_BOOTSTRAP_SERVERS`는 `localhost:9092`가 기본값이다.
-로컬에서는 `MEMBER_MAIL_MODE=log`(메일 대신 로그에 코드를 쓴다), `MEMBER_COOKIE_SECURE=false`, `MEMBER_RECAPTCHA_MODE=off`(사람 확인을 건너뛴다. 그러면 reCAPTCHA 비밀키가 없어도 된다)를 준다. 나머지 값과 기본값은 각 app의 `application.yml`에 있다.
+로컬에서는 샘플을 같은 폴더의 `.env`로 복사해 채운다. `.env`는 git이 무시하고 이미지에도 들어가지 않는다. IntelliJ는 EnvFile 플러그인으로, Docker는 `--env-file`로 넘긴다.
+운영에서는 `[비밀]` 표시가 있는 값을 Kubernetes Secret에, 나머지를 ConfigMap에 둔다. 비밀 값은 저장소에 두지 않는다.
+
+각 app의 `EnvSampleTest`가 샘플의 목록이 `application.yml`(migrator는 `main`)이 읽는 환경 변수와 같은지 확인한다. 설정에 환경 변수를 더하면 샘플에도 더해야 빌드가 통과한다.
 
 ## 빌드와 테스트
 
