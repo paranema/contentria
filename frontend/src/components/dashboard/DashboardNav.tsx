@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { BellRing, FileText, FolderTree, Home, Settings } from 'lucide-react';
+import { Bell, BellRing, FileText, FolderTree, Home, Settings } from 'lucide-react';
 import SidebarMenuItem from './DashboardSidebarMenuItem';
 
 interface DashboardNavProps {
@@ -29,6 +29,12 @@ const navItems = [
     label: '카테고리 관리',
     icon: <FolderTree size={20} />,
     requiresBlog: true,
+  },
+  {
+    path: '/dashboard/notifications',
+    label: '알림',
+    icon: <Bell size={20} />,
+    requiresBlog: false,
   },
   {
     path: '/dashboard/subscriptions',
