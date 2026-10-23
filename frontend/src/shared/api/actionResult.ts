@@ -10,8 +10,7 @@ export interface SerializedError {
 }
 
 export type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: SerializedError };
+  { success: true; data: T } | { success: false; error: SerializedError };
 
 /** The failed result for whatever a Server Action caught. */
 export function toActionError(error: unknown): { success: false; error: SerializedError } {

@@ -33,7 +33,6 @@ import {
   MDXEditorMethods,
   quotePlugin,
   Separator,
-  ShowSandpackInfo,
   StrikeThroughSupSubToggles,
   tablePlugin,
   thematicBreakPlugin,
@@ -355,10 +354,6 @@ function helloWorld() {
                       {
                         when: (editor) => editor?.editorType === 'codeblock',
                         contents: () => <ChangeCodeMirrorLanguage />,
-                      },
-                      {
-                        when: (editor) => editor?.editorType === 'sandpack',
-                        contents: () => <ShowSandpackInfo />,
                       },
                       {
                         fallback: () => (

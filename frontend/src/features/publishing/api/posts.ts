@@ -93,9 +93,8 @@ export const getMyPost = cache(async (postId: string): Promise<PostView | null> 
 });
 
 /** Every status, most recently changed first. */
-export const getMyPosts = cache(
-  async (blogSlug: string, page: number): Promise<PostPage> =>
-    apiServer.get<PostPage>(`/api/me/blogs/${enc(blogSlug)}/posts?page=${page}`)
+export const getMyPosts = cache(async (blogSlug: string, page: number): Promise<PostPage> =>
+  apiServer.get<PostPage>(`/api/me/blogs/${enc(blogSlug)}/posts?page=${page}`)
 );
 
 async function changed<T>(call: () => Promise<T>): Promise<ActionResult<T>> {
