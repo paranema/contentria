@@ -31,7 +31,7 @@ JDK/JRE 태그는 보안 업데이트를 받을 수 있는 가변 태그다. 새
 
 모든 이미지는 UID/GID `10001:10001`로 실행한다. Kubernetes에서 `runAsNonRoot`, `readOnlyRootFilesystem`을 사용할 수 있도록 `/tmp`에 쓰기 가능한 `emptyDir`을 마운트한다. worker는 원본과 변환 결과를 임시 저장하므로 영상 크기에 맞춰 ephemeral storage와 `/tmp` 용량도 확보한다.
 
-환경 변수는 [backend README](../README.md)의 프로세스별 목록을 따른다. `.env`, 개인키, 실제 배포 설정은 빌드에 포함하지 않는다. Kubernetes의 Secret/ConfigMap 또는 로컬 `--env-file`로 실행 시 전달한다. `.dockerignore`는 빌드 결과, 테스트 소스와 로컬 비밀 설정을 제외한다.
+환경 변수는 앱 폴더마다 있는 `.env.sample`을 따른다([backend README](../README.md)의 "설정"). `.env`, 개인키, 실제 배포 설정은 빌드에 포함하지 않는다. Kubernetes의 Secret/ConfigMap 또는 로컬 `--env-file`로 실행 시 전달한다. `.dockerignore`는 빌드 결과, 테스트 소스와 로컬 비밀 설정을 제외한다.
 
 앱에 전달하는 인자는 Java 실행 뒤에 이어진다. 배치는 같은 이미지에 다른 잡 이름을 전달한다.
 
