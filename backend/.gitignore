@@ -41,3 +41,5 @@ out/
 
 .env
 **/src/main/**/application-local.yaml
+# 로컬 이미지 검증 스크립트
+__pycache__/
