@@ -1,5 +1,5 @@
 import React from 'react';
-import PolicyClient from '@/components/home/policy/PolicyClient';
+import PolicyClient from '@/app/(home)/policy/_components/PolicyClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {

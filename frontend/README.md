@@ -31,10 +31,9 @@ src/
 ├── app/            라우팅과 페이지. 여러 기능을 모아 화면을 만든다
 ├── features/       기능마다 api, types, hooks, components
 ├── shared/         apiServer와 오류, shadcn/ui, 공용 컴포넌트와 유틸
+├── types/          환경 변수 타입 선언
 └── proxy.ts        요청마다 세션 쿠키를 보고 토큰 갱신과 보호 경로를 처리한다
 ```
-
-새 백엔드 API로 옮기면서 기능 하나씩 `features/`로 옮기는 중이다. 옮기기 전의 코드는 예전 폴더(`actions/`, `components/`, `hooks/`, `types/`, `lib/`, `store/`, `constants/`)에 있다.
 
 ## 구조
 
