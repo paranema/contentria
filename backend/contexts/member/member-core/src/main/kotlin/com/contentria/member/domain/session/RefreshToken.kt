@@ -15,7 +15,7 @@ import java.util.Base64
 import java.util.UUID
 
 /**
- * One live refresh token (docs/conventions/security.md, Refresh Token Rotation).
+ * One live refresh token (docs/conventions/security.md, 리프레시 토큰 회전).
  *
  * Its own aggregate: it refers to the account by id only, and is created and destroyed on a
  * different rhythm from the account. Only a hash of the token is stored. The raw value is a

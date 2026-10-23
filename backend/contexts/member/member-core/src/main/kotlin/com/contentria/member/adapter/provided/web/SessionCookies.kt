@@ -12,7 +12,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
-/** docs/conventions/security.md, Cookie Security: HttpOnly, Secure from configuration, SameSite=Lax. */
+/** docs/conventions/security.md, 쿠키: HttpOnly, Secure from configuration, SameSite=Lax. */
 @Component
 class SessionCookies(
     private val properties: MemberProperties,

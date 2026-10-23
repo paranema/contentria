@@ -1,246 +1,196 @@
-# Security Conventions
+# 보안 규약
 
-This document defines security practices for the Contentria backend. These rules apply to authentication, cookie handling, token management, and data protection.
+인증, 쿠키, 토큰, 민감한 정보를 다루는 규약이다.
+회원 컨텍스트의 제품 규칙(세션 무효화, 사람 확인, 로그인 실패 응답)은 [contexts/member/01-rules.md](../contexts/member/01-rules.md)에, 그 배치는 [02-implementation.md](../contexts/member/02-implementation.md)에 있다.
 
-## Authentication Architecture
+## 토큰
 
-### Token Strategy
+| 토큰 | 형태 | 보관 | 수명 | 검증 |
+|---|---|---|---|---|
+| 액세스 토큰 | HS256으로 서명한 JWT | HttpOnly 쿠키 `accessToken`. 서버 간 호출에서는 `Authorization` 헤더 | 15분(`contentria.member.access-token.ttl`) | 서명만 본다. DB를 읽지 않는다 |
+| 리프레시 토큰 | 무작위 값. 아무 정보도 담지 않는다 | HttpOnly 쿠키 `refreshToken`. DB에는 SHA-256 해시만 둔다 | 7일(`contentria.member.refresh-token-ttl`) | DB에서 해시로 찾는다 |
 
-| Token | Type | Storage | Expiry | Validation |
-|-------|------|---------|--------|-----------|
-| Access Token | JWT (signed) | HttpOnly cookie + Authorization header | 15 minutes | Stateless (signature check) |
-| Refresh Token | Opaque UUID | HttpOnly cookie + DB | 7 days | Stateful (DB lookup) |
+쿠키 이름은 `SessionCookieNames`에 있다.
 
-### Why Two Token Types?
+### 두 가지를 쓰는 이유
 
-- **JWT for access**: No DB lookup required per request. Fast validation via signature. Short-lived to limit damage if leaked.
-- **Opaque for refresh**: Stored in DB, enabling server-side revocation. Can be rotated on each use (Refresh Token Rotation) to detect token theft.
+| 토큰 | 이유 |
+|---|---|
+| 액세스 토큰(JWT) | 요청마다 DB를 읽지 않고 서명으로 확인한다. 새어 나가도 피해가 짧도록 수명을 짧게 둔다 |
+| 리프레시 토큰(무작위 값) | DB에 있으므로 서버가 지워서 끝낼 수 있다. 쓸 때마다 바꿔 도난을 드러낸다 |
 
-### Refresh Token Rotation (RTR)
+DB에 원값을 두지 않으므로 DB가 새도 리프레시 토큰을 쓸 수 없다.
 
-On every token refresh:
-1. Validate the old refresh token against DB
-2. Delete/update the old token
-3. Issue a new refresh token
-4. Return both new access + refresh tokens
+### 세션
 
-If an attacker uses a stolen refresh token after the legitimate user has already rotated it, the token won't be found in DB, and the refresh fails. This limits the window of token theft.
+한 계정은 기기마다 세션을 가진다. 세션 하나가 리프레시 토큰 하나다.
 
-## Cookie Security
+| 일 | 처리 |
+|---|---|
+| 로그아웃 | 그 리프레시 토큰 하나만 지운다. 다른 기기는 로그인 상태로 남는다 |
+| 세션 무효화(비밀번호 설정·변경·재설정, 연동 해제, 이메일 변경 확정) | 그 계정의 리프레시 토큰을 모두 지우고, 요청한 브라우저에만 새 세션을 준다 |
+| 탈퇴 | 리프레시 토큰을 모두 지우고 쿠키를 만료시킨다 |
+| 이미 발급한 액세스 토큰 | 만료(최대 15분)까지 통과한다. 지울 방법이 없다 |
 
-### Required Attributes
+## 요청 인증
 
-Every authentication cookie **must** have:
+`apps/api`의 `AccessTokenAuthenticationFilter`가 `Authorization` 헤더를 먼저 보고, 없으면 `accessToken` 쿠키를 본다.
+세션은 서버에 두지 않는다(`SessionCreationPolicy.STATELESS`).
 
-| Attribute | Value | Why |
-|-----------|-------|-----|
-| `HttpOnly` | `true` | Prevents JavaScript access. Mitigates XSS-based token theft |
-| `Secure` | `true` (in production) | Cookie only sent over HTTPS. Prevents interception over HTTP |
-| `SameSite` | `Lax` or `Strict` | CSRF protection. Prevents cookies from being sent with cross-origin requests |
-| `Path` | `/` or scoped | Limits which paths receive the cookie |
-| `Max-Age` | Match token expiry | Cookie expires when the token does |
+## 리프레시 토큰 회전
 
-### Common Pitfalls
+`POST /auth/refresh`(`SessionService.refresh`)는 다음 순서로 동작한다.
 
-#### Conditional Secure Flag
+| # | 처리 |
+|---|---|
+| 1 | 받은 토큰의 해시로 찾는다. 없으면 거부한다 |
+| 2 | 찾은 토큰을 지운다 |
+| 3 | 만료됐거나 계정이 로그인할 수 없는 상태면 거부한다 |
+| 4 | 새 액세스 토큰과 새 리프레시 토큰을 발급한다 |
+
+이미 회전한 토큰은 DB에 없으므로 거부된다. 훔친 토큰은 원래 주인이 먼저 갱신하면 쓸 수 없다.
+
+같은 토큰으로 동시에 갱신하면 하나만 성공한다. 유예 구간은 없다. 프론트엔드의 `proxy.ts`가 같은 토큰의 동시 갱신을 한 번으로 묶는다. 경위와 남은 위험은 [design-notes/refresh-token-grace-window.md](../design-notes/refresh-token-grace-window.md)에 있다.
+
+## 쿠키
+
+세션 쿠키의 속성은 백엔드가 정한다(`SessionCookies`). 프론트엔드는 백엔드가 보낸 `Set-Cookie`를 속성 그대로 브라우저에 옮길 뿐, 속성을 새로 정하지 않는다.
+
+| 속성 | 값 | 이유 |
+|---|---|---|
+| `HttpOnly` | 켠다 | 자바스크립트가 읽지 못한다. XSS로 토큰을 훔치지 못하게 한다 |
+| `Secure` | 설정값(`contentria.member.cookie.secure`, 기본 켬) | HTTPS로만 보낸다. 로컬 개발에서만 끈다 |
+| `SameSite` | `Lax` | CSRF를 막는다. 아래 절 참고 |
+| `Path` | `/` | |
+| `Max-Age` | 토큰의 남은 수명 | 토큰과 함께 만료된다 |
+
+로그아웃과 탈퇴는 같은 속성에 `Max-Age=0`인 쿠키를 보내 브라우저에서 지운다.
+
+### Secure는 요청에서 정하지 않는다
 
 ```kotlin
-// Dangerous - Secure flag depends on request
+// 위험: 요청을 보고 정한다
 secure = request.isSecure
+// 리버스 프록시 뒤에서는 백엔드가 HTTP 요청을 받는다. 프록시 설정이 하나만 틀려도 Secure가 빠진다
 
-// Problem: Behind a reverse proxy (nginx, ALB), the backend sees HTTP,
-// not HTTPS. Even with forward-headers-strategy: native, misconfigured
-// proxies will result in cookies without the Secure flag.
-
-// Safer - use environment-based configuration
-secure = appProperties.auth.cookie.secure  // true in prod, false in dev
+// 안전: 환경 설정에서 정한다
+secure = properties.cookie.secure
 ```
 
-### SameSite Attribute
+### SameSite
 
-#### What Is SameSite?
+`SameSite`는 다른 사이트에서 시작한 요청에 브라우저가 쿠키를 붙일지 정하는 속성이다. 브라우저가 지키는 CSRF 방어다.
 
-`SameSite` is a cookie attribute that controls **when the browser attaches cookies to cross-site requests**. It is the browser-enforced defense against CSRF (Cross-Site Request Forgery) attacks.
+| 값 | 동작 |
+|---|---|
+| `Strict` | 같은 사이트의 요청에만 붙인다. 다른 사이트의 링크로 들어올 때도 붙이지 않는다 |
+| `Lax` | 같은 사이트의 요청과, 다른 사이트에서 오는 최상위 GET 이동에 붙인다. 다른 사이트의 POST, iframe, fetch에는 붙이지 않는다 |
+| `None` | 언제나 붙인다. `Secure`가 있어야 한다 |
 
-| Value | Behavior |
-|-------|----------|
-| `Strict` | Cookie is only sent on same-site requests. Never sent on cross-site navigation (e.g., clicking a link from another site to your site). |
-| `Lax` | Cookie is sent on same-site requests **and** top-level navigations (GET only) from other sites. Blocks cross-site POST, iframe, and AJAX. |
-| `None` | Cookie is always sent, including on cross-site requests. **Requires `Secure` flag.** |
+`Lax`를 쓴다. `Strict`는 소셜 로그인을 깨뜨린다. 구글에서 돌아오는 이동은 다른 사이트에서 시작한 것이라, 백엔드가 프론트엔드로 보낸 직후의 첫 화면에 쿠키가 붙지 않는다.
 
-**Lax is the recommended default** for authentication cookies. `Strict` breaks OAuth redirect flows because the browser would not attach cookies when the OAuth provider redirects back to your site.
+속성을 비워 두면 최신 브라우저는 `Lax`로 다루지만, 오래된 브라우저는 제한 없이 보낸다. 또 코드를 읽는 사람이 일부러 비운 것인지 잊은 것인지 알 수 없다. 언제나 명시한다.
 
-#### Browser Default Behavior
+#### 이 프로젝트에서 SameSite가 중요한 이유
 
-Since Chrome 80 (February 2020), if a server does not explicitly set `SameSite`, Chrome treats the cookie as `SameSite=Lax`. Other modern browsers (Edge, Firefox, Safari) have adopted similar defaults. However:
+`apps/api`는 Spring Security의 CSRF 보호를 끈다(`SecurityConfiguration`의 `csrf { it.disable() }`). 서버에 세션을 두지 않고, 브라우저가 저절로 보내는 인증 수단은 `SameSite=Lax` 쿠키뿐이기 때문이다.
 
-- Older browsers may default to `None` (no restriction), leaving the cookie unprotected.
-- Relying on browser defaults makes the security posture **implicit** — a reader of the code cannot tell whether SameSite was intentionally omitted or accidentally forgotten.
+**따라서 `SameSite`가 유일한 CSRF 방어다.** 빠지면 CSRF에 그대로 열린다.
+`Lax`는 다른 사이트에서 오는 GET 이동에는 쿠키를 붙이므로, 상태를 바꾸는 API를 GET으로 만들지 않는다.
 
-**Always set `SameSite` explicitly** to ensure consistent behavior across all browsers and to make the security intent clear.
-
-#### Why SameSite Matters in This Project
-
-This project disables Spring Security's CSRF protection (`csrf.disable()`) because:
-- The API is stateless (JWT-based), not session-based
-- Cookies use `SameSite` attribute as the primary CSRF defense
-
-**This means `SameSite` is the only CSRF protection.** If `SameSite` is missing, the API is vulnerable to CSRF attacks.
-
-#### SameSite in the Contentria Architecture
-
-The request flow involves multiple hops, and SameSite applies differently at each:
+### 요청 경로와 쿠키
 
 ```
-Browser  ──(1)──>  Next.js (Server Actions)  ──(2)──>  Nginx  ──(3)──>  Spring Boot
-                   (sets/reads cookies)                (proxy)           (sets cookies)
+브라우저 ──(1)──> Next.js 서버 (proxy.ts, Server Actions) ──(2)──> 백엔드 API
 ```
 
-**Hop (1): Browser → Next.js** — SameSite is enforced here. The browser checks the `SameSite` attribute before attaching cookies to the request. This is the critical boundary.
+| 구간 | SameSite | 쿠키를 다루는 방식 |
+|---|---|---|
+| (1) 브라우저 → Next.js | 브라우저가 적용한다. 지켜야 하는 경계다 | 브라우저가 세션 쿠키를 붙인다 |
+| (2) Next.js → 백엔드 | 서버 간 호출이라 상관없다 | Next.js가 액세스 토큰을 `Authorization` 헤더로 붙인다. 리프레시 토큰은 갱신과 로그아웃 때만 `Cookie` 헤더로 보낸다 |
 
-**Hop (2): Next.js → Nginx** — Server-to-server. The browser is not involved, so SameSite has no effect. Next.js manually forwards cookies in the `Cookie` header.
+백엔드가 쿠키를 심으면 Next.js가 그 `Set-Cookie`를 브라우저 응답으로 옮긴다.
 
-**Hop (3): Nginx → Spring Boot** — Server-to-server. Same as above — SameSite is irrelevant at this hop.
+| 위치 | 하는 일 | 파일 |
+|---|---|---|
+| 백엔드 | 로그인, 가입, 갱신, 세션 무효화, 소셜 로그인 콜백의 응답에 쿠키를 심는다 | `SessionCookies.kt` |
+| 프론트엔드 proxy | 화면을 옮길 때 갱신하고, 받은 두 쿠키를 브라우저 응답에 심는다 | `frontend/src/proxy.ts` |
+| 프론트엔드 Server Action | 로그인, 가입, 로그아웃 응답의 쿠키를 브라우저로 옮긴다 | `frontend/src/shared/api/sessionCookies.ts`, 해석은 `setCookie.ts` |
 
-All cookie-setting code points (regardless of hop) must include `SameSite=Lax` because the cookie will eventually be stored in the browser and evaluated against the SameSite policy on subsequent requests.
+### 소셜 로그인
 
-| Layer | Where cookies are set | Files |
-|-------|-----------------------|-------|
-| Spring Boot | Token refresh, OAuth2 login response | `CookieUtil.kt` |
-| Middleware | Token refresh via redirect | `middleware.ts` |
-| Server Actions | Login, OTP verification | `actions/auth.ts` |
-| apiServer | Token refresh during API calls | `lib/apiServer.ts` |
-
-#### SameSite and Google OAuth2 (OIDC)
-
-The Google OAuth flow **bypasses the BFF (Next.js) layer** — the browser communicates directly with Spring Boot during the redirect:
+구글 로그인은 Next.js를 거치지 않는다. 브라우저가 구글에서 백엔드로 바로 돌아온다.
 
 ```
-Browser  ──>  Google Authorization Server  ──>  Spring Boot (/login/oauth2/code/google)
-                                                     │
-                                                     ├── Sets accessToken + refreshToken cookies
-                                                     └── Redirects to frontend (Next.js)
+브라우저 ──> 구글 ──> 백엔드 (/login/oauth2/code/google)
+                          ├── 세션 쿠키 두 개를 심는다
+                          └── 프론트엔드로 302
 ```
 
-After Spring Boot processes the OAuth callback, it sets cookies and redirects the browser to the frontend. At this point, the browser stores the cookies with their `SameSite` attribute. On subsequent requests to the frontend (same site), the browser attaches these cookies normally.
+## 오류 응답
 
-If `SameSite` were set to `Strict` instead of `Lax`, the cookies would **not** be sent on the redirect from Google → Spring Boot → Frontend, because the browser would consider the navigation as originating from a cross-site context (Google). `Lax` allows cookies on top-level GET navigations, which is why it works with OAuth redirect flows.
-
-#### Summary
-
-- Set `SameSite=Lax` on every authentication cookie, in every layer.
-- `Lax` is preferred over `Strict` to support OAuth2 redirect flows.
-- Never omit `SameSite` — it is the sole CSRF defense since Spring Security CSRF is disabled.
-
-## Sensitive Data Handling
-
-### Never Expose in Logs or Responses
-
-See [Logging Conventions](logging.md) for the full list. Summary:
-
-- Token values (JWT, refresh token, API keys)
-- Passwords (raw or hashed)
-- Email addresses (PII)
-- Full request/response bodies
-
-### Error Responses
-
-Error messages returned to clients should be generic. Internal details (stack traces, SQL errors, internal service names) must never leak to the client.
+컨텍스트마다 `*WebExceptionHandler`가 실패를 `ErrorResponse(code, message)`로 바꾼다. 메시지는 일반적인 문장으로 쓰고, 클라이언트가 보낸 값이나 내부 구현(스택 트레이스, SQL, 테이블 이름)을 담지 않는다.
 
 ```kotlin
-// Good - generic message from ErrorCode enum
-ErrorCode.INVALID_CREDENTIALS → "Invalid email or password."
+// 좋다: 정해 둔 코드와 일반적인 문장
+error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email or password does not match.")
 
-// Bad - reveals internal implementation
+// 나쁘다: 내부 구현과 받은 값을 드러낸다
 "User not found in credentials table for email: john@example.com"
 ```
 
-### OAuth2 Error Handling
+로그인 실패는 미가입인지 비밀번호 오류인지 구분하지 않는다(회원 규칙).
 
-When OAuth2 authentication fails, **do not pass the raw exception message to the frontend URL**:
+## 소셜 로그인 실패
+
+실패를 프론트엔드 주소로 돌려보낼 때 예외 메시지를 넣지 않는다. 정해 둔 코드만 넣는다(`SocialLoginHandlers`의 `SOCIAL_EMAIL_MISSING`, `SOCIAL_EMAIL_NOT_VERIFIED` 등).
 
 ```kotlin
-// Dangerous - exception.message could contain anything
+// 위험: 예외 메시지에 무엇이 들어 있을지 모른다
 val url = "https://example.com/login?error=${exception.message}"
 
-// Safe - use a predefined error code
-val url = "https://example.com/login?error=oauth_failed"
+// 안전: 정해 둔 코드
+val url = "https://example.com/login?error=SOCIAL_EMAIL_MISSING"
 ```
 
-Raw exception messages may contain internal details, and inserting them into URLs can enable open redirect or reflected XSS attacks.
+예외 메시지를 주소에 넣으면 내부 정보가 새고, 반사형 XSS나 열린 리디렉션의 재료가 된다.
 
-## Input Validation
+## 입력 검증
 
-### Controller Layer
+| 대상 | 규칙 |
+|---|---|
+| 요청 본문 | 컨트롤러에서 `@Valid`를 붙이고, 필드에 `@field:NotBlank`, `@field:Size`, `@field:Pattern` 같은 제약을 둔다 |
+| 대상 ID | 경로에서 받는다. 경로로 받은 ID를 본문에서 다시 받지 않는다 |
+| 요청한 회원 | `@AuthenticationPrincipal`로 받는다. 본문이나 쿼리로 받지 않는다 |
 
-- Always use `@Valid` on `@RequestBody` parameters
-- Define constraints on DTO fields (`@Email`, `@NotBlank`, `@Size`, etc.)
-- Validate path variables and query parameters for expected formats
+### 소유 확인
 
-### Authorization Checks
-
-Every write operation must verify ownership:
+쓰기 요청은 애플리케이션 서비스가 대상을 읽어 소유자를 확인한다.
 
 ```kotlin
-// Pattern: Facade validates ownership before delegating
-blogService.validateBlogOwner(blogId, userId)  // throws if not owner
-categoryService.validateCategoryBelongsToBlog(categoryId, blogId)
-postInternalService.createPost(...)
+// PostService: 글을 쓰기 전에 블로그 소유자를 확인한다
+val blog = blogs.findBySlug(command.blogSlug) ?: throw PublishingUseCaseException.BlogNotFound()
+if (!blog.isOwnedBy(command.requesterId)) throw PublishingUseCaseException.NotBlogOwner()
 ```
 
-### URL Path Variables vs Request Body
+경로의 ID와 본문의 ID가 함께 있으면, 본문의 ID로 남의 자원을 바꿀 수 있다. 그래서 같은 ID를 두 곳에서 받지 않는다.
 
-When both a path variable and request body contain the same ID (e.g., `postId`), **use the path variable** or verify they match. Otherwise, a client could send a different ID in the body to modify another user's resource:
+## 비밀번호
 
-```kotlin
-// Vulnerable - path variable ignored, body's postId used
-@PostMapping("/posts/{postId}")
-fun updatePost(@PathVariable postId: UUID, @RequestBody request: UpdatePostRequest) {
-    postFacade.updatePost(userId, request.toCommand())  // uses request.postId, not path postId
-}
+로그인 방법은 비밀번호, 이메일 코드, 구글 세 가지다. 비밀번호 없이 가입한 계정이 있으므로 `Credential`의 비밀번호 해시는 비어 있을 수 있다. 버그가 아니다.
 
-// Safe - explicitly use path variable or verify match
-@PostMapping("/posts/{postId}")
-fun updatePost(@PathVariable postId: UUID, @RequestBody request: UpdatePostRequest) {
-    require(postId == request.postId) { "Path and body postId mismatch" }
-    postFacade.updatePost(userId, request.toCommand())
-}
-```
+| 규칙 | 코드 |
+|---|---|
+| BCrypt로 해시한다 | `BCryptPasswordHasher` |
+| 원문과 해시를 로그에 남기지 않는다 | [logging.md](logging.md) |
+| 해시가 비어 있으면 대조하지 않고 실패로 본다 | `Credential.matchesPassword`가 `false`를 돌려준다 |
 
-## Password Handling
+해시가 없는 계정이 비밀번호 대조를 통과하는 일을 막고, 인코더에 빈 값을 넘기지 않는다.
 
-### Design Context
+## 속도 제한
 
-This project supports **two authentication paths**:
+지금은 없다. 회원 규칙은 "실패한 요청도 한도를 소비하고, IP와 계정·이메일을 키로 쓴다"고 정했지만, 구현은 범위 밖으로 두었다([contexts/member/02-implementation.md](../contexts/member/02-implementation.md)의 "아직 없는 것"). 업로드 요청 수 제한도 보류다([contexts/media/01-rules.md](../contexts/media/01-rules.md)의 "보류").
 
-1. **Email + Password login**: User sets a password during signup and uses it to log in.
-2. **Email OTP login**: User signs up without a password and authenticates via a one-time verification code sent to their email.
+`gradle/libs.versions.toml`에 Bucket4j와 Caffeine JCache 항목이 있지만 어느 모듈도 쓰지 않는다. 레거시는 인증 경로에 IP당 분당 10회 제한을 두었다.
 
-Because of this, `password` is **intentionally nullable** in both `LoginRequest` and `Credential`. A null password is not a bug — it means the user registered via OTP-only flow.
-
-### Rules
-
-- Always use `PasswordEncoder` (BCrypt) for hashing
-- Never log raw or hashed passwords
-- **Check for null before calling `passwordEncoder.matches()`** — passing null may throw or behave unpredictably depending on the encoder implementation. This also prevents OTP-only users (who have no password) from accidentally passing through password-based authentication.
-
-```kotlin
-// Safe: null password is rejected before reaching the encoder
-fun authenticate(email: String, rawPassword: String?): Credential {
-    val credential = credentialRepository.findByEmail(email)
-        ?: throw ContentriaException(ErrorCode.INVALID_CREDENTIALS)
-
-    if (rawPassword == null || !passwordEncoder.matches(rawPassword, credential.password)) {
-        throw ContentriaException(ErrorCode.INVALID_CREDENTIALS)
-    }
-    return credential
-}
-```
-
-## Rate Limiting
-
-The API uses Bucket4j for rate limiting on authentication endpoints (`/api/auth/**`):
-- 10 requests per minute per IP
-- Only successful responses (HTTP 200) consume tokens
-
-This protects against brute-force login attempts and OTP abuse.
+지금 대입 공격과 코드 메일 폭주를 막는 것은 사람 확인(reCAPTCHA)뿐이다.

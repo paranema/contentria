@@ -1,188 +1,84 @@
-# Refresh Token Grace Window
+# 리프레시 토큰 유예 구간
 
-> 레거시(`legacy-final` 태그) 구현의 기록이다. 새 구조에서 같은 기능을 만들 때 참고한다.
+같은 리프레시 토큰으로 동시에 갱신할 때의 처리다.
+지금 새 구조에는 유예 구간이 없고, 프론트엔드가 동시 갱신을 한 번으로 묶는다. 레거시(`legacy-final` 태그)에는 유예 구간이 있었다. 이 문서는 지금의 처리, 남은 위험, 유예 구간을 다시 둘 때의 선택지를 적는다.
 
-How `POST /auth/refresh` handles concurrent rotation attempts on the same token.
+## 문제
 
-Related code: `RefreshTokenService.rotate`, `RefreshTokenGraceCache`, `AuthFacade.refreshTokens`.
+리프레시 토큰은 쓸 때마다 지우고 새로 발급한다([conventions/security.md](../conventions/security.md)의 "리프레시 토큰 회전"). 같은 토큰으로 갱신 요청이 두 번 오면 먼저 온 요청만 성공한다. 늦은 요청은 토큰을 찾지 못해 401을 받고, 그 응답을 받은 화면은 로그인 화면으로 간다. 리프레시 토큰이 7일 수명 안에 있어도 로그아웃된다.
 
-## Problem
+같은 토큰의 갱신이 겹치는 경우:
 
-Users were occasionally logged out without an explicit logout action, particularly during multi-fetch page loads in development. The frontend would redirect to `/login?alert=session_expired` and clear cookies even though the refresh token was still well within its 7-day TTL.
+| 경우 | 설명 |
+|---|---|
+| 한 브라우저의 동시 요청 | 액세스 토큰이 만료된 뒤 화면 이동과 미리 가져오기 요청이 함께 오면, `proxy.ts`가 요청마다 갱신을 시도한다 |
+| 여러 탭 | 탭마다 만료를 알아채고 갱신을 시도한다 |
 
-The trigger was concurrent calls to `POST /auth/refresh` carrying the same old refresh token. Multiple sources can produce this concurrency:
+레거시에서는 개발 환경에서 자주 드러났다. 한 화면이 여러 Server Action을 동시에 부르고, 각각 401을 받아 각각 갱신했다.
 
-- A single page render firing several parallel server actions via `apiServer.ts` (Next.js BFF). All return 401 simultaneously, all attempt refresh.
-- The Next.js middleware (`proxy.ts`) running alongside an in-flight server action that also detects 401.
-- Multiple browser tabs that each independently detect access-token expiry.
+## 지금의 처리
 
-## Analysis
+| 쪽 | 처리 | 코드 |
+|---|---|---|
+| 프론트엔드 | 같은 리프레시 토큰의 갱신을 진행 중인 하나로 묶는다. 뒤에 온 요청은 먼저 시작한 갱신의 결과를 함께 받는다 | `frontend/src/proxy.ts`의 `inflightRefresh` |
+| 프론트엔드 | 갱신은 `proxy.ts`에서만 한다. Server Action이 401을 받으면 갱신하지 않고 로그인 화면으로 보낸다 | `frontend/src/shared/api/apiServer.ts` |
+| 백엔드 | 해시로 찾아 지우고 새로 발급한다. 이미 지운 토큰은 거부한다. 유예 구간은 없다 | `SessionService.refresh` |
 
-The original implementation split the operation into two reads followed by a write:
+### 남은 위험
 
-```kotlin
-// AuthFacade.refreshTokens (original)
-val validRefreshToken = refreshTokenService.findValidToken(oldToken)   // findByToken
-val user = userService.getActiveUserInfo(validRefreshToken.userId)
-val (access, refresh) = generateTokens(user)                           // upsertRefreshToken: findByUserId + mutate + save
-```
+코드를 읽고 추론한 것이며 재현하지 않았다.
 
-`refresh_tokens` carries one row per user (single-session policy). Both reads are unsynchronized and the write has no row-level lock. Under PostgreSQL's default `READ_COMMITTED` isolation, two race scenarios appear.
+| 경우 | 결과 |
+|---|---|
+| 프론트엔드를 여러 개 띄운다 | `inflightRefresh`는 프로세스 안의 맵이다. 다른 인스턴스로 간 요청은 묶이지 않는다. 늦은 쪽은 로그아웃된다 |
+| 앞선 갱신이 끝나 묶음이 풀린 뒤, 브라우저가 새 쿠키를 받기 전에 보낸 요청이 도착한다 | 옛 토큰으로 다시 갱신해 실패한다 |
 
-### Scenario A — strictly serialized (deterministic logout)
+## 확인하지 않은 것
 
-```
-T1: findByToken("A")        → row found
-T1: upsertRefreshToken(U)   → mutates row.token = "B", flushes
-T1: COMMIT                  → DB now holds token = "B"
-─────────────────────────────────────────────────────
-T2: findByToken("A")        → NULL (DB has "B" only)
-T2: throws REFRESH_TOKEN_NOT_FOUND  → HTTP 401
-T2 (frontend apiServer.ts): caught 401 from refresh path
-                            redirect('/login?alert=session_expired')
-                            cookies cleared → user logged out
-```
+| 항목 | 확인할 방법 |
+|---|---|
+| 두 갱신 요청이 거의 동시에 들어와 둘 다 토큰을 찾은 뒤 지우는 경우의 결과. 행 잠금도 `@Version`도 없다. 두 번째 삭제가 예외가 되는지, 두 요청 모두 새 토큰을 받는지 정하지 않았다 | 같은 토큰으로 갱신을 동시에 보내는 통합 테스트 |
+| 프론트엔드 운영 인스턴스 수 | `infra/gitops/03-services/blog-frontend-web`의 환경별 `replicas` |
 
-T2 reliably fails. This is the cleanest path to the observed symptom.
+## 유예 구간을 다시 둘 때
 
-### Scenario B — overlapping (probabilistic logout)
+위의 위험이 실제로 보이면 백엔드에 유예 구간을 둔다. 레거시가 검토한 선택지는 다음과 같다.
 
-When T1 and T2 begin transactions that overlap, both initial `findByToken("A")` calls succeed (each sees a `READ_COMMITTED` snapshot taken before the other commits). Each then enters its own write path:
+| 선택지 | 장점 | 단점 |
+|---|---|---|
+| 애플리케이션 뮤텍스(옛 토큰을 키로 잠금) | 인프라 변경이 없다 | 인스턴스 안에서만 통한다. 잠금 맵 정리가 번거롭다 |
+| 낙관적 잠금(`@Version`) | 표준 JPA 방식이다 | 진 요청은 여전히 실패한다. 먼저 커밋된 뒤 온 요청(토큰 없음)은 막지 못한다 |
+| Redis 분산 잠금 | 인스턴스 여러 개에서 통한다 | Redis가 없다. 갱신마다 잠금 지연이 생긴다 |
+| 행 잠금(`SELECT ... FOR UPDATE`)만 | 겹친 요청을 DB에서 차례로 세운다 | 뒤에 선 요청은 앞 요청이 지운 뒤라 토큰을 찾지 못한다 |
+| 행 잠금 + 커밋 뒤 이벤트로 캐시 기록 | 캐시가 커밋된 상태만 담는다 | 잠금이 풀린 뒤 캐시가 기록되기 전에 다른 요청이 들어오면 둘 다 놓친다 |
+| **행 잠금 + 같은 트랜잭션 안에서 캐시 기록 (레거시가 고름)** | 잠금이 풀리기 전에 캐시가 채워진다. 뒤에 선 요청은 행이 없으면 캐시에서 새 토큰을 받는다 | 커밋이 실패하면 캐시가 짧게 틀린 값을 담는다 |
 
-```
-T1: BEGIN; SELECT token=A → ok
-T2: BEGIN; SELECT token=A → ok (T1 not yet committed)
-T1: UPDATE row SET token = "B"     [row lock acquired]
-T2: UPDATE row SET token = "C"     [waits for T1's row lock]
-T1: COMMIT  → row lock released
-T2: re-reads, applies UPDATE → token = "C"
-T2: COMMIT
-```
-
-Both API calls return 200. T1's response carries refresh token `B`; T2's carries `C`. The DB holds `C`. The frontend writes both `Set-Cookie` headers in arrival order; whichever response arrives last determines the persisted cookie. If the browser ends up with `B`, the next API call will fail because `B` does not exist in the DB. The user observes a delayed logout on the next interaction. The probability depends on response ordering and is non-zero.
-
-### Why this manifests in development specifically
-
-- Local dev fires more parallel calls per render: HMR/Fast Refresh re-runs effects, and dashboard pages aggregate multiple widgets each fetching independently.
-- Lower latency between client and server makes the race window proportionally larger.
-- Production cache layers and CDN buffering can mask some of the timing.
-
-## Solution candidates considered
-
-### 1. Application-level mutex keyed by old token
-
-A `ConcurrentHashMap<String, ReentrantLock>` in the auth service. First requester takes the lock, performs the rotation, releases. Followers wait, then re-read and either return cached output or fall through.
-
-- **Pros**: No DB or cache infra changes. Cheap.
-- **Cons**: Per-instance only. Two requests routed to different replicas would still race. Lock cleanup (preventing unbounded map growth) is fiddly. Harder to reason about than DB-level guarantees.
-
-### 2. Optimistic locking via `@Version` on `RefreshToken`
-
-Add a JPA version column. Concurrent UPDATEs detect conflict; the loser retries.
-
-- **Pros**: Standard JPA pattern.
-- **Cons**: Loser still fails the user-facing call unless we add retry with backoff. Doesn't address Scenario A (the loser hits a not-found, not a version conflict). Schema migration required.
-
-### 3. Distributed lock via Redis (`SETNX` keyed by user or token)
-
-External lock service.
-
-- **Pros**: Works across replicas. Clear primitive.
-- **Cons**: Introduces Redis dependency, which is currently not deployed. Heavy machinery for a single-instance setup. Lock acquisition latency on every refresh.
-
-### 4. DB exclusive lock (`PESSIMISTIC_WRITE`) only
-
-Add `SELECT FOR UPDATE` to the find step; rotation happens under the row lock.
-
-- **Pros**: Closes Scenario B fully — concurrent rotators on the same row are serialized at the DB level.
-- **Cons**: Does not close Scenario A. T2 acquires the lock after T1 commits and finds no row matching the old token, still throwing `NOT_FOUND`.
-
-### 5. Grace cache via `@TransactionalEventListener(AFTER_COMMIT)`
-
-Combine the DB lock with a Caffeine cache mapping `oldToken → newToken`. The cache write is published as a transactional event and processed after commit.
-
-- **Pros**: Coherence with DB guaranteed (cache only reflects committed state).
-- **Cons**: `AFTER_COMMIT` runs **after the row lock is released**. A concurrent thread can acquire the lock between commit and listener execution, see no row, then miss the cache because the listener has not yet fired. The race is reduced but not closed.
-
-### 6. Grace cache, written **inside** the same `@Transactional` method (chosen)
-
-Combine `PESSIMISTIC_WRITE` with a Caffeine cache, but place `cache.put` inside the transactional method, after entity mutation, before commit. The row lock is still held when the cache is written.
+레거시가 고른 방식의 동작:
 
 ```
-T1: SELECT FOR UPDATE WHERE token = "A"   [row lock]
-T1: row.token = "B"                       [in-memory mutation]
-T1: graceCache.put("A", (newToken="B", userId=U))
-T1: COMMIT                                [flush UPDATE, lock released]
-─────────────────────────────────────────────────────
-T2: SELECT FOR UPDATE WHERE token = "A"   [waits for T1's lock]
-                                          [T1 commits, lock released]
-T2: SELECT returns NULL (row has "B" now)
-T2: graceCache.get("A") → ("B", U)        [populated before lock release]
-T2: returns same refresh token "B" + freshly issued access token
+T1: SELECT ... FOR UPDATE (옛 토큰)        [행 잠금]
+T1: 새 토큰 발급, 캐시에 (옛 토큰 → 새 토큰) 기록
+T1: COMMIT                                [잠금 해제]
+T2: SELECT ... FOR UPDATE (옛 토큰)        [T1을 기다렸다가 행 없음]
+T2: 캐시에서 새 토큰을 찾아 같은 리프레시 토큰과 새 액세스 토큰을 준다
 ```
 
-The lock guarantees T2 cannot reach the cache lookup until T1's `cache.put` has already executed. There is no window in which T2 sees neither the row nor the cache.
+| 결정 | 이유 |
+|---|---|
+| 캐시는 프로세스 안의 Caffeine, 10초 수명 | 인프라가 늘지 않는다. 인스턴스가 늘면 캐시 구현만 Redis로 바꾼다 |
+| 액세스 토큰은 캐시하지 않고 매번 새로 만든다 | 발급 시각과 만료가 응답마다 실제 값이어야 한다. 서명 비용은 작다 |
+| 커밋 실패 시 캐시의 틀린 값은 그대로 둔다 | 10초 뒤 사라지고, 다음 요청이 다시 회전한다. 커밋 뒤 이벤트 방식보다 경쟁 구간이 좁다 |
 
-## Final solution
+새 구조에 옮길 때 다른 점:
 
-Implementation lives in three places:
+| 항목 | 레거시 | 새 구조 |
+|---|---|---|
+| 저장 | 계정마다 한 행, 원값 | 세션마다 한 행, SHA-256 해시 |
+| 회전 | 행의 토큰 값을 바꾼다 | 행을 지우고 새 행을 만든다 |
+| 캐시 키 | 옛 토큰 원값 | 옛 토큰의 해시를 키로 쓰면 옛 원값을 메모리에 두지 않아도 된다. 새 토큰 원값은 응답해야 하므로 10초 동안 메모리에 둔다 |
 
-1. **Repository: `findByTokenForUpdate`** (`RefreshTokenJpaRepository.kt`)
-   ```kotlin
-   @Lock(LockModeType.PESSIMISTIC_WRITE)
-   @Query("SELECT r FROM RefreshToken r WHERE r.token = :token")
-   fun findByTokenForUpdate(@Param("token") token: String): RefreshToken?
-   ```
+## 범위 밖
 
-2. **Cache: `RefreshTokenGraceCache`** (`auth/infrastructure/`)
-   - Caffeine `Cache<String, RotatedTokenInfo>` used directly (not via Spring `Cache` abstraction) for typed access.
-   - `expireAfterWrite = 10 seconds`. `maximumSize = 10_000`.
-
-3. **Service: `RefreshTokenService.rotate`** (`auth/application/`)
-   ```kotlin
-   @Transactional
-   fun rotate(oldToken: String): RotatedTokenInfo? {
-       val row = refreshTokenRepository.findByTokenForUpdate(oldToken) ?: return null
-       if (row.expiryDate.isBefore(Instant.now())) {
-           refreshTokenRepository.delete(row)
-           throw ContentriaException(ErrorCode.REFRESH_TOKEN_EXPIRED)
-       }
-       val newValue = UUID.randomUUID().toString()
-       row.token = newValue
-       row.expiryDate = Instant.now().plus(jwtProperties.refreshTokenExpiration)
-       val rotated = RotatedTokenInfo(newValue, row.userId)
-       graceCache.put(oldToken, rotated)   // inside @Transactional, lock still held
-       return rotated
-   }
-   ```
-
-4. **Facade: `AuthFacade.refreshTokens`** falls back to the cache when rotation returns null:
-   ```kotlin
-   val rotated = refreshTokenService.rotate(oldToken)
-       ?: refreshTokenService.lookupGrace(oldToken)
-       ?: throw ContentriaException(ErrorCode.REFRESH_TOKEN_NOT_FOUND)
-   ```
-
-The access token is **always** generated fresh from the user's current claims — never cached — so its `iat` and `exp` reflect the actual issue time of each response.
-
-## Why this solution
-
-- **Closes both scenarios with one mechanism.** The DB lock serializes concurrent rotators (Scenario B); the in-transaction cache write makes the rotated value visible to followers before the lock is released (Scenario A).
-
-- **No infra dependency.** Caffeine ships in-process; the codebase already pulls `caffeine:jcache` for rate limiting. Redis was deferred until horizontal scaling actually requires it.
-
-- **Service layer untouched on future scale-out.** When the deployment moves to N>1 instances, only `RefreshTokenGraceCache` is replaced (Redis-backed implementation behind the same interface). `RefreshTokenService.rotate`, `lookupGrace`, and `AuthFacade` remain identical.
-
-- **No schema migration.** Avoids the operational cost of an `@Version` column and downstream entity mapping changes.
-
-- **Bounded blast radius on rollback.** The cache may briefly hold an entry pointing to a token that did not commit. Mitigations: (a) 10-second TTL caps exposure, (b) the next legitimate request with the same old token re-rotates and overwrites the entry, (c) a stale grace hit produces an immediate failure on the client's next API call — same UX as the pre-fix logout, but rarer. The trade-off is judged acceptable against the alternative (`AFTER_COMMIT`) which leaves a wider, more frequent race window.
-
-- **Access tokens not cached.** Two reasons: JWT `iat`/`exp` claims must reflect issue time; HMAC signing is microsecond-cheap per call. Caching access tokens would create stale-claim problems for negligible savings.
-
-## Out of scope
-
-- **Refresh token reuse detection** (security feature, not race fix): treat presentation of an old token *after* the grace window as evidence of theft and invalidate the user's session(s). Tracked separately.
-
-- **Frontend single-flight lock** in `apiServer.ts`: would reduce duplicate `/auth/refresh` traffic and log noise but is not required for correctness now that the backend handles concurrency. Tracked separately.
-
-- **Multi-device sessions**: the single-row-per-user policy in `refresh_tokens` is unchanged. Logging in on a second device still invalidates the first.
+| 항목 | 내용 |
+|---|---|
+| 재사용 탐지 | 유예 구간이 지난 뒤 옛 토큰이 오면 도난으로 보고 그 계정의 세션을 모두 끝낸다. 보안 기능이며 경쟁 문제와 별개다 |

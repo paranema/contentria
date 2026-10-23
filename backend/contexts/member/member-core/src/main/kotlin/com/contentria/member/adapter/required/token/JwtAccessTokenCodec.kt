@@ -15,7 +15,7 @@ import java.util.Date
 import java.util.UUID
 
 /**
- * HS256-signed JWT access tokens (docs/conventions/security.md, Token Strategy).
+ * HS256-signed JWT access tokens (docs/conventions/security.md, 토큰).
  *
  * Only this context signs and verifies them, so a shared secret is enough. If a context ever
  * runs in another service and must verify tokens itself, switch to an asymmetric key so the

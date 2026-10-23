@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 
 /**
  * Turns this context's failures into HTTP responses for its own controllers only. Messages are
- * generic (docs/conventions/security.md, Error Responses): nothing here repeats an address or a
+ * generic (docs/conventions/security.md, 오류 응답): nothing here repeats an address or a
  * value the client sent.
  */
 @RestControllerAdvice(basePackageClasses = [AuthController::class])
