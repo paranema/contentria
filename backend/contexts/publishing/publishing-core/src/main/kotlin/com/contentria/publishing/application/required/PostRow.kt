@@ -22,3 +22,11 @@ interface PostRow {
     /** The blog's owner, who writes every post in it: for screens that show the author. */
     val authorId: UUID
 }
+
+/** Filled by name from the aliases of [com.contentria.publishing.domain.post.Post]'s published-titles query. */
+interface PublishedTitleRow {
+    val postId: UUID
+    val blogSlug: String
+    val title: String
+    val slug: String
+}

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import java.util.UUID
 
 /**
  * What readers see, signed in or not. Under `GET /blogs/` and `GET /posts`, which the host's
@@ -25,6 +26,13 @@ class PublicPostController(private val published: GetPublishedPostsQuery) {
         @RequestParam(required = false) category: String?,
         @RequestParam(defaultValue = "0") page: Int,
     ): PostPage = published.inBlog(slug, category, page)
+
+    /** `?ids=a,b`: up to 100 posts; only published ones answer. */
+    @GetMapping("/posts/titles")
+    fun titles(@RequestParam ids: Set<UUID>): ResponseEntity<Any> {
+        if (ids.size > MAX_IDS) return ResponseEntity.badRequest().body(ErrorResponse("INVALID_REQUEST", "Ask for at most $MAX_IDS posts at once."))
+        return ResponseEntity.ok(published.titles(ids))
+    }
 
     @GetMapping("/posts")
     fun recent(@RequestParam(defaultValue = "0") page: Int): PostPage = published.recent(page)
@@ -42,6 +50,10 @@ class PublicPostController(private val published: GetPublishedPostsQuery) {
                 .header(HttpHeaders.LOCATION, currentAddress(lookup))
                 .body(lookup)
         }
+
+    private companion object {
+        const val MAX_IDS = 100
+    }
 
     private fun currentAddress(moved: PublishedPostLookup.Moved): String =
         ServletUriComponentsBuilder.fromCurrentContextPath()

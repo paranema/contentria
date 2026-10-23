@@ -40,6 +40,14 @@ import java.util.UUID
     name = "Post.findTitles",
     query = "select p.id as postId, p.blogId as blogId, p.title as title, p.slug as slug from Post p where p.id in ?1",
 )
+// Readers' screens that name posts by id (a notification inbox): published posts only, so a post
+// hidden or deleted since is simply missing.
+@NamedQuery(
+    name = "Post.findPublishedTitles",
+    query = "select p.id as postId, b.slug as blogSlug, p.title as title, p.slug as slug from Post p " +
+        "join Blog b on b.id = p.blogId where p.id in ?1 and " +
+        "p.status = com.contentria.publishing.domain.post.PostStatus.PUBLISHED",
+)
 // For other contexts (publishing-api): where each post sits, who owns it, whether readers see it.
 @NamedQuery(
     name = "Post.findReferences",

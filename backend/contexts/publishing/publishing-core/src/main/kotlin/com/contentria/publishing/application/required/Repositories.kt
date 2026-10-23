@@ -44,6 +44,9 @@ interface PostRepository : Repository<Post, UUID> {
 
     /** [Post]'s named query of the same name. Titles for screens other contexts rank posts on. */
     fun findTitles(postIds: Collection<UUID>): List<PostTitleRow>
+
+    /** [Post]'s named query of the same name: published posts' titles and addresses, for readers' screens. */
+    fun findPublishedTitles(postIds: Collection<UUID>): List<PublishedTitleRow>
     fun countByBlogIdAndStatus(blogId: UUID, status: PostStatus): Long
 
     /** The post [slug] leads to in the blog, whether it is the post's current slug or an old one. */

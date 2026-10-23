@@ -43,6 +43,8 @@ class SecurityConfiguration {
                 it.requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
                 // The home page's latest posts across blogs
                 it.requestMatchers(HttpMethod.GET, "/posts").permitAll()
+                // Published posts' titles by id, for screens such as the notification inbox
+                it.requestMatchers(HttpMethod.GET, "/posts/titles").permitAll()
                 // Like and subscriber counts, which anyone may see
                 it.requestMatchers(HttpMethod.GET, "/interactions/counts").permitAll()
                 // A published post's comments
