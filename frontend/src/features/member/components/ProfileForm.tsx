@@ -91,7 +91,7 @@ export default function ProfileForm({ initialProfile }: ProfileFormProps) {
               className="cursor-not-allowed bg-gray-100 text-gray-500"
             />
             <p className="text-[0.8rem] text-muted-foreground">
-              이메일 주소는 여기서 바꿀 수 없습니다.
+              이메일 주소는 아래 이메일 주소 항목에서 바꿉니다.
             </p>
           </div>
         </CardContent>

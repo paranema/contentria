@@ -72,7 +72,7 @@ src/
 
 토큰은 HttpOnly 쿠키에 둔다. 쿠키의 속성(수명 15분과 7일, `Secure`, `SameSite=Lax`)은 백엔드가 정한다.
 
-가입, 비밀번호 로그인, 코드 로그인 시작은 reCAPTCHA v3 토큰을 함께 보낸다. 점수가 낮으면 백엔드가 403 `RECAPTCHA_CHALLENGE_REQUIRED`로 답하고, 화면은 v2 체크박스를 띄워 다시 보낸다. 사이트 키가 없으면(로컬) 토큰 없이 보내고, 이때 백엔드는 `MEMBER_RECAPTCHA_MODE=off`여야 한다.
+가입, 비밀번호 로그인, 코드 로그인 시작, 비밀번호 재설정 링크 요청은 reCAPTCHA v3 토큰을 함께 보낸다. 점수가 낮으면 백엔드가 403 `RECAPTCHA_CHALLENGE_REQUIRED`로 답하고, 화면은 v2 체크박스를 띄워 다시 보낸다. 사이트 키가 없으면(로컬) 토큰 없이 보내고, 이때 백엔드는 `MEMBER_RECAPTCHA_MODE=off`여야 한다.
 
 ### 파일 올리기
 
@@ -98,7 +98,7 @@ lint와 formatting 규칙은 [docs/lint-and-formatting.md](docs/lint-and-formatt
 | 변수 | 내용 |
 |---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | 서버가 부르는 백엔드 주소. 배포에서는 클러스터 안의 주소다. 비우면 `http://localhost:8080` |
-| `NEXT_PUBLIC_EXTERNAL_API_BASE_URL` | 브라우저가 가는 백엔드의 공개 주소. `/api`까지 포함한다(로컬은 `http://localhost:8080/api`). Google 로그인 시작에 쓴다 |
+| `NEXT_PUBLIC_EXTERNAL_API_BASE_URL` | 브라우저가 가는 백엔드의 공개 주소. `/api`까지 포함한다(로컬은 `http://localhost:8080/api`). Google 로그인과 설정 화면의 Google 연동 시작에 쓴다 |
 | `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` | reCAPTCHA v3 사이트 키 |
 | `NEXT_PUBLIC_RECAPTCHA_V2_CHECKBOX_SITE_KEY` | reCAPTCHA v2 체크박스 사이트 키. 로그인 중 백엔드가 추가 확인을 요구하면(403) 띄운다 |
 | `NEXT_PUBLIC_CDN_BASE_URL` | 이미지를 내주는 R2 공개 주소. `next/image`가 허용할 호스트가 된다 |

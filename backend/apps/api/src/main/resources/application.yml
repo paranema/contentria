@@ -104,4 +104,4 @@ contentria:
     social:
       login-success-url: ${MEMBER_SOCIAL_LOGIN_SUCCESS_URL:http://localhost:3000/login/callback}
       login-failure-url: ${MEMBER_SOCIAL_LOGIN_FAILURE_URL:http://localhost:3000/login}
-      link-result-url: ${MEMBER_SOCIAL_LINK_RESULT_URL:http://localhost:3000/settings/account}
+      link-result-url: ${MEMBER_SOCIAL_LINK_RESULT_URL:http://localhost:3000/dashboard/settings}

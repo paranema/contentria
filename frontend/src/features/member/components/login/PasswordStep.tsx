@@ -1,6 +1,8 @@
 'use client';
 
 import BackButton from '@/shared/components/BackButton';
+import { PATHS } from '@/shared/constants/paths';
+import Link from 'next/link';
 import { memberErrorMessage } from '../../errors';
 import { PasswordFormData, passwordSchema } from '../../schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -55,12 +57,12 @@ export default function PasswordStep() {
         <div className="mt-5 space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
-            {/* <Link
-              href="/forgot-password"
+            <Link
+              href={PATHS.FORGOT_PASSWORD}
               className="text-sm font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
             >
               Forgot your password?
-            </Link> */}
+            </Link>
           </div>
 
           <div className="relative">
