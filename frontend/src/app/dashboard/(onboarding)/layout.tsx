@@ -1,7 +1,7 @@
 import React from 'react';
 
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import Footer from '@/components/home/Footer';
+import DashboardHeader from '@/app/dashboard/_components/DashboardHeader';
+import Footer from '@/app/_components/Footer';
 
 /**
  * Minimal, distraction-free layout for onboarding (no sidebar/menus): the user has no

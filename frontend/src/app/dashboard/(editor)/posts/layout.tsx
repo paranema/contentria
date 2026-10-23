@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getMyBlogs } from '@/features/publishing/api/blogs';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import Footer from '@/components/home/Footer';
+import DashboardHeader from '@/app/dashboard/_components/DashboardHeader';
+import Footer from '@/app/_components/Footer';
 
 export default async function EditorLayout({ children }: { children: React.ReactNode }) {
   const blogs = await getMyBlogs();

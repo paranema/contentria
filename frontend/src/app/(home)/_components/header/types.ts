@@ -7,11 +7,6 @@ export interface ProfileDropdownProps {
   onLogout: () => void;
 }
 
-export interface SubscribeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
 export interface UserAvatarProps {
   user: MyProfile | null;
   size?: 'sm' | 'md';

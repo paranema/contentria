@@ -1,8 +1,8 @@
 import React from 'react';
 
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
-import Footer from '@/components/home/Footer';
+import DashboardHeader from '@/app/dashboard/_components/DashboardHeader';
+import DashboardSidebar from '@/app/dashboard/_components/DashboardSidebar';
+import Footer from '@/app/_components/Footer';
 import { getMyBlogs } from '@/features/publishing/api/blogs';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,5 @@
-import Footer from '@/components/home/Footer';
-import HomeHeader from '@/components/home/homeHeader';
+import Footer from '@/app/_components/Footer';
+import HomeHeader from '@/app/(home)/_components/header/HomeHeader';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {

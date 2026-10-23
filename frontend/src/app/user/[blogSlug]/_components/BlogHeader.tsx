@@ -5,8 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
-import ProfileDropdown from '@/components/dashboard/header/ProfileDropdown';
-import UserAvatar from '@/components/dashboard/header/UserAvatar';
+import ProfileDropdown from '@/app/_components/ProfileDropdown';
+import UserAvatar from '@/app/_components/UserAvatar';
 import { PATHS } from '@/shared/constants/paths';
 import { logoutAction } from '@/features/member/api/auth';
 import { useMyProfile } from '@/features/member/hooks/useMyProfile';
