@@ -147,5 +147,5 @@ export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_DOCKE
 |---|---|
 | 6개 컨텍스트와 4개 app | 코드와 테스트가 있다 |
 | 컨테이너 이미지와 배포 | 아직 없다. `infra/gitops`가 배포하는 것은 레거시 이미지(`blog-api`, `blog-batch`)다 |
-| 프론트엔드 | 아직 레거시 API(`/api/blogs/create`, `/api/videos/presigned` 등)에 맞춰져 있다. 새 API로 옮기는 작업은 남아 있다 |
+| 프론트엔드 | 새 API로 옮겼다. 옮긴 단계는 [frontend/docs/architecture.md](../frontend/docs/architecture.md)의 "옮긴 과정"에 있다 |
 | 레거시 데이터 이전 | 아직 없다 |

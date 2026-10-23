@@ -2,18 +2,17 @@
 
 Contentria의 웹 화면이다. Next.js App Router로 만들고, 공개 블로그와 글은 서버에서 렌더링해 검색에 노출하고, 대시보드와 편집기는 브라우저에서 동작한다.
 
-> 지금 화면은 레거시 백엔드 API(`/api/auth/*`, `/api/blogs/*`, `/api/videos/presigned` 등)에 맞춰져 있다. 새 백엔드(`backend/apps/api`)의 API로 옮기는 작업은 남아 있다.
+화면은 새 백엔드(`backend/apps/api`)의 API를 쓴다. 기능별로 옮긴 단계는 [docs/architecture.md](docs/architecture.md)의 "옮긴 과정"에 있다.
 
 ## 기술 스택
 
 | 분류 | 기술 |
 |---|---|
 | 프레임워크 | Next.js 16 (App Router, Turbopack, `output: 'standalone'`) |
-| 언어 | TypeScript 5, React 19 |
+| 언어 | TypeScript 7 (도구용 API는 TypeScript 6), React 19 |
 | 스타일 | Tailwind CSS 3, tailwindcss-animate, @tailwindcss/typography |
 | UI 컴포넌트 | shadcn/ui (Radix UI) |
 | 서버 상태 | TanStack Query 5 |
-| 클라이언트 상태 | Zustand 5 |
 | 폼과 검증 | React Hook Form, Zod 4 |
 | 글 편집 | MDXEditor (코드 블록 강조는 CodeMirror) |
 | 글 표시 | react-markdown, remark-gfm, remark-directive(안내 상자), rehype-sanitize |
@@ -85,10 +84,24 @@ npm run dev        # 개발 서버 (Turbopack), http://localhost:3000
 npm run build      # 운영 빌드
 npm start
 npm run lint       # ESLint와 Prettier, 기능 경계 규칙
+npm run typecheck  # TypeScript 7의 tsc로 타입 검사
 npm test           # Vitest
 ```
 
 lint와 formatting 규칙은 [docs/lint-and-formatting.md](docs/lint-and-formatting.md)에 있다.
+
+### TypeScript 6과 7
+
+TypeScript 7.0에는 다른 도구가 불러 쓰는 JS API가 없다. typescript-eslint는 이 API가 있어야 동작한다. 그래서 `package.json`에 두 버전을 함께 둔다.
+
+| 항목 | 실제 패키지 | 쓰는 곳 |
+|---|---|---|
+| `@typescript/native` | `typescript@7` | `tsc` 명령, `npm run typecheck` |
+| `typescript` | `@typescript/typescript6` | typescript-eslint, 에디터, `next build`의 타입 검사(`tsc6`) |
+
+typescript-eslint가 TypeScript 7.1의 API를 지원하면 별칭을 걷고 `typescript@7` 하나만 둔다.
+
+TypeScript 6부터 `types`의 기본값이 `[]`다. 전역 선언이 필요한 `@types` 패키지는 `tsconfig.json`의 `types`에 적는다(지금은 `node`, `react-syntax-highlighter`).
 
 ### 환경 변수
 
