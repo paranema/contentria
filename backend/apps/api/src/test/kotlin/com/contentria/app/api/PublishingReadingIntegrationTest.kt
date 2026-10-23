@@ -151,6 +151,21 @@ class PublishingReadingIntegrationTest : ApiIntegrationTest() {
     }
 
     @Test
+    @DisplayName("발행된 글의 제목과 주소를 ID 묶음으로 누구에게나 준다. 임시저장, 비공개, 모르는 글은 빠진다")
+    fun `published titles by id`() {
+        val (owner, blog) = blogger()
+        val shown = publish(owner, blog, "보일 제목")
+        val hidden = publish(owner, blog, "숨길 제목").also { owner.post("/posts/$it/hide", "") }
+        val draft = owner.post("/blogs/$blog/posts", post("임시 제목")).field("postId")
+
+        val response = reader.get("/posts/titles?ids=$shown,$hidden,$draft,${java.util.UUID.randomUUID()}")
+
+        assertThat(response.statusCode()).isEqualTo(200)
+        assertThat(response.body()).contains("\"postId\":\"$shown\"", "\"title\":\"보일 제목\"", "\"blogSlug\":\"$blog\"")
+            .doesNotContain("숨길 제목", "임시 제목")
+    }
+
+    @Test
     @DisplayName("다른 컨텍스트에는 글의 블로그, 소유자, 공개 여부를 ID 묶음으로 알려준다. 모르는 ID는 결과에 없다")
     fun `references for other contexts`() {
         val owner = TestBrowser(port)

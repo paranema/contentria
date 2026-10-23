@@ -6,7 +6,14 @@ import { ApiError } from '@/shared/api/apiError';
 import apiServer from '@/shared/api/apiServer';
 import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
-import { MovedPost, PostPage, PostRequest, PostView, PublishedPostView } from '../types';
+import {
+  MovedPost,
+  PostPage,
+  PostRequest,
+  PostView,
+  PublishedPostView,
+  PublishedTitle,
+} from '../types';
 
 const enc = encodeURIComponent;
 
@@ -37,6 +44,18 @@ export async function getRecentPosts(): Promise<PostPage> {
     console.error('Failed to fetch recent posts:', error);
     return { items: [], page: 0, totalItems: 0, totalPages: 0 };
   }
+}
+
+/**
+ * Titles and addresses of the published ones among [postIds] (up to 100), for screens that name
+ * posts by id. A post hidden or deleted since is simply missing.
+ */
+export async function getPublishedTitles(postIds: string[]): Promise<PublishedTitle[]> {
+  const ids = [...new Set(postIds)];
+  if (ids.length === 0) return [];
+  return apiServer.get<PublishedTitle[]>(`/api/posts/titles?ids=${ids.map(enc).join(',')}`, {
+    requireAuth: false,
+  });
 }
 
 export type PublishedPostLookup = { post: PublishedPostView } | { moved: MovedPost } | null;

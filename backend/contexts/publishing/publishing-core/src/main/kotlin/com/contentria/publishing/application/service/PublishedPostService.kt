@@ -4,12 +4,14 @@ import com.contentria.publishing.application.provided.GetPublishedPostsQuery
 import com.contentria.publishing.application.provided.PostPage
 import com.contentria.publishing.application.provided.PublishedPostLookup
 import com.contentria.publishing.application.provided.PublishedPostView
+import com.contentria.publishing.application.provided.PublishedTitle
 import com.contentria.publishing.application.provided.PublishingUseCaseException
 import com.contentria.publishing.application.required.BlogRepository
 import com.contentria.publishing.application.required.CategoryTreeRepository
 import com.contentria.publishing.application.required.PostRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 /** Reading: anyone, published posts only (docs/contexts/publishing/01-rules.md, 흐름 4와 글 slug). */
 @Service
@@ -44,6 +46,10 @@ class PublishedPostService(
     @Transactional(readOnly = true)
     override fun recent(page: Int): PostPage =
         PostPages.of(posts.findRecentPublished(PostPage.SIZE, PostPages.offsetOf(page)), page, posts.countRecentPublished())
+
+    @Transactional(readOnly = true)
+    override fun titles(postIds: Set<UUID>): List<PublishedTitle> =
+        if (postIds.isEmpty()) emptyList() else posts.findPublishedTitles(postIds).map { PublishedTitle(it.postId, it.blogSlug, it.title, it.slug) }
 
     @Transactional(readOnly = true)
     override fun find(blogSlug: String, postSlug: String): PublishedPostLookup? {

@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { memberKeys } from '@/features/member/hooks/keys';
 import { logoutAction } from '@/features/member/api/auth';
 import { PATHS } from '@/shared/constants/paths';
+import NotificationBell from '@/features/notification/components/NotificationBell';
 
 interface DashboardHeaderProps {
   blogSlug: string | null;
@@ -112,22 +113,7 @@ export default function DashboardHeader({
           )}
 
           {/* 알림 버튼 */}
-          {/* <div className="relative" ref={notificationRef}>
-            <button
-              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-              className="relative rounded-full p-2 hover:bg-gray-100"
-              aria-label={`알림 ${notifications.length > 0 ? '있음' : '없음'}`}
-              aria-haspopup="true"
-              aria-expanded={isNotificationOpen}
-            >
-              <Bell size={20} />
-              {notifications.length > 0 && (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"></span>
-              )}
-            </button>
-
-            {isNotificationOpen && <NotificationDropdown notifications={notifications} />}
-          </div> */}
+          <NotificationBell />
 
           {/* 프로필 드롭다운 */}
           <div className="relative" ref={profileRef}>

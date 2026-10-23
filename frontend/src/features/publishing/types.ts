@@ -109,3 +109,11 @@ export interface MovedPost {
   blogSlug: string;
   currentSlug: string;
 }
+
+/** A published post's title and address, for screens that name posts by id. */
+export interface PublishedTitle {
+  postId: string;
+  blogSlug: string;
+  title: string;
+  slug: string;
+}

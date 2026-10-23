@@ -18,6 +18,12 @@ interface GetPublishedPostsQuery {
     /** Every blog's published posts, newest first. For the home page. */
     fun recent(page: Int): PostPage
 
+    /**
+     * Titles and addresses of the published ones among [postIds], for a screen that names posts by
+     * id. A post hidden or deleted since is missing, so nothing of it shows.
+     */
+    fun titles(postIds: Set<UUID>): List<PublishedTitle>
+
     /** The post at [postSlug], current or old (글 slug, 옛 slug). Null when no published post is there. */
     fun find(blogSlug: String, postSlug: String): PublishedPostLookup?
 }
@@ -28,6 +34,8 @@ data class PostPage(val items: List<PostListItem>, val page: Int, val totalItems
         const val SIZE = 20
     }
 }
+
+data class PublishedTitle(val postId: UUID, val blogSlug: String, val title: String, val slug: String)
 
 sealed interface PublishedPostLookup {
     data class Found(val post: PublishedPostView) : PublishedPostLookup

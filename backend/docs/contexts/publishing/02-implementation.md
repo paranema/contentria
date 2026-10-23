@@ -127,6 +127,7 @@
 | 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts?page=` (임시저장 포함, 최근 수정 순) |
 | 공개 글 목록 | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&page=` |
 | 홈의 최근 글 | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?page=` |
+| 발행된 글의 제목 | `GetPublishedPostsQuery.titles` | `PublishedPostService` | `GET /posts/titles?ids=a,b` (100개까지, 누구나). 발행된 글만 답한다. 알림함처럼 글을 ID로 가리키는 화면이 쓴다. 비공개로 돌리거나 지운 글은 빠져서 제목이 새지 않는다 |
 | 공개 글 상세, 옛 slug | `GetPublishedPostsQuery.find` | `PublishedPostService` | `GET /blogs/{slug}/posts/{postSlug}` → 200, 옛 slug면 301 |
 | 다른 컨텍스트에 글과 블로그 공개 | `GetPostReferencesQuery`, `GetBlogReferencesQuery` (`publishing-api`) | `ReferenceQueryService` | 상호작용의 번역 계층이 호출. 자기 읽기 전용 트랜잭션, 본문은 읽지 않는다 |
 
