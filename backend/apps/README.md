@@ -11,15 +11,26 @@
 
 ## 빌드
 
-저장소 루트에서 실행한다. 멀티모듈 의존성을 포함해야 하므로 빌드 컨텍스트는 앱 폴더가 아닌 **backend/**다. BuildKit과 실행 중인 Docker가 필요하다. 호스트에 JDK나 Gradle을 설치할 필요는 없다.
+이미지는 Gradle이 미리 만든 실행 JAR를 담기만 한다. 먼저 `backend/`에서 네 앱의 JAR를 한 번에 만들고, 저장소 루트에서 이미지를 굽는다. BuildKit과 실행 중인 Docker가 필요하다.
 
 ```bash
+(cd backend && ./gradlew :apps:api:bootJar :apps:batch:bootJar :apps:worker:bootJar :apps:migrator:bootJar)
 for app in api batch worker migrator; do
   docker build -f "backend/apps/$app/Dockerfile" -t "contentria/$app:local" backend/
 done
 ```
 
-빌드 단계는 Java 25 JDK로 해당 앱의 `bootJar`를 만들고 Spring Boot 레이어를 추출한다. 실행 이미지는 Java 25 JRE와 추출 결과만 포함한다. Gradle 의존성과 빌드 캐시는 BuildKit cache mount로 공유한다. 이미지 빌드는 테스트를 실행하지 않으므로 테스트와 실행 검증을 별도로 수행한다.
+앱의 `bootJar`는 버전 없이 `apps/<앱>/build/libs/application.jar`로 나온다. 빌드 컨텍스트는 **backend/**이지만 `.dockerignore`가 이 JAR만 남기고 나머지를 모두 뺀다. JAR를 만들지 않고 `docker build`를 실행하면 `COPY` 단계에서 실패한다. 이전 빌드의 JAR가 남아 있으면 그 JAR로 구워지므로, 소스를 바꾼 뒤에는 `bootJar`를 다시 실행한다.
+
+Dockerfile의 첫 단계는 JAR에서 Spring Boot 레이어를 추출한다. 실행 이미지는 Java 25 JRE와 추출 결과만 포함한다. 추출 결과는 아키텍처와 무관하므로 첫 단계는 빌드 머신의 플랫폼에서 돈다. 다른 아키텍처로 구울 때도 에뮬레이션은 실행 이미지의 `RUN`(사용자 생성, worker의 패키지 설치)에만 걸린다.
+
+### CI에서 게시
+
+[`.github/workflows/backend-images.yml`](../../.github/workflows/backend-images.yml)이 main에 `backend/` 변경이 들어올 때마다 돈다. 수동 실행(workflow_dispatch)도 된다.
+
+1. `./gradlew build`로 테스트를 돌리고 네 앱의 JAR를 만든다. 테스트가 실패하면 이미지를 굽지 않는다.
+2. 앱마다 같은 JAR로 linux/amd64와 linux/arm64 이미지를 굽는다. 레이어 캐시는 GitHub Actions 캐시에 앱별로 둔다.
+3. `ghcr.io/seung7642/contentria-<앱>`에 `sha-<커밋 앞 12자>`와 `latest` 태그로 올린다. 배포에는 바뀌지 않는 `sha-` 태그를 쓴다.
 
 기반 이미지는 Eclipse Temurin의 Ubuntu Noble 계열이다. worker에만 Ubuntu 패키지의 ffmpeg와 tini를 추가한다. ffmpeg는 H.264(libx264), AAC와 HLS/fMP4 기능을 사용한다. tini는 Java와 자식 ffmpeg 프로세스에 종료 신호를 전달한다.
 
@@ -51,4 +62,4 @@ Linux ARM64(Colima)와 AMD64에서 네 이미지의 빌드와 실행을 검증�
 
 기존에 게시한 AMD64 이미지 버전은 `ghcr.io/seung7642/contentria-<app>:sha-c064d0568f16`이다. [게시 당시 실행 결과](https://github.com/seung7642/contentria/actions/runs/39951898832)에서 검증 내역을 확인할 수 있다. ARM64 이미지는 로컬 실행만 검증했다.
 
-자동 실행 검증 스크립트와 GitHub Actions 워크플로는 제공하지 않는다. 이후 이미지 빌드와 GHCR 게시 자동화는 별도로 구성한다. GitHub에서 기존 이미지는 사용자 프로필의 [Packages 탭](https://github.com/seung7642?tab=packages)에서 확인한다.
+이후 게시는 위의 CI가 맡는다. CI는 이미지를 실제 DB나 큐에 붙여 띄워 보는 실행 검증을 하지 않는다. GitHub에서 게시한 이미지는 사용자 프로필의 [Packages 탭](https://github.com/seung7642?tab=packages)에서 확인한다.
