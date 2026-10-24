@@ -1,0 +1,138 @@
+name: Backend images
+
+# main에 백엔드 변경이 들어오면 테스트와 함께 실행 JAR를 한 번 만들고,
+# 그 JAR로 앱별 이미지를 구워 GHCR에 올린다.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-images.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 실행 중인 게시는 끝까지 둔다. 대기 중인 실행은 가장 최근 것 하나만 남는다.
+concurrency:
+  group: backend-images
+  cancel-in-progress: false
+
+jobs:
+  jar:
+    name: Gradle build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # 기본값(enhanced)은 상용 캐시 서비스다. GitHub Actions 캐시만 쓰는 오픈소스 구현을 쓴다.
+          cache-provider: basic
+
+      # 통합 테스트는 Testcontainers로 PostgreSQL, Kafka, MinIO를 띄운다. 러너의 Docker를 쓴다.
+      - name: Test and build JARs
+        run: ./gradlew build
+
+      - name: Upload JARs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-jars
+          path: backend/apps/*/build/libs/application.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  image:
+    name: Image (${{ matrix.app }})
+    needs: jar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, batch, worker, migrator]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # 업로드할 때 공통 상위 폴더(backend/apps)가 기준이 되므로 같은 자리에 되돌린다.
+      - name: Download JARs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: backend-jars
+          path: backend/apps
+
+      # JAR 추출은 러너 플랫폼에서 돈다. 에뮬레이션은 ARM64 실행 이미지의 RUN 단계에만 쓴다.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Name the image
+        id: image
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          name="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/contentria-$APP"
+          {
+            echo "name=$name"
+            echo "version=sha-${GITHUB_SHA:0:12}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: backend
+          file: backend/apps/${{ matrix.app }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
+            ${{ steps.image.outputs.name }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=contentria-${{ matrix.app }}
+          # 여러 아키텍처 이미지는 GHCR이 index의 annotation으로 저장소를 연결한다.
+          annotations: |
+            index:org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            index:org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=backend-${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=backend-${{ matrix.app }}
+
+      - name: Write summary
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
+        run: printf -- "- \`%s\` (linux/amd64, linux/arm64)\n" "$IMAGE" >> "$GITHUB_STEP_SUMMARY"
