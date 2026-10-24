@@ -21,6 +21,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import java.time.Clock
+import java.time.Duration
 
 @SpringBootApplication
 @Import(
@@ -43,9 +44,13 @@ import java.time.Clock
 )
 class ApiApplication {
 
-    /** One clock for every context this process hosts. */
+    /**
+     * One clock for every context this process hosts. It ticks in microseconds, PostgreSQL's
+     * timestamp precision: Linux JDKs give nanoseconds, so a time returned before saving would
+     * differ from the same time read back.
+     */
     @Bean
-    fun clock(): Clock = Clock.systemUTC()
+    fun clock(): Clock = Clock.tick(Clock.systemUTC(), Duration.ofNanos(1_000))
 }
 
 fun main(args: Array<String>) {

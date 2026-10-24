@@ -11,6 +11,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import java.time.Clock
+import java.time.Duration
 import kotlin.system.exitProcess
 
 /**
@@ -27,9 +28,9 @@ import kotlin.system.exitProcess
 )
 class BatchApplication {
 
-    /** One clock for every context this process hosts. */
+    /** One clock for every context this process hosts, in microseconds like the API's. */
     @Bean
-    fun clock(): Clock = Clock.systemUTC()
+    fun clock(): Clock = Clock.tick(Clock.systemUTC(), Duration.ofNanos(1_000))
 }
 
 fun main(args: Array<String>) {
