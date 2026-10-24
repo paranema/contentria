@@ -39,9 +39,16 @@ object WorkerTestEnvironment {
         DockerImageName.parse("cgr.dev/chainguard/minio:latest").asCompatibleSubstituteFor("minio/minio"),
     ).apply { start() }
 
-    /** The image's entrypoint is ffmpeg itself; it is kept idle here and each run is an exec. */
+    /**
+     * The image's entrypoint is ffmpeg itself; it is kept idle here and each run is an exec. It runs
+     * as the owner of [workDir], as the worker image runs ffmpeg as its own user: as root on Linux it
+     * would leave root-owned outputs the transcoder cannot delete.
+     */
     val ffmpeg: GenericContainer<*> = GenericContainer(DockerImageName.parse("jrottenberg/ffmpeg:7.1-ubuntu2404"))
-        .withCreateContainerCmdModifier { it.withEntrypoint("sleep").withCmd("infinity") }
+        .withCreateContainerCmdModifier {
+            it.withEntrypoint("sleep").withCmd("infinity")
+                .withUser("${Files.getAttribute(workDir, "unix:uid")}:${Files.getAttribute(workDir, "unix:gid")}")
+        }
         .withFileSystemBind(workDir.toString(), workDir.toString(), BindMode.READ_WRITE)
         .apply { start() }
 
