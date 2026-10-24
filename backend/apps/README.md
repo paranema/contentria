@@ -26,9 +26,9 @@ Dockerfile의 첫 단계는 JAR에서 Spring Boot 레이어를 추출한다. 실
 
 ### CI에서 게시
 
-[`.github/workflows/backend-images.yml`](../../.github/workflows/backend-images.yml)이 main에 `backend/` 변경이 들어올 때마다 돈다. 수동 실행(workflow_dispatch)도 된다.
+[`.github/workflows/backend-images.yml`](../../.github/workflows/backend-images.yml)이 main에 `backend/` 변경이 들어올 때마다 돈다. 수동 실행(workflow_dispatch)도 된다. 게시는 main에서만 한다. 다른 브랜치에서 수동으로 돌리면 1단계까지만 돌아, 머지 전에 Linux에서 테스트를 확인할 수 있다.
 
-1. `./gradlew build`로 테스트를 돌리고 네 앱의 JAR를 만든다. 테스트가 실패하면 이미지를 굽지 않는다.
+1. `./gradlew build --continue`로 테스트를 돌리고 네 앱의 JAR를 만든다. 실패한 모듈이 있어도 나머지 테스트를 마저 돌린다. 테스트가 실패하면 이미지를 굽지 않는다.
 2. 앱마다 같은 JAR로 linux/amd64와 linux/arm64 이미지를 굽는다. 레이어 캐시는 GitHub Actions 캐시에 앱별로 둔다.
 3. `ghcr.io/seung7642/contentria-<앱>`에 `sha-<커밋 앞 12자>`와 `latest` 태그로 올린다. 배포에는 바뀌지 않는 `sha-` 태그를 쓴다.
 

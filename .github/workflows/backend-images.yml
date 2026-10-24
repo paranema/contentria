@@ -46,8 +46,9 @@ jobs:
           cache-provider: basic
 
       # 통합 테스트는 Testcontainers로 PostgreSQL, Kafka, MinIO를 띄운다. 러너의 Docker를 쓴다.
+      # --continue: 한 모듈이 실패해도 나머지 테스트를 돌려 실패를 한 번에 드러낸다.
       - name: Test and build JARs
-        run: ./gradlew build
+        run: ./gradlew build --continue
 
       - name: Upload JARs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -57,9 +58,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # main만 게시한다. 다른 브랜치에서 수동 실행하면 테스트와 JAR까지만 돈다.
   image:
     name: Image (${{ matrix.app }})
     needs: jar
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
