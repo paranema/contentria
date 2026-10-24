@@ -8,6 +8,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import java.time.Clock
+import java.time.Duration
 
 /**
  * The long-running video worker (docs/architecture/01-module-structure.md, 배포 단위). It pulls the
@@ -18,9 +19,9 @@ import java.time.Clock
 @Import(MediaCoreConfiguration::class, MediaQueueConfiguration::class)
 class WorkerApplication {
 
-    /** One clock for every context this process hosts. */
+    /** One clock for every context this process hosts, in microseconds like the API's. */
     @Bean
-    fun clock(): Clock = Clock.systemUTC()
+    fun clock(): Clock = Clock.tick(Clock.systemUTC(), Duration.ofNanos(1_000))
 }
 
 fun main(args: Array<String>) {
