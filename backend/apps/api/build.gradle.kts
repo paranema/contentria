@@ -19,6 +19,9 @@ dependencies {
 
     runtimeOnly("org.postgresql:postgresql")
 
+    // bootRun에서만: compose.yaml의 의존을 띄우고 앱이 끝나면 멈춘다. 실행 JAR와 테스트에는 들어가지 않는다
+    developmentOnly("org.springframework.boot:spring-boot-docker-compose")
+
     testImplementation(project(":platform:architecture-rules"))
     testImplementation(libs.archunit.junit5)
 

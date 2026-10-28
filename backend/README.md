@@ -90,6 +90,39 @@ backend/
 ./gradlew :apps:batch:bootRun --args='--spring.batch.job.name=mediaImageCleanup'
 ```
 
+### 로컬에서 api 띄우기
+
+`apps/api`는 `spring-boot-docker-compose`로 의존을 직접 띄운다. `bootRun`을 실행하면 [apps/api/compose.yaml](apps/api/compose.yaml)로 `docker compose up --wait`를 하고, 앱이 끝나면 컨테이너를 멈춘다. 이 의존성은 `developmentOnly`라서 실행 JAR와 테스트에는 들어가지 않는다. Docker가 필요하다.
+
+| 서비스 | 호스트 포트 | 하는 일 |
+|---|---|---|
+| `postgres` | 15432 | 처음 뜰 때 `infra/database/contentria-v2`로 운영과 같은 롤과 스키마를 만든다. 비밀번호 없이(trust) 받는다. 롤 권한은 운영과 같다 |
+| `migrate` | | 띄울 때마다 작업 중인 소스의 마이그레이션을 컨텍스트별 롤로 적용한다. 끝나야 앱이 뜬다 |
+| `kafka` | 19092 | 단일 노드 |
+
+호스트 포트는 기본 포트에 10000을 더했다. 다른 로컬 스택의 PostgreSQL, Kafka와 겹치지 않게 하려는 것이다. 포트는 127.0.0.1에만 열어 이 머신 밖에서는 붙을 수 없다.
+Boot는 컨테이너를 띄우고 멈추기만 한다. 앱은 평소처럼 환경 변수로 접속 정보를 받고, [apps/api/.env.sample](apps/api/.env.sample)에 이 포트와 계정을 적어 두었다. PostgreSQL은 Boot의 자동 연결에서 뺐다. 자동 연결은 슈퍼유저로 붙기 때문이다. Kafka는 Boot에 compose용 자동 연결이 없다.
+
+미디어 저장소는 compose로 띄우지 않고 실제 R2를 쓴다. 버킷은 환경마다 따로 둔다. 로컬은 개발용 버킷(예: `contentria-media-dev`)을 쓰고, 운영 버킷에는 손대지 않는다.
+
+| 개발용 버킷에 필요한 것 | 이유 |
+|---|---|
+| 그 버킷에만 Object Read & Write 권한이 있는 R2 API 토큰 | 로컬 `.env`의 키가 새도 운영 버킷에는 닿지 않는다 |
+| 공개 접근 (r2.dev 주소 또는 연결한 도메인) | `MEDIA_PUBLIC_BASE_URL`로 이미지와 영상을 내준다 |
+| CORS: 출처 `http://localhost:3000`, 메서드 `PUT`, 헤더 `Content-Type` | 브라우저가 미리 서명된 주소로 직접 올린다 |
+| 영상을 다룬다면 개발용 큐와 이벤트 알림 | 버킷의 이벤트는 그 버킷에 연결한 큐로만 간다. 운영 큐에 연결하면 로컬 업로드를 운영 worker가 받는다([operations/cloudflare-video-pipeline.md](docs/operations/cloudflare-video-pipeline.md)) |
+
+통합 테스트는 지금처럼 Testcontainers의 MinIO를 쓴다. 네트워크와 Cloudflare 계정 없이 돌아야 하기 때문이다.
+
+```bash
+cp apps/api/.env.sample apps/api/.env   # 비어 있는 비밀 값을 채운다
+set -a; . apps/api/.env; set +a
+./gradlew :apps:api:bootRun
+```
+
+스택이 이미 떠 있으면 Boot는 띄우지 않고, 자기가 띄우지 않은 스택은 앱이 끝나도 멈추지 않는다. 직접 `docker compose up`으로 띄워 둔 경우가 그렇다.
+데이터는 컨테이너를 멈춰도 볼륨에 남는다. 처음부터 다시 만들려면 `docker compose -f apps/api/compose.yaml down -v`를 실행한다.
+
 ### 설정
 
 프로세스마다 읽는 환경 변수는 그 app 폴더의 `.env.sample`에 있다. 필수인 값, 비밀인 값, 기본값과 로컬용 값을 함께 적었다.
