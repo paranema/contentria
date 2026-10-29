@@ -6,6 +6,9 @@
 # 실패로 본다. 대신 다 돌면 /tmp/done을 만들어 헬스체크를 통과시키므로, 앱은 마이그레이션 뒤에 뜬다.
 set -eu
 
+# stop한 컨테이너를 다시 start하면 지난 실행의 /tmp/done이 남아 있다. 지우지 않으면 마이그레이션 전에 헬스체크가 통과한다.
+rm -f /tmp/done
+
 for dir in /migrations/*/; do
     context=$(basename "$dir")
     flyway \
