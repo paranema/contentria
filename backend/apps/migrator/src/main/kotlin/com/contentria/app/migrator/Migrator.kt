@@ -4,8 +4,8 @@ import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.MigrateResult
 
 /**
- * A context whose schema this process migrates. The schema name, the migration location and
- * the owning role all follow the context name (docs/architecture/04-persistence-conventions.md).
+ * 이 프로세스가 스키마를 마이그레이션하는 컨텍스트. 스키마 이름, 마이그레이션 위치, 소유 롤이
+ * 모두 컨텍스트 이름을 따른다(docs/architecture/04-persistence-conventions.md).
  */
 data class ContextSchema(val context: String) {
     val schema: String get() = context
@@ -14,18 +14,17 @@ data class ContextSchema(val context: String) {
     val passwordVariable: String get() = "${context.uppercase()}_MIGRATOR_PASSWORD"
 }
 
-/** Read by [main] along with each context's credentials; apps/migrator/.env.sample lists them all. */
+/** [main]이 컨텍스트마다의 접속 정보와 함께 읽는다. 전체 목록은 apps/migrator/.env.sample에 있다. */
 const val DATABASE_URL_VARIABLE = "MIGRATION_DATABASE_URL"
 
 data class Credentials(val username: String, val password: String)
 
 /**
- * Runs each context's Flyway migrations as that context's own migration role.
+ * 컨텍스트마다 그 컨텍스트의 마이그레이션 롤로 Flyway 마이그레이션을 실행한다.
  *
- * One Flyway per context, never one for the whole database: each has its own schema, its own
- * history table and its own credentials, so a context's migrations cannot reach another
- * context's schema even by mistake, and a context can later move to its own database by taking
- * its schema with it.
+ * Flyway는 데이터베이스 전체에 하나가 아니라 컨텍스트마다 하나다. 컨텍스트마다 스키마, 이력 테이블,
+ * 접속 정보가 따로라서, 한 컨텍스트의 마이그레이션은 실수로라도 다른 컨텍스트의 스키마에 닿지 못한다.
+ * 나중에 한 컨텍스트를 자기 데이터베이스로 옮길 때도 그 스키마만 가져가면 된다.
  */
 class Migrator(
     private val databaseUrl: String,
@@ -40,8 +39,8 @@ class Migrator(
             .dataSource(databaseUrl, credentials.username, credentials.password)
             .schemas(context.schema)
             .defaultSchema(context.schema)
-            // The schema and its owner are provisioned beforehand (infra/database/contentria-v2).
-            // A migration role that could create schemas could also create one for another context.
+            // 스키마와 그 소유자는 미리 만들어 둔다(infra/database/contentria-v2).
+            // 스키마를 만들 수 있는 마이그레이션 롤이라면 다른 컨텍스트의 스키마도 만들 수 있다.
             .createSchemas(false)
             .locations(context.location)
             .failOnMissingLocations(true)
@@ -50,7 +49,7 @@ class Migrator(
     }
 
     companion object {
-        /** Every context with a schema. Add a context here when it gets its first migration. */
+        /** 스키마가 있는 모든 컨텍스트. 컨텍스트에 첫 마이그레이션이 생기면 여기에 더한다. */
         val CONTEXTS = listOf(
             ContextSchema("member"),
             ContextSchema("publishing"),
@@ -63,8 +62,8 @@ class Migrator(
 }
 
 /**
- * Entry point of the migration Job (ArgoCD PreSync). Exits non-zero when any migration fails,
- * which stops the deployment before the new application version starts.
+ * 마이그레이션 Job(ArgoCD PreSync)의 진입점. 마이그레이션이 하나라도 실패하면 0이 아닌 코드로 끝나고,
+ * 그러면 새 버전의 애플리케이션이 뜨기 전에 배포가 멈춘다.
  */
 fun main() {
     val environment = System.getenv()
