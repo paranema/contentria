@@ -1,12 +1,3 @@
-# apps/api를 로컬에서 띄울 때 필요한 의존. 운영과 테스트에는 쓰지 않는다.
-# 미디어 저장소는 여기서 띄우지 않고 개발용 R2 버킷을 쓴다(README의 "로컬에서 api 띄우기").
-# bootRun은 이 폴더에서 돌기 때문에 spring-boot-docker-compose가 이 파일을 찾아 docker compose up을 하고,
-# 앱이 끝나면 stop한다. 컨테이너를 지우지 않으므로 데이터는 다음 실행에도 남는다.
-# 처음부터 다시 만들려면: docker compose -f apps/api/compose.yaml down -v
-#
-# Boot는 띄우고 멈추기만 한다. 접속 정보는 앱이 평소처럼 환경 변수로 받는다(.env.sample에 이 파일의 값을 적었다).
-# 호스트 포트는 기본 포트에 10000을 더한 값이다. 다른 로컬 스택의 PostgreSQL, Kafka와 겹치지 않게 한다.
-# 모두 127.0.0.1에만 열어 이 머신 밖에서는 붙을 수 없다.
 name: contentria-api
 
 services:
@@ -58,15 +49,17 @@ services:
   # 단일 노드(브로커 겸 컨트롤러). 클라이언트에 알려 주는 주소가 호스트 포트와 같아야 앱이 붙는다.
   # Boot에는 compose의 Kafka를 연결해 주는 기능이 없어서, 앱은 KAFKA_BOOTSTRAP_SERVERS로 이 주소를 받는다.
   # KAFKA_ 변수를 하나라도 주면 이미지가 기본 설정을 쓰지 않으므로 전부 적는다.
+  # INTERNAL은 compose 안의 컨테이너(kafka-ui)용이다. 컨테이너 안에서 localhost:19092는 그 컨테이너 자신이라
+  # PLAINTEXT가 알려 주는 주소로는 붙지 못한다.
   kafka:
     image: apache/kafka:4.1.0
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19092
+      KAFKA_LISTENERS: PLAINTEXT://:9092,INTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19092,INTERNAL://kafka:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -74,6 +67,18 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     ports:
       - "127.0.0.1:19092:9092"
+
+  # 토픽, 메시지, 컨슈머 그룹을 브라우저로 본다: http://localhost:18080
+  # provectuslabs/kafka-ui는 관리가 멈춰서, 이어받은 kafbat 쪽을 쓴다. 로그인 없이 연다(루프백에만 연다).
+  kafka-ui:
+    image: kafbat/kafka-ui:v1.5.0
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "127.0.0.1:18080:8080"
 
 volumes:
   postgres-data:
