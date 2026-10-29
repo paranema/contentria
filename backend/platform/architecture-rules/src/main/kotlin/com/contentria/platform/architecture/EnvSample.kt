@@ -5,7 +5,7 @@ import kotlin.io.path.readLines
 import kotlin.io.path.readText
 
 /**
- * An app's `.env.sample` against the environment variables the app reads (backend/apps/README.md).
+ * An app's `.env.sample` against the environment variables the app reads (backend/README.md, "설정").
  * A sample line names a variable whether or not it is commented out: a commented line documents
  * a default, so the variable still counts as listed.
  */
