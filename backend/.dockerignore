@@ -1,4 +1,4 @@
-# 이미지에는 미리 만든 실행 JAR만 들어간다(apps/README.md의 "빌드").
+# 이미지에는 미리 만든 실행 JAR만 들어간다(docs/operations/container-images.md의 "이미지 구성").
 # 그 밖의 소스, 로컬 설정, 비밀 파일은 빌드 컨텍스트로 보내지 않는다.
 *
 !apps/*/build/libs/application.jar

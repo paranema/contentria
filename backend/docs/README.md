@@ -16,7 +16,7 @@
 |---|---|---|
 | [conventions/](conventions/) | 여러 컨텍스트에 걸친 규약 | [logging.md](conventions/logging.md), [security.md](conventions/security.md) |
 | [design-notes/](design-notes/) | 특정 기능의 설계와 결정 이유 | [media-upload-hardening.md](design-notes/media-upload-hardening.md), [refresh-token-grace-window.md](design-notes/refresh-token-grace-window.md) |
-| [operations/](operations/) | 외부 서비스 설정, 운영 절차 | [cloudflare-video-pipeline.md](operations/cloudflare-video-pipeline.md) |
+| [operations/](operations/) | 외부 서비스 설정, 운영 절차 | [cloudflare-video-pipeline.md](operations/cloudflare-video-pipeline.md), [container-images.md](operations/container-images.md) |
 
 ## 배치 규칙
 
