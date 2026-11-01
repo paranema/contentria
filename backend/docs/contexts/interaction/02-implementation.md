@@ -1,164 +1,152 @@
-# 규칙의 구현
+# 상호작용 규칙의 구현
 
-[01-rules.md](01-rules.md)의 `계층` 열을 정하는 기준과, 그 열만으로는 담기 어려운 세부를 적는다.
+[01-rules.md](01-rules.md)에 정의된 각 규칙을 어느 계층과 컴포넌트에 배치해 구현했는지 기록합니다.
 
-계층 정의는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 레이어드 규칙을 따른다(`presentation`, `application`, `domain`, `infra`).
-불변식과 정책을 가르는 기준은 회원, 출판과 같다. 애그리거트 하나만 보고 판단할 수 있으면 도메인, 다른 애그리거트나 다른 컨텍스트를 조회해야 하면 앱이다.
+- 내부 계층 구조는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **레이어드 아키텍처** 규칙(`presentation → application → domain ← infra`)을 따릅니다.
+- 도메인 불변식과 애플리케이션 정책을 나누는 기준은 회원·출판 컨텍스트와 동일합니다. 단일 애그리거트 상태만으로 판단할 수 있으면 도메인(`도메인`), 다른 애그리거트나 외부 컨텍스트를 조회해야 하면 응용 계층(`앱`)에서 처리합니다.
 
-## 애그리거트 경계
+## 애그리거트 경계 및 도메인 모델
 
-| 애그리거트 | 담는 것 | 다른 애그리거트 참조 |
-|---|---|---|
-| `Subscription` | 구독자 ID, 블로그 ID, 구독 시각 | 모두 ID |
-| `Like` | 회원 ID, 글 ID, 블로그 ID, 시각 | 모두 ID |
-| `Comment` | 글 ID, 블로그 ID, 작성자 ID, 부모 댓글 ID, 본문, 수정 여부, 지운 자리 여부 | 부모 댓글도 ID |
+상호작용 컨텍스트는 블로그 구독(`Subscription`), 게시글 좋아요(`Like`), 댓글(`Comment`) 세 개의 애그리거트로 구성됩니다.
 
-**댓글 하나하나가 애그리거트다.** 답글은 부모와 따로 쓰이고 따로 고쳐진다. 부모와 답글을 한 애그리거트로 묶으면, 인기 댓글에 답글이 몰릴 때 모두가 같은 애그리거트를 두고 경합한다.
-그래서 "답글이 있으면 자리를 남긴다"는 답글이 있는지 조회해야 판단할 수 있고, 앱의 규칙이 된다. 자리를 남기는 동작 자체는 도메인 메서드(`Comment.leavePlaceholder()`)다.
+| 애그리거트     | 보유 상태                                                                       | 타 애그리거트 참조 방식 |
+| -------------- | ------------------------------------------------------------------------------- | ----------------------- |
+| `Subscription` | 구독자 ID, 블로그 ID, 구독 시각                                                 | 모두 ID 값으로 참조     |
+| `Like`         | 회원 ID, 게시글 ID, 블로그 ID, 생성 시각                                        | 모두 ID 값으로 참조     |
+| `Comment`      | 게시글 ID, 블로그 ID, 작성자 ID, 부모 댓글 ID, 본문, 수정 여부, 자리 표시 여부  | 부모 댓글도 ID로 참조   |
 
-트랜잭션 하나는 애그리거트 하나를 바꾼다. 예외가 하나 있다. 지운 자리만 남은 댓글의 마지막 답글을 지우면, 같은 트랜잭션에서 그 자리도 지운다(01 흐름 4). 남길 이유가 사라진 것을 정리하는 일이고, 따로 나누면 빈 자리가 남는 순간이 생긴다.
+- **개별 댓글(`Comment`) 하나하나가 독립된 애그리거트입니다.** 답글은 부모 댓글과 별도로 작성되고 수정됩니다. 만약 부모 댓글과 하위 답글들을 하나의 애그리거트로 묶으면 인기 댓글에 답글이 동시에 달릴 때 동일한 루트 애그리거트를 두고 잠금 경합이 발생합니다.
+  - 따라서 "하위 답글이 존재하면 자리 표시를 남긴다"는 규칙은 하위 답글 존재 여부를 리포지토리로 먼저 조회해야 판단할 수 있으므로 응용 계층(`앱`) 정책이 되며, 자리 표시로 전환하는 상태 변경 자체는 도메인 메서드(`Comment.leavePlaceholder()`)가 수행합니다.
+- **한 트랜잭션에서 두 댓글을 함께 삭제하는 예외**: 기본적으로 한 트랜잭션은 하나의 애그리거트만 변경하지만, 자리 표시만 남아 있던 최상위 댓글의 마지막 답글을 삭제할 때는 동일 트랜잭션 안에서 부모 자리 표시도 함께 삭제합니다(`01-rules.md` 흐름 4). 트랜잭션을 분리하면 답글이 하나도 없는 빈 자리 표시가 순간적으로 노출될 수 있기 때문입니다.
+- **좋아요와 댓글에 `blog_id`를 함께 저장하는 이유**: 댓글 작성 시점에 이미 출판 컨텍스트에서 읽어 온 블로그 ID를 함께 보관해 두면, `CommentAdded` 이벤트 페이로드를 구성하거나 향후 블로그 단위 통계를 집계할 때 출판 컨텍스트를 다시 조회하지 않아도 됩니다.
 
-블로그 ID를 좋아요와 댓글에 함께 둔다. `CommentAdded`가 블로그를 담고, 블로그별 집계가 필요해질 때 다시 출판에 묻지 않게 한다. 쓸 때 출판에서 이미 읽은 값이다.
+## 데이터베이스 스키마 및 제약 조건
 
-## DB 제약
+`interaction` 스키마의 중복 방지 제약 조건과 조회 성능을 위한 인덱스 구성입니다.
 
-| 제약 | 보증하는 것 |
-|---|---|
-| `subscriptions(subscriber_id, blog_id)` UNIQUE | 한 회원이 한 블로그를 한 번만 구독 |
-| `subscriptions(blog_id, subscriber_id)` 인덱스 (V2) | 블로그의 구독자 수, 구독자 ID를 ID 순으로 나눠 읽기 |
-| `likes(account_id, post_id)` UNIQUE | 한 회원이 한 글에 한 번만 좋아요 |
-| `comments(post_id, created_at)` 인덱스 | 글의 댓글을 시간순으로 |
-| `comments(parent_id)` 인덱스 | 답글이 있는지, 답글 목록 |
-| `comments` CHECK `removed = (body = '')` | 지운 자리만 본문이 비어 있다 |
-| `comments` CHECK `NOT removed OR parent_id IS NULL` | 답글은 지운 자리가 되지 않는다. 실제로 지운다 |
-| `outbox_event`, `inbox_event` | 아웃박스는 출판과 같은 형태. 인박스는 `(event_id, consumer)` 기본키 |
+| 제약 조건 및 인덱스                                  | 보장하는 도메인 규칙 및 용도                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| `subscriptions(subscriber_id, blog_id)` UNIQUE       | 한 회원이 동일한 블로그를 중복 구독하는 것을 방지                         |
+| `subscriptions(blog_id, subscriber_id)` 인덱스       | 블로그별 구독자 수 집계 및 구독자 ID 커서 기반 일괄 조회                  |
+| `likes(account_id, post_id)` UNIQUE                  | 한 회원이 동일한 게시글에 중복으로 좋아요를 누르는 것을 방지              |
+| `comments(post_id, created_at)` 인덱스               | 게시글별 댓글 목록의 시간순 조회                                          |
+| `comments(parent_id)` 인덱스                         | 특정 부모 댓글의 하위 답글 존재 여부 확인 및 답글 목록 조회               |
+| `comments` CHECK (`removed = (body = '')`)           | 삭제된 자리 표시(`removed = true`)인 경우에만 본문이 빈 문자열임을 보장   |
+| `comments` CHECK (`NOT removed OR parent_id IS NULL`)| 답글(`parent_id IS NOT NULL`)은 자리 표시로 남지 않고 물리 삭제됨을 보장  |
+| `outbox_event`, `inbox_event`                        | 트랜잭셔널 아웃박스 및 `(event_id, consumer)` 복합키 기반의 멱등 인박스   |
 
-외래키는 없다. 세 애그리거트 모두 다른 애그리거트와 다른 컨텍스트를 ID로만 참조한다. 답글의 부모도 다른 애그리거트다.
+- 물리적 외래키(FK)는 두지 않습니다. 세 애그리거트 모두 다른 애그리거트(부모 댓글 포함)와 타 컨텍스트의 자원을 ID로만 참조합니다.
+- 동일한 구독이나 좋아요 요청이 동시에 두 번 도달하면 두 번째 요청은 DB 고유 제약(`UNIQUE`)에 걸리며, 응용 서비스는 이를 "이미 처리된 상태"로 간주하여 `01-rules.md`의 멱등성 규칙에 따라 성공(`204`)으로 응답합니다.
 
-같은 구독이나 좋아요가 동시에 두 번 오면 고유 제약이 둘째를 막는다. 01의 "이미 구독함은 성공"에 따라 그 실패도 성공으로 답한다.
+## 댓글·답글의 동시성 제어
 
-## 동시성
+부모 댓글과 답글 사이에 외래키가 없으므로, 부모-자식 간 무결성 규칙은 비관적 잠금(`SELECT ... FOR UPDATE`, `Comment.findForUpdate`)으로 보장합니다. 최상위 댓글 하위의 상태를 변경하는 모든 작업은 대상 행을 먼저 잠근 뒤 수행합니다.
 
-댓글은 외래키가 없으므로, 부모와 답글 사이의 규칙은 잠금으로 지킨다. 최상위 댓글 아래의 변경은 모두 그 댓글 행을 `SELECT ... FOR UPDATE`(`Comment.findForUpdate`)로 먼저 잠근다.
+| 작업 종류          | 잠금 획득 순서                 | 방지하는 동시성 경쟁 상태(Race Condition)                                                          |
+| ------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 답글 작성          | 부모 댓글 잠금                 | 부모 댓글이 삭제되는 도중에 새 답글이 매달리는 현상 방지                                           |
+| 최상위 댓글 삭제   | 해당 최상위 댓글 잠금          | 답글이 없다고 확인한 직후 물리 삭제하기 전에 새 답글이 추가되는 현상 방지                          |
+| 답글 삭제          | 해당 답글 잠금 → 부모 댓글 잠금| 마지막 남은 두 답글이 동시에 삭제되면서 서로 상대 답글이 남아 있다고 판단해 빈 자리를 남기는 현상 방지|
+| 댓글 수정          | 해당 댓글 잠금                 | 삭제 자리 표시로 전환하는 도중에 수정 요청이 본문을 덮어써 되살리는 현상 방지                      |
 
-| 변경 | 잠그는 행 | 막는 것 |
-|---|---|---|
-| 답글 쓰기 | 부모 | 지우는 중인 댓글에 답글이 붙는 것 |
-| 최상위 댓글 지우기 | 그 댓글 | 답글이 없다고 보고 지우는 사이에 답글이 붙는 것 |
-| 답글 지우기 | 그 답글, 그다음 부모 | 마지막 두 답글이 동시에 지워져 서로 상대가 남았다고 보고 빈 자리를 남기는 것 |
-| 고치기 | 그 댓글 | 자리를 남기는 동안 고쳐 본문이 되살아나는 것 |
+- 답글 삭제 시에는 항상 **자식(답글) 행을 먼저 잠그고 부모 행을 나중에 잠급니다.** 반대로 부모를 먼저 잠근 채 특정 답글 잠금을 기다리는 코드 경로는 존재하지 않으므로 데드락(교착 상태)이 발생하지 않습니다.
 
-답글은 자기 행을 먼저, 부모를 나중에 잠근다. 부모를 쥔 채 답글을 기다리는 쪽은 없으므로 교착이 생기지 않는다.
+## 컨텍스트 간 연동 인터페이스
 
-## 다른 컨텍스트 호출
+상호작용 컨텍스트가 외부 컨텍스트를 조회하는 아웃바운드 호출과, 타 컨텍스트에 제공하는 인바운드 공개 쿼리입니다.
 
-| 호출 | 위치 | 내용 |
-|---|---|---|
-| 회원: 계정이 ACTIVE인가 | `infra/client/MemberClient` | `member-api`의 `GetAccountStatusQuery` |
-| 출판: 글이 발행 상태인가, 그 블로그와 소유자 | `infra/client/PublishingClient` | `publishing-api`에 새로 공개할 조회. 글 ID 묶음으로 묻는다 |
-| 출판: 블로그 slug로 블로그 ID와 소유자 | `infra/client/PublishingClient` | 위와 같다 |
+### 회원·출판 컨텍스트 조회 (`MemberClient`, `PublishingClient`)
 
-쓰기 트랜잭션을 열기 **전에** 조회한다. 출판이 응답하지 않으면(분리 후) 쓰기를 거부한다. 거두는 일은 출판과 회원에게 묻지 않는다.
+구독·좋아요·댓글 작성 전에 요청자 계정 상태와 대상 게시글·블로그 상태를 확인하기 위해 호출하는 인터페이스입니다.
 
-출판은 `publishing-api`에 `GetPostReferencesQuery.getPosts(글 ID 묶음)`(블로그, 소유자, 공개 여부)와 `GetBlogReferencesQuery`(`getBlogBySlug`, `getBlogs`)를 공개한다. 출판의 읽기 전용 트랜잭션에서 돌고 본문은 읽지 않는다.
-번역 계층은 출판과 회원의 타입을 상호작용의 타입(`domain/target`의 `TargetPost`, `TargetBlog`)으로 바꾼다. 발행되지 않은 글, 출판이 모르는 글, 회원이 모르는 계정은 모두 "할 수 없음"이 된다. 레이어드에서 infra는 domain만 알 수 있으므로 이 타입을 domain에 둔다.
+| 호출 대상                                            | 구현 위치                      | 사용하는 공개 인터페이스 (`-api`)                                         |
+| ---------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| 회원: 요청자 계정이 `ACTIVE` 상태인지 확인           | `infra/client/MemberClient`    | `member-api`의 `GetAccountStatusQuery`                                    |
+| 출판: 게시글 발행 여부 및 소속 블로그·소유자 확인    | `infra/client/PublishingClient`| `publishing-api`의 `GetPostReferencesQuery.getPosts`                      |
+| 출판: 블로그 slug로 블로그 ID 및 소유자 확인         | `infra/client/PublishingClient`| `publishing-api`의 `GetBlogReferencesQuery` (`getBlogBySlug`, `getBlogs`) |
 
-## 이벤트
+- 모든 외부 컨텍스트 조회는 **쓰기 트랜잭션을 시작하기 전에** 수행합니다. 향후 서비스 분리 시 출판·회원 서비스가 응답하지 않으면 쓰기 요청을 거부합니다(단, 구독 해지·좋아요 취소·댓글 삭제는 외부 컨텍스트를 조회하지 않습니다).
+- 번역 계층(`MemberClient`, `PublishingClient`)은 외부 컨텍스트의 응답 타입을 상호작용 내부 도메인 타입(`domain/target`의 `TargetPost`, `TargetBlog`)으로 변환합니다. 레이어드 아키텍처에서 `infra`와 `application`이 공통으로 참조할 수 있도록 해당 타입은 `domain` 계층에 위치합니다.
 
-| 이벤트 | 방향 | 토픽 | 상호작용이 하는 일 |
-|---|---|---|---|
-| `PostDeleted` | 출판 → 상호작용 | `publishing.post` | 그 글의 댓글과 좋아요를 지운다. 소비자 그룹 `interaction.post-deleted` |
-| `CommentAdded` | 상호작용 → 알림 | `interaction.comment` | 댓글을 쓴 트랜잭션에서 `interaction.outbox_event`에 기록한다 |
+### 외부에 공개하는 쿼리 (`interaction-api`)
 
-`CommentAdded`가 담는 것: 댓글 ID, 글 ID, 블로그 ID, 블로그 소유자 ID, 작성자 ID, 부모 댓글의 작성자 ID(답글일 때). 알림이 누구에게 보낼지 다시 묻지 않게 한다.
+화면 조합 계층이나 알림 컨텍스트에서 상호작용 데이터를 조회할 수 있도록 `interaction-api`에 공개한 인터페이스입니다.
 
-상호작용이 Kafka를 처음 쓰는 컨텍스트라서, 릴레이와 인박스를 I6에서 함께 만들었다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "이벤트").
+| 공개 인터페이스                            | 제공 데이터                                                       | 호출 주체                                               |
+| ------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| `GetInteractionCountsQuery`                | 게시글별 좋아요 수·댓글 수(ID 묶음), 블로그별 구독자 수(ID 묶음)  | 게시글 목록·상세 화면 조합 계층 (반응이 없는 ID는 `0` 반환, 댓글 수는 답글 포함·자리 표시 제외) |
+| `GetSubscribersQuery.subscriberIds(blogId, after)`| 특정 블로그의 구독자 ID 목록 (ID 오름차순 1,000건 단위 커서 페이징)| 알림 컨텍스트가 새 글 알림 수신자를 조회할 때만 내부 호출 (HTTP 미공개) |
 
-| 만든 것 | 위치 |
-|---|---|
-| 아웃박스 릴레이 | `platform/messaging`의 `OutboxRelay`. 출판과 상호작용의 아웃박스를 비운다 |
-| 인박스 | `platform/messaging`의 `Inbox.processOnce`와 `interaction.inbox_event`. 빈은 `config/InteractionMessagingConfiguration` |
-| 소비자 | `presentation/messaging/PostDeletedConsumer`. `application/PostCleanupService`가 그 글의 댓글과 좋아요를 지운다 |
-| 아웃박스 기록 | `infra/messaging/OutboxCommentEvents` |
+- `01-rules.md`의 "누가 남겼는지는 목록으로 보여주지 않는다"는 규칙은 사용자 화면에 구독자 목록을 노출하지 않는다는 의미이며, 알림 발송을 위한 시스템 내부의 `GetSubscribersQuery` 호출은 이에 해당하지 않습니다.
 
-글을 지운 정리는 댓글과 좋아요 여러 애그리거트를 한 트랜잭션에서 지운다. 글이 이미 없으니 지킬 불변식이 없고, 인박스 기록과 같은 트랜잭션이어야 다시 와도 한 번만 처리된다.
-`PostDeleted`가 오기 전까지 지운 글의 댓글과 좋아요는 남아 있지만, 글이 없으므로 보이지 않는다(01 "다른 컨텍스트의 일로 생기는 것").
+## 도메인 이벤트 송수신
 
-| 확인하지 않은 것 | 사유 |
-|---|---|
-| 운영 환경의 토픽 생성(파티션 수, 복제 수, DLT) | 지금은 브로커의 자동 생성에 맡긴다. 인프라 작업 때 정한다 |
-| 인박스 행의 보존 기간 | 지금은 지우지 않는다. 다시 올 수 있는 기간(토픽 보존 기간)보다 길어야 한다 |
+상호작용 컨텍스트가 구독하거나 발행하는 Kafka 도메인 이벤트 목록입니다.
 
-## 공개 조회
+| 이벤트         | 방향            | Kafka 토픽            | 상호작용 컨텍스트의 역할                                                             |
+| -------------- | --------------- | --------------------- | ------------------------------------------------------------------------------------ |
+| `PostDeleted`  | 출판 → 상호작용 | `publishing.post`     | 삭제된 게시글의 댓글과 좋아요를 일괄 삭제합니다 (컨슈머 그룹: `interaction.post-deleted`). |
+| `CommentAdded` | 상호작용 → 알림 | `interaction.comment` | 댓글 작성 트랜잭션 안에서 `interaction.outbox_event`에 기록합니다.                   |
 
-| 조회 | 위치 |
-|---|---|
-| 좋아요 수, 댓글 수(글 ID 묶음), 구독자 수(블로그 ID 묶음) | `interaction-api`에 공개한다. 글 목록과 상세를 조합하는 진입점이 쓴다 |
-| 내가 좋아요했는지, 내가 구독했는지 | HTTP |
-| 블로그의 구독자 ID | `interaction-api`의 `GetSubscribersQuery`. 알림이 새 글의 수신자를 정할 때만 쓴다. HTTP로 공개하지 않는다 |
+- **`CommentAdded` 페이로드 구성**: 댓글 ID, 게시글 ID, 블로그 ID, 블로그 소유자 ID, 댓글 작성자 ID, 그리고 답글인 경우 부모 댓글 작성자 ID를 함께 담습니다. 이를 통해 알림 컨텍스트가 수신자를 결정할 때 상호작용이나 출판 컨텍스트를 다시 조회하지 않도록 합니다.
+- **게시글 삭제에 따른 일괄 정리**: `PostDeletedConsumer`(`presentation/messaging`)가 이벤트를 수신하면 `PostCleanupService`(`application`)가 `Inbox.processOnce` 트랜잭션 안에서 해당 게시글의 댓글과 좋아요를 한 번에 삭제합니다. 게시글이 이미 삭제된 상태이므로 개별 댓글의 불변식을 검사할 필요가 없으며, 인박스 기록과 동일 트랜잭션으로 묶여 재전달 시에도 멱등하게 처리됩니다.
 
-`GetSubscribersQuery.subscriberIds(blogId, after)`는 구독자 ID를 ID 순으로 1000개(`PAGE_SIZE`)씩 준다. 앞 페이지의 마지막 ID를 `after`로 넘기면 다음 페이지다. 01의 "누가 구독했는지 목록으로 보여주지 않는다"는 사람이 보는 목록의 규칙이고, 이 조회는 그 목록이 아니다.
+메시징 인프라 운영과 관련하여 현재 적용 중인 방침은 다음과 같습니다.
 
-`interaction-api`의 `GetInteractionCountsQuery`(`likeCounts`, `commentCounts`, `subscriberCounts`)는 묻는 ID마다 값을 돌려준다. 아무도 누르지 않은 ID는 0이다. 댓글 수는 답글을 넣고 지운 자리는 넣지 않는다.
+| 운영 고려 사항                       | 현재 방침                                                                                       |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Kafka 토픽 파티션·복제본·DLT 설정    | 로컬·개발 환경에서는 브로커 자동 생성을 사용하며, 운영 인프라 구성 시 명시적으로 정의합니다.    |
+| `inbox_event` 레코드 보존 기간       | 현재는 별도로 삭제하지 않으며, 추후 정리 배치 도입 시 Kafka 토픽 보존 기간보다 길게 유지합니다. |
 
-## HTTP
+## HTTP 엔드포인트 및 오류 코드
 
-| 요청 | 응답 | 01 |
-|---|---|---|
-| `PUT /blogs/{slug}/subscription` | 204. 이미 구독했어도 204 | 흐름 1 |
-| `DELETE /blogs/{slug}/subscription` | 204. 구독하지 않았거나 없는 블로그여도 204 | 흐름 1 |
-| `GET /me/subscriptions` | 구독한 블로그(ID, slug, 구독 시각), 최근 구독 순 | 공개 범위 |
-| `GET /me/subscriptions/{slug}` | `{"subscribed": true}` | 공개 범위 |
-| `PUT /posts/{id}/like` | 204. 이미 눌렀어도 204 | 흐름 2 |
-| `DELETE /posts/{id}/like` | 204. 누르지 않았어도, 글이 숨겨졌어도 204 | 흐름 2 |
-| `GET /me/likes?postIds=` | 그중 내가 좋아요한 글 ID | 공개 범위 |
-| `GET /interactions/counts?postIds=&blogIds=` | 좋아요 수, 댓글 수, 구독자 수. 로그인하지 않아도 된다 | 공개 범위 |
-| `GET /posts/{id}/comments?cursor=` | 최상위 댓글 20개씩 오래된 순, 각자의 답글 전부. 로그인하지 않아도 된다 | 공개 범위 |
-| `POST /posts/{id}/comments` | 201과 쓴 댓글. `parentId`를 주면 답글 | 흐름 3 |
-| `PATCH /comments/{id}` | 고친 댓글. `edited`가 true | 흐름 4 |
-| `DELETE /comments/{id}` | 204. 답글이 있으면 자리만 남는다 | 흐름 4 |
+상호작용 컨텍스트가 제공하는 REST API 엔드포인트와 응답 규약입니다.
 
-지운 자리는 `removed`가 true이고, 본문은 비어 있으며 작성자 ID를 보여주지 않는다. 작성자 이름은 화면을 조합하는 쪽이 회원에게 묻는다. 회원은 아직 이름 조회를 공개하지 않았다.
+| HTTP 요청                                      | 응답                                                                          | 관련 규칙           |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- | ------------------- |
+| `PUT /blogs/{slug}/subscription`               | `204 No Content` (이미 구독 중이어도 `204`)                                   | 흐름 1 블로그 구독  |
+| `DELETE /blogs/{slug}/subscription`            | `204 No Content` (미구독 상태이거나 존재하지 않는 블로그여도 `204`)           | 흐름 1 구독 해지    |
+| `GET /me/subscriptions`                        | 내가 구독한 블로그 목록 (블로그 ID, slug, 구독 시각 — 최근 구독 순)           | 공개 범위           |
+| `GET /me/subscriptions/{slug}`                 | `{"subscribed": true}`                                                        | 공개 범위           |
+| `PUT /posts/{id}/like`                         | `204 No Content` (이미 좋아요를 눌렀어도 `204`)                               | 흐름 2 좋아요       |
+| `DELETE /posts/{id}/like`                      | `204 No Content` (누르지 않았거나 비공개 전환된 글이어도 `204`)               | 흐름 2 좋아요 취소  |
+| `GET /me/likes?postIds=`                       | 요청한 게시글 ID(최대 100개) 중 내가 좋아요를 누른 게시글 ID 목록             | 공개 범위           |
+| `GET /interactions/counts?postIds=&blogIds=`   | 게시글 좋아요·댓글 수 및 블로그 구독자 수 일괄 조회 (비로그인 허용, 최대 100개)| 공개 범위           |
+| `GET /posts/{id}/comments?cursor=`             | 최상위 댓글 20개씩 오래된 순 + 각 댓글의 답글 전체 (비로그인 허용)            | 공개 범위           |
+| `POST /posts/{id}/comments`                    | `201 Created` 및 작성된 댓글 (`parentId` 지정 시 답글)                        | 흐름 3 댓글 작성    |
+| `PATCH /comments/{id}`                         | `200 OK` 및 수정된 댓글 (`edited: true`)                                      | 흐름 4 댓글 수정    |
+| `DELETE /comments/{id}`                        | `204 No Content` (하위 답글이 있으면 자리 표시만 남김)                        | 흐름 4 댓글 삭제    |
 
-ID 묶음은 한 번에 100개까지 받는다. 넘으면 400 `TOO_MANY_IDS`다.
+- 삭제된 자리 표시 댓글은 응답에서 `removed: true`, 빈 본문(`""`)으로 내려가며 작성자 ID를 노출하지 않습니다.
+- 다건 ID 조회 파라미터(`postIds`, `blogIds`)에 100개를 초과하는 ID를 전달하면 `400 TOO_MANY_IDS`를 반환합니다.
 
-| 실패 | 응답 |
-|---|---|
-| 계정이 ACTIVE가 아님 | 403 `ACCOUNT_NOT_ACTIVE` |
-| 블로그가 없음 | 404 `BLOG_NOT_FOUND` |
-| 글이 없거나 발행 상태가 아님 | 404 `POST_NOT_FOUND` |
-| 자기 블로그, 자기 글 | 409 `OWN_BLOG`, `OWN_POST` |
-| 댓글이 없음 | 404 `COMMENT_NOT_FOUND`. 이미 지운 댓글을 다시 지워도 같다 |
-| 부모가 그 글의 댓글이 아님 | 400 `INVALID_PARENT` |
-| 답글의 답글 | 400 `REPLY_TO_REPLY` |
-| 본문이 비었거나 1000자를 넘음 | 400 `INVALID_COMMENT` |
-| 작성자가 아님 | 403 `NOT_COMMENT_AUTHOR` |
-| 지운 자리를 고치거나 지우거나 거기에 답함 | 409 `COMMENT_REMOVED` |
+비즈니스 규칙 위반 시 반환하는 HTTP 상태 코드와 오류 코드는 다음과 같습니다.
 
-같은 구독이나 좋아요가 동시에 두 번 오면 하나는 유니크 제약에 걸린다. 유스케이스는 이를 "이미 있음"과 같게 보고 성공으로 답한다.
+| 실패 조건                                              | HTTP 상태 코드 및 오류 코드   |
+| ------------------------------------------------------ | ----------------------------- |
+| 요청자 계정이 `ACTIVE`가 아님                          | `403 ACCOUNT_NOT_ACTIVE`      |
+| 대상 블로그가 존재하지 않음                            | `404 BLOG_NOT_FOUND`          |
+| 대상 게시글이 없거나 발행(`PUBLISHED`) 상태가 아님     | `404 POST_NOT_FOUND`          |
+| 본인 블로그 구독 시도 / 본인 게시글 좋아요 시도        | `409 OWN_BLOG` / `409 OWN_POST`|
+| 대상 댓글이 존재하지 않음 (이미 물리 삭제된 댓글 포함) | `404 COMMENT_NOT_FOUND`       |
+| 답글의 부모가 해당 게시글의 댓글이 아님                | `400 INVALID_PARENT`          |
+| 답글에 다시 답글 작성을 시도함                         | `400 REPLY_TO_REPLY`          |
+| 댓글 본문이 비어 있거나 1,000자를 초과함               | `400 INVALID_COMMENT`         |
+| 댓글 작성자 본인이 아님                                | `403 NOT_COMMENT_AUTHOR`      |
+| 삭제된 자리 표시 댓글을 수정·삭제하거나 답글을 달려고 함| `409 COMMENT_REMOVED`         |
 
-## 도메인 메서드
+## 도메인 규칙과 엔티티 메서드 매핑
 
-| 01의 규칙 | 메서드 | 비고 |
-|---|---|---|
-| 흐름 1의 5번 | `Subscription.of(subscriberId, blogId)` | 블로그 존재와 소유자 확인은 유스케이스 |
-| 흐름 2의 5번 | `Like.of(accountId, postId, blogId)` | 위와 같다 |
-| 흐름 3의 7번 (최상위 댓글) | `Comment.write(postId, blogId, commenterId, body)` | |
-| 흐름 3의 4, 5번 (답글) | `parent.reply(commenterId, body)` | 답글의 답글과 지운 자리의 답글을 거부한다 |
-| 흐름 4의 1, 2, 4번 | `Comment.edit(editorId, body)` | 작성자만, 지운 자리는 안 됨, "수정됨" 표시 |
-| 흐름 4의 5번 | `Comment.leavePlaceholder(requesterId)` | 답글이 있는지는 유스케이스가 조회한다 |
-| 흐름 4의 6번 | `Comment.requireChangeableBy(accountId)` 뒤 실제 삭제 | |
+[01-rules.md](01-rules.md)에 정의된 도메인 규칙을 수행하는 각 애그리거트의 도메인 메서드 매핑입니다.
 
-레이어드 규칙은 `ContextRules.forLayered`가 강제한다. 계층은 presentation, application, infra 순으로만 의존하고, domain은 셋 모두가 쓴다. domain은 JPA, Spring Data `Repository` 마커, 공유 커널만 의존한다.
+| `01-rules.md`의 규칙                      | 담당 도메인 메서드                                | 구현 방식 및 비고                                                    |
+| ----------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------- |
+| 흐름 1-5 (구독 생성)                      | `Subscription.of(subscriberId, blogId)`           | 블로그 존재 여부와 본인 소유 여부는 응용 서비스에서 선행 확인합니다. |
+| 흐름 2-5 (좋아요 생성)                    | `Like.of(accountId, postId, blogId)`              | 게시글 발행 여부와 본인 작성 여부는 응용 서비스에서 선행 확인합니다. |
+| 흐름 3-7 (최상위 댓글 작성)               | `Comment.write(postId, blogId, commenterId, body)`| 본문 공백 제거 및 1~1,000자 길이 제한을 검증합니다.                  |
+| 흐름 3-4, 5 (답글 작성)                   | `parent.reply(commenterId, body)`                 | 2단계 답글 시도와 삭제된 자리 표시에 대한 답글 시도를 거부합니다.    |
+| 흐름 4-1, 2, 4 (댓글 수정)                | `Comment.edit(editorId, body)`                    | 작성자 일치 여부와 삭제 여부를 검증하고 `edited = true`로 표시합니다.|
+| 흐름 4-5 (답글이 있는 최상위 댓글 자리 남김)| `Comment.leavePlaceholder(requesterId)`           | 하위 답글 존재 여부는 응용 서비스가 확인한 뒤 호출합니다.            |
+| 흐름 4-6 (댓글 물리 삭제 전 권한 검증)    | `Comment.requireChangeableBy(accountId)`          | 검증 통과 후 리포지토리에서 물리 삭제를 수행합니다.                  |
 
-## 단계
-
-| 단계 | 내용 | 완료 조건 |
-|---|---|---|
-| I0 | 이 문서와 01-rules, README | 결정 항목 확정 |
-| I1 | 모듈 골격(`interaction-api`, `interaction-core`), 레이어드 ArchUnit 규칙, 도메인 | 도메인 규칙마다 테스트 |
-| I2 | `interaction` 스키마와 롤, 마이그레이션(구독, 좋아요, 댓글, 아웃박스, 인박스) | 빈 DB에 적용, 스키마를 넘는 FK 검사 통과 |
-| I3 | `publishing-api`의 글·블로그 조회, 상호작용의 번역 계층(출판, 회원) | 발행되지 않은 글과 정지된 계정의 쓰기 거부 |
-| I4 | 구독과 좋아요 유스케이스, 웹, 수 조회(`interaction-api`) | 01 흐름 1, 2의 HTTP 테스트 |
-| I5 | 댓글 유스케이스와 웹, `CommentAdded` 아웃박스 | 01 흐름 3, 4의 HTTP 테스트 |
-| I6 | Kafka, 아웃박스 릴레이, 인박스, `PostDeleted` 소비 | 글을 지우면 댓글과 좋아요가 정리되는 테스트(Kafka 컨테이너) |
+- 레이어드 아키텍처 의존 규칙은 ArchUnit의 `ContextRules.forLayered`가 검증합니다.

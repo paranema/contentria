@@ -1,32 +1,31 @@
 # member 컨텍스트 (회원)
 
-계정, 자격증명, 권한, 계정 상태, 프로필을 담당한다.
+회원의 계정, 자격증명(비밀번호·소셜 연동), 권한, 계정 상태 및 공개 프로필을 담당합니다.
 
-| 애그리거트 | 멤버 | 공개 범위 |
-|---|---|---|
-| `Account` | `Credential`, `Role` | 본인만. 다른 컨텍스트에는 계정 상태만 공개한다 |
-| `Profile` | 없음 | 누구나 |
+| 애그리거트 | 내부 구성 요소       | 공개 범위                                                        |
+| ---------- | -------------------- | ---------------------------------------------------------------- |
+| `Account`  | `Credential`, `Role` | 계정 본인만 조회 가능 (타 컨텍스트에는 계정 활성 상태만 공개)    |
+| `Profile`  | 없음                 | 전체 공개 (표시 이름, 프로필 사진)                               |
 
-**내부 구조: 헥사고날.** 서브도메인 분류는 일반이지만 보안 규칙이 많고, 소셜 공급자와 메일 같은 외부 연동이 많다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/member/`(`member-api`, `member-core`)다.
+- **내부 아키텍처: 헥사고날.** 서브도메인 분류상으로는 일반(Generic) 도메인이지만 인증·세션 등 보안 규칙이 복잡하고 Google OAuth, 이메일(SMTP), reCAPTCHA 등 외부 연동 지점이 많아 헥사고날 구조를 적용합니다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md) 참고).
+- **모듈 위치**: `backend/contexts/member/` (`member-api`, `member-core`)
 
 ## 문서 목록
 
-| 파일 | 내용 | 읽는 사람 |
-|---|---|---|
-| [01-rules.md](01-rules.md) | 가입, 로그인, 연동, 탈퇴, 프로필 규칙 | 누구나 |
-| [02-implementation.md](02-implementation.md) | 각 규칙을 어느 계층에 두는지 | 구현하는 사람 |
+| 문서                                         | 다루는 내용                                                  |
+| -------------------------------------------- | ------------------------------------------------------------ |
+| [01-rules.md](01-rules.md)                   | 회원가입, 로그인, 소셜 연동, 계정 관리·탈퇴, 프로필 도메인 규칙 |
+| [02-implementation.md](02-implementation.md) | 각 도메인 규칙의 계층별 배치, 애그리거트 경계 및 구현 상세   |
 
-01은 아키텍처를 모른다. 제품이 어떻게 동작하는지만 적는다.
-02는 01을 전제로 배치를 적는다. 아키텍처가 바뀌면 02만 바뀐다.
+- `01-rules.md`는 내부 아키텍처와 무관하게 제품이 어떻게 동작해야 하는지만 정의합니다.
+- `02-implementation.md`는 `01-rules.md`의 규칙을 실제 코드 계층에 어떻게 배치했는지 기록하며, 내부 아키텍처나 기술 구현이 바뀌면 `02-implementation.md`만 수정합니다.
 
-## 다른 문서와의 관계
+## 관련 문서
 
-| 문서 | 다루는 것 |
-|---|---|
-| [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md) | 계정과 프로필을 한 컨텍스트로 묶은 이유 |
-| [strategic/04-context-map.md](../../strategic/04-context-map.md) | 회원이 다른 컨텍스트에 공개하는 것 |
-| [conventions/security.md](../../conventions/security.md) | 토큰, 쿠키, 비밀번호 해싱, 응답 규약 |
+| 문서                                                                       | 다루는 내용                                                  |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md) | 계정(`Account`)과 프로필(`Profile`)을 하나의 컨텍스트로 묶은 배경 |
+| [strategic/04-context-map.md](../../strategic/04-context-map.md)           | 회원 컨텍스트가 다른 컨텍스트에 공개하는 인터페이스          |
+| [conventions/security.md](../../conventions/security.md)                   | JWT 토큰, 쿠키 보안 속성, 비밀번호 해싱, 공통 인증 응답 규약 |
 
-비밀번호 저장 방식이나 토큰 수명 같은 횡단 관심사는 `conventions/security.md`에 있다.
-이 디렉터리에는 회원 컨텍스트에만 해당하는 규칙을 둔다.
+비밀번호 해싱 알고리즘이나 토큰 만료 시간 같은 기술 보안 규약은 `conventions/security.md`에서 다루며, 이 폴더에서는 회원 컨텍스트 고유의 도메인 규칙만 다룹니다.

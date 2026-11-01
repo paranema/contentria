@@ -1,149 +1,126 @@
-# 규칙의 구현
+# 분석 규칙의 구현
 
-[01-rules.md](01-rules.md)의 `계층` 열을 정하는 기준과, 그 열만으로는 담기 어려운 세부를 적는다.
+[01-rules.md](01-rules.md)에 정의된 각 규칙을 어느 계층과 컴포넌트에 배치해 구현했는지 기록합니다.
 
-계층 정의는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 레이어드 규칙을 따른다(`presentation`, `application`, `domain`, `infra`).
-불변식과 정책을 가르는 기준은 다른 컨텍스트와 같다. 애그리거트 하나만 보고 판단할 수 있으면 도메인, 다른 기록이나 다른 컨텍스트를 봐야 하면 앱이다. 분석은 규칙 대부분이 기록을 조회해야 판단하므로 앱에 있다.
+- 내부 계층 구조는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **레이어드 아키텍처** 규칙을 따릅니다.
+- 단일 애그리거트만으로 판단할 수 있으면 도메인, 기존 기록이나 외부 컨텍스트를 조회해야 하면 응용 계층에서 처리합니다.
+  - 분석 컨텍스트는 대부분의 규칙이 기존 방문 기록이나 출판 컨텍스트 조회를 수반하므로 응용 계층 비중이 높습니다.
 
-## 애그리거트 경계
+## 애그리거트 경계 및 도메인 모델
 
-| 애그리거트 | 담는 것 | 바뀌는 때 |
-|---|---|---|
-| `Visit` | 블로그 ID, 글 ID(블로그 홈이면 없음), 방문자 키, 유입 도메인, 방문 시각 | 만든 뒤 바뀌지 않는다. 90일 뒤 지운다 |
-| `DailyStatistics` | 블로그 ID, 글 ID(블로그 전체면 없음), 날짜, 방문자 수, 조회수 | 집계가 그날의 값을 통째로 바꾼다 |
+분석 컨텍스트는 개별 방문 사건을 기록하는 `Visit`과 일 단위로 사전 집계된 통계를 보관하는 `DailyStatistics` 두 애그리거트로 구성됩니다. 두 애그리거트 사이에는 직접적인 참조 관계가 없으며, `DailyStatistics`는 `Visit` 레코드들을 집계한 파생 결과입니다.
 
-| 도메인 | 하는 일 |
-|---|---|
-| `Visit.record(blogId, postId, visitorKey, referrer, at)` | 방문자 키는 소문자 16진수 64자(HMAC-SHA256)만 받는다. IP 같은 원문이 들어오면 거부한다 |
-| 유입 도메인 | `http`, `https` 주소의 호스트만 소문자로. 경로, 검색어, 포트, 계정 정보는 버리고, 앱 주소나 주소가 아닌 값은 남기지 않는다 |
+| 애그리거트        | 보유 상태                                                                          | 생명주기 및 변경 방식                                     |
+| ----------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `Visit`           | 블로그 ID, 게시글 ID(블로그 홈 방문이면 `NULL`), 방문자 키, 유입 도메인, 방문 시각 | 생성 후 수정되지 않으며 90일 경과 시 배치에서 삭제합니다. |
+| `DailyStatistics` | 블로그 ID, 게시글 ID(블로그 전체 통계면 `NULL`), 집계 날짜, 방문자 수, 조회수      | 일별 집계 배치가 해당 날짜의 집계 값을 통째로 갱신합니다. |
 
-두 애그리거트 사이에 참조는 없다. 일별 통계는 방문 기록에서 계산한 결과다.
-일별 통계는 엔티티로 다루지 않고 집계 쿼리로 넣는다. 한 번에 수천 행을 다시 쓰는 일이라 엔티티를 하나씩 불러오지 않는다.
+- `DailyStatistics`는 한 번의 배치 실행에서 수천 행을 일괄 갱신(`UPSERT`)하므로 JPA 엔티티로 건별 로드하지 않고 SQL 집계 쿼리(`DailyStatisticsSql`)로 직접 기록합니다.
 
-## 규칙의 위치
+`Visit` 도메인 엔티티는 생성 시점에 개인정보 보호와 데이터 정합성을 위해 다음과 같은 값 검증 및 정규화 불변식을 보장합니다.
 
-| 01의 규칙 | 위치 | 비고 |
-|---|---|---|
-| 흐름 1의 1~3번 | 앱 + `infra/client/PublishingClient` | 출판에 블로그 소유자와 글의 블로그, 공개 여부를 묻는다 |
-| 흐름 1의 4번 | 앱 | 같은 방문자 키, 블로그, 글의 30분 안 기록이 있는지 조회한다 |
-| 흐름 1의 5번 | 도메인(`Visit.record`) | 유입 주소에서 도메인만 남긴다 |
-| 방문자 키 | 앱(`VisitorKeys`) | HMAC-SHA256(비밀 키, 날짜 + IP + User-Agent). 비밀 키는 설정(`contentria.analytics.visitor-key-secret`)이다 |
-| 흐름 2 | 앱 + 배치 진입점 | `GROUPING SETS`로 블로그 전체와 글마다를 한 번에 세고, `ON CONFLICT DO UPDATE`로 그날 값을 바꾼다 |
-| 흐름 3, 4 | 앱 | 오늘은 방문 기록에서, 지난날은 일별 통계에서 |
+| 도메인 메서드 및 값 규칙                                 | 구현 상세                                                                                                       |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Visit.record(blogId, postId, visitorKey, referrer, at)` | 방문자 키가 소문자 16진수 64자(`HMAC-SHA256` 해시 형식)인지 검증하여 IP 원문이 실수로 저장되는 것을 차단합니다. |
+| 유입 도메인(`referrer`) 정규화                           | `http`/`https` URL에서 소문자 호스트명만 추출하며 경로·쿼리·포트·계정 정보나 비정상 URI는 모두 버립니다.        |
 
-동시에 온 같은 방문은 둘 다 30분 확인을 지나 두 번 기록될 수 있다. 조회수는 근사치이고, 이를 막으려고 잠그지 않는다.
+## 도메인 규칙의 계층별 배치
 
-## 다른 컨텍스트 호출
+[01-rules.md](01-rules.md)에 정의된 각 비즈니스 흐름과 규칙을 담당하는 계층 및 주요 클래스 매핑은 다음과 같습니다.
 
-| 호출 | 위치 | 내용 |
-|---|---|---|
-| 출판: 블로그의 소유자 | `infra/client/PublishingClient` | `publishing-api`의 `GetBlogReferencesQuery.getBlogs` |
-| 출판: 글의 블로그와 공개 여부 | 같은 곳 | `GetPostReferencesQuery.getPosts` |
+| `01-rules.md`의 규칙                         | 담당 위치                                              | 구현 방식                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| 흐름 1-1~3 (블로그·글 유효성 및 소유자 제외) | 앱 (`VisitRecorder`) + `infra/client/PublishingClient` | 트랜잭션 시작 전 출판 컨텍스트에 블로그 소유자와 게시글 공개 여부를 조회합니다.                      |
+| 흐름 1-4 (30분 이내 중복 방문 제외)          | 앱 (`VisitRecorder`)                                   | 동일 방문자 키·블로그·게시글의 최근 30분 내 기록 존재 여부를 조회합니다.                             |
+| 흐름 1-5 (방문 기록 생성 및 도메인 추출)     | 도메인 (`Visit.record`)                                | 방문자 키 형식 검증 및 유입 도메인 정규화를 수행합니다.                                              |
+| 방문자 키 생성 (`VisitorKeys`)               | 앱 (`application/VisitorKeys`)                         | `HMAC-SHA256(비밀 키, 날짜 + NUL + IP + NUL + User-Agent)`로 계산합니다.                             |
+| 흐름 2 (일별 통계 집계 및 90일 경과 삭제)    | 앱 (`DailyStatisticsService`) + 배치 어댑터            | `GROUPING SETS`로 블로그 전체와 게시글별 수치를 한 번에 계산해 `ON CONFLICT DO UPDATE`로 저장합니다. |
+| 흐름 3, 4 (대시보드 및 게시글 조회수 조회)   | 앱 (`TrafficQueryService`) + `TrafficSql`              | 오늘 수치는 `visits`에서, 어제 이전 수치는 `daily_statistics`에서 읽어 합산합니다.                   |
 
-분석이 출판을 호출하는 것은 이번에 새로 생긴 방향이다([strategic/04-context-map.md](../../strategic/04-context-map.md)). 출판은 분석을 모르므로 의존은 한 방향이다.
-출판이 응답하지 않으면(분리 후) 그 방문은 버린다. 방문 하나를 잃는 것이 맞지 않는 방문을 세는 것보다 낫다.
+- 동일한 방문자의 요청이 동시에 두 번 도달하면 두 요청 모두 30분 중복 검사를 통과해 2건으로 기록될 수 있습니다. 조회수는 근사 지표이므로 이를 막기 위해 별도의 잠금이나 고유 제약을 걸지 않습니다.
 
-블로그 대시보드는 분석이 아니라 `apps/api`가 조합한다(아래 "조회 조합"). 분석은 대시보드를 위해 출판을 부르지 않는다.
+## 컨텍스트 간 연동 인터페이스
 
-## 공개 조회 (`analytics-api`)
+분석 컨텍스트는 방문 유효성을 검증하기 위해 출판 컨텍스트를 단방향으로 호출하며, 집계된 통계 지표를 외부에서 조합할 수 있도록 `analytics-api` 모듈을 통해 조회 인터페이스를 공개합니다.
 
-| 포트 | 내용 | 쓰는 곳 |
-|---|---|---|
-| `GetBlogTrafficQuery.summary(blogId)` | 오늘, 어제, 누적의 방문자 수와 조회수 | 블로그 대시보드 조합 |
-| `GetBlogTrafficQuery.trend(blogId, from, to)` | 날마다의 방문자 수와 조회수. 방문이 없던 날은 0 | 위와 같다 |
-| `GetBlogTrafficQuery.popularPosts(blogId, from, to, limit)` | 글 ID와 기간의 조회수 | 위와 같다 |
-| `GetViewCountsQuery.viewCounts(postIds)` | 글마다 누적 조회수. 묻는 ID마다 값이 있고 없으면 0 | 글 목록과 상세의 조합(나중에) |
+### 출판 컨텍스트 조회 (`PublishingClient`)
 
-분석은 블로그 ID와 글 ID만 안다. 블로그가 누구의 것인지 확인하는 것은 조합하는 쪽이다.
+방문 기록을 저장하기 전에 대상 블로그와 게시글이 유효한지 확인하기 위해 `infra/client/PublishingClient`에서 `publishing-api`의 쿼리를 호출합니다.
 
-| 구현 | 위치 |
-|---|---|
-| 두 포트 | `application/statistics/TrafficQueryService`. 읽기 전용 트랜잭션 |
-| SQL | `infra/persistence/TrafficSql`. 오늘은 `visits`에서, 오늘 전은 `daily_statistics`에서만 읽어 한 날을 두 번 세지 않는다 |
-| 기간 | `trend(blogId, days)`, `popularPosts(blogId, days, limit)`는 오늘로 끝나는 날 수를 받는다. "오늘"은 분석의 한국 날짜다. 조합하는 쪽이 날짜를 계산하지 않는다 |
+| 호출 목적                                     | 사용하는 `publishing-api` 인터페이스 |
+| --------------------------------------------- | ------------------------------------ |
+| 블로그 존재 여부 및 소유자 ID 확인            | `GetBlogReferencesQuery.getBlogs`    |
+| 게시글 존재 여부, 소속 블로그, 발행 상태 확인 | `GetPostReferencesQuery.getPosts`    |
 
-인기 글은 그사이 지워진 글이 빠지면 모자랄 수 있어, 조합은 분석에 보여줄 수의 두 배를 묻고 출판에 제목이 있는 것만 남긴다.
+- 향후 서비스 분리 시 출판 서비스가 일시적으로 응답하지 않으면 해당 방문 기록은 조용히 버립니다(잘못된 방문이나 소유자 방문을 집계에 섞는 것보다 방문 1건을 유실하는 편이 안전하기 때문입니다).
+- 상호작용 컨텍스트에도 동일한 이름의 `PublishingClient` 클래스가 존재하므로, 단일 프로세스(`apps/api`) 내 스프링 빈 이름 충돌을 피하기 위해 빈 이름을 `analyticsPublishingClient`로 명시합니다.
 
-## 조회 조합 (`apps/api`)
+### 외부에 공개하는 통계 쿼리 (`analytics-api`)
 
-블로그 대시보드는 `apps/api`에 처음으로 생기는 조회 조합이다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "예시: 글 상세를 조합한다").
+블로그 대시보드나 게시글 화면 조합 계층에서 통계 데이터를 가져갈 수 있도록 `analytics-api`에 다음 읽기 전용 쿼리(`TrafficQueryService` 구현)를 공개합니다.
 
-| 요청 | 하는 일 |
-|---|---|
-| `GET /me/blogs/{slug}/dashboard?range=2weeks` | 출판에서 블로그와 소유자를 받아 요청자와 맞춰 본다. 분석에서 요약, 추이, 인기 글 ID를 받고, 출판에서 인기 글의 제목과 slug, 발행한 글 수를 받아 한 응답으로 묶는다 |
+| 공개 인터페이스                                         | 제공 데이터                                                    | 호출 주체                       |
+| ------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------- |
+| `GetBlogTrafficQuery.summary(blogId)`                   | 오늘·어제·누적 방문자 수와 조회수                              | `apps/api` 블로그 대시보드 조합 |
+| `GetBlogTrafficQuery.trend(blogId, days)`               | 최근 `days`일간의 일별 방문자 수와 조회수 (방문 없는 날은 `0`) | `apps/api` 블로그 대시보드 조합 |
+| `GetBlogTrafficQuery.popularPosts(blogId, days, limit)` | 기간 내 조회수 상위 게시글 ID 및 조회수 목록                   | `apps/api` 블로그 대시보드 조합 |
+| `GetViewCountsQuery.viewCounts(postIds)`                | 요청한 게시글 ID별 누적 조회수 (기록이 없는 ID는 `0` 반환)     | 게시글 목록·상세 화면 조합      |
 
-출판의 `-api`에 `GetPostOverviewsQuery`(`getTitles(postIds)`, `countPublished(blogId)`)를 새로 공개했다. 대시보드는 블로그 소유자만 보므로 공개하지 않은 글의 제목도 준다. 기존 `GetPostReferencesQuery`에 더하지 않은 것은 그 포트를 구현한 다른 컨텍스트의 테스트 가짜를 깨지 않기 위해서다.
+- 분석 컨텍스트는 블로그 ID와 게시글 ID만 알고 있으므로, 대시보드 요청자가 해당 블로그의 소유자인지 검증하는 책임은 대시보드를 조합하는 진입점(`apps/api`)에 있습니다.
 
-| 구현 | 위치 |
-|---|---|
-| 조합 | `apps/api`의 `composition/dashboard/BlogDashboard`, `BlogDashboardController` |
-| 기간 | `range`는 `2weeks`(기본), `30days`, `90days`. 다른 값은 400 `INVALID_REQUEST` |
-| 남의 블로그 | 없는 블로그와 같은 404 `BLOG_NOT_FOUND` |
+## 블로그 대시보드 조회 조합
 
-## HTTP (분석)
+블로그 대시보드 API(`GET /me/blogs/{slug}/dashboard?range=2weeks`)는 `apps/api`의 조회 조합 계층(`composition/dashboard/BlogDashboard`, `BlogDashboardController`)에서 출판 컨텍스트와 분석 컨텍스트의 데이터를 모아 단일 응답으로 구성합니다([architecture/03-context-integration.md](../../architecture/03-context-integration.md) 참고).
 
-| 요청 | 응답 |
-|---|---|
-| `POST /analytics/visits` `{blogId, postId?, referrer?}` | 204. 버린 방문도 204. 로그인하지 않아도 된다 |
+1. **소유권 확인**: 출판 컨텍스트에서 블로그 정보와 소유자 ID를 조회해 현재 요청자와 일치하는지 확인합니다(불일치하거나 없는 블로그면 `404 BLOG_NOT_FOUND`).
+2. **트래픽 지표 조회**: 분석 컨텍스트(`GetBlogTrafficQuery`)에서 요약 수치, 기간별 추이(`2weeks`, `30days`, `90days`), 인기 글 ID 목록을 조회합니다.
+3. **게시글 정보 결합**: 출판 컨텍스트(`GetPostOverviewsQuery`)에서 인기 글들의 제목·슬러그와 총 발행 게시글 수를 조회해 결합합니다(그사이 삭제된 게시글이 빠져 5개 미만이 되는 것을 방지하기 위해 분석 컨텍스트에는 표시 개수의 2배수를 요청한 뒤 출판에 존재하는 글만 최대 5개까지 남깁니다).
 
-| 구성 | 위치 |
-|---|---|
-| 유스케이스 | `application/VisitRecorder`. 출판에 묻고 나서 짧은 트랜잭션에서 30분 확인과 저장을 한다 |
-| 방문자 키 | `application/VisitorKeys`. 비밀 키는 32자 이상이고 기본값이 없다(`ANALYTICS_VISITOR_KEY_SECRET`). 날짜, IP, User-Agent 사이에 NUL을 넣어 경계를 옮긴 입력이 같은 키가 되지 않게 한다 |
-| 30분 확인 | 글 방문과 블로그 홈 방문을 두 파생 쿼리로 나눈다. 글 ID가 비었다는 것은 "모든 글"이 아니라 "홈"이다 |
-| 출판 번역 계층 | `infra/client/PublishingClient`. 빈 이름은 `analyticsPublishingClient`다. 상호작용에도 같은 이름의 클래스가 있어, 한 프로세스에서 기본 빈 이름이 겹친다 |
-| 웹 | `presentation/web/VisitController`. 로그인한 독자면 `@AuthenticationPrincipal`로 계정 ID를 받고, 아니면 비어 있다 |
+## 실시간 방문 수집 API 및 방문자 식별
 
-IP는 요청의 원격 주소에서 받는다. 프록시 뒤에서는 앱이 전달 헤더를 처리해 원격 주소를 바로잡는다. `apps/api`는 `server.forward-headers-strategy: native`를 명시한다. Tomcat은 요청이 사설 주소(게이트웨이, 웹의 Next.js 서버)에서 왔을 때만 `X-Forwarded-For`를 믿는다. 웹은 방문 기록을 Next.js 서버에서 보내므로 독자의 주소를 이 헤더로 넘긴다. 쿠버네티스에서는 이 설정이 기본으로 켜지지만, 다른 환경에서는 꺼져 있어 모든 독자가 Next.js 서버 한 곳으로 보였다. 분석은 헤더를 직접 읽지 않는다.
+프론트엔드가 블로그 홈이나 게시글 상세 화면 열람 시 호출하는 방문 기록 수집 엔드포인트와 방문자 식별 처리 방식입니다.
 
-## DB 제약
+| HTTP 요청                                                 | 응답                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| `POST /analytics/visits` (`{blogId, postId?, referrer?}`) | 항상 `204 No Content` (비로그인 허용, 제외된 방문도 `204`) |
 
-| 제약 | 보증하는 것 |
-|---|---|
-| `visits(blog_id, post_id, visitor_key, visited_at)` 인덱스 | 30분 안의 같은 방문 찾기 |
-| `visits(visited_at)` 인덱스 | 하루치 집계, 오늘의 숫자, 90일 지난 기록 지우기 |
-| `daily_statistics(blog_id, post_id, stat_date)` UNIQUE NULLS NOT DISTINCT | 하루, 블로그, 글마다 한 행. 블로그 전체 행(`post_id IS NULL`)도 겹치지 않는다. 다시 집계하면 같은 행을 바꾼다 |
-| `daily_statistics(blog_id, stat_date)` 인덱스 | 대시보드의 추이와 누적 |
-| CHECK 수는 0 이상 | |
+- **클라이언트 IP 추출과 프록시 헤더 처리**: 프론트엔드(Next.js 서버)나 리버스 프록시를 거쳐 전달되는 실제 독자 IP를 올바르게 인식하기 위해 `apps/api`에 `server.forward-headers-strategy: native`를 설정합니다. Tomcat은 사설 네트워크 대역(게이트웨이, Next.js 서버)에서 온 요청에 한해 `X-Forwarded-For` 헤더를 신뢰하여 `request.remoteAddr`를 갱신하며, 분석 컨텍스트는 헤더를 직접 파싱하지 않고 표준 `remoteAddr`만 읽습니다.
+- **방문자 키 경계 구분**: `VisitorKeys`는 날짜, IP, `User-Agent` 문자열을 이어 붙일 때 사이에 `NUL(\u0000)` 구분자를 삽입하여 인접 필드 문자열이 교묘하게 겹쳐 동일 해시가 만들어지는 충돌을 방지합니다. 비밀 키(`ANALYTICS_VISITOR_KEY_SECRET`)는 최소 32자 이상이어야 하며 기본값을 두지 않습니다.
 
-마이그레이션은 `analytics-core/src/main/resources/db/migration/analytics/V1__create_analytics_tables.sql`이다. `analytics_migrator`가 스키마를 소유하고, `api_app`(방문 기록, 조회)과 `batch_app`(집계, 지우기)은 DML만 가진다.
-방문자 키는 CHECK(`^[0-9a-f]{64}$`)로도 막는다. 일별 통계는 엔티티가 없어 매핑 검사 대신 마이그레이션 테스트가 제약과 `ON CONFLICT` 갱신을 확인한다.
+## 데이터베이스 스키마 및 제약 조건
 
-외래키는 없다. 블로그와 글은 출판의 것이다. 분석은 이벤트를 주고받지 않으므로 아웃박스와 인박스가 없다.
+`analytics` 스키마의 테이블 인덱스 구성과 데이터 무결성을 보장하기 위한 DB 제약 조건입니다.
 
-## 배치
+| 제약 조건 및 인덱스                                                       | 보장하는 도메인 규칙 및 용도                                                                       |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `visits(blog_id, post_id, visitor_key, visited_at)` 인덱스                | 최근 30분 이내 동일 방문 존재 여부 확인                                                            |
+| `visits(visited_at)` 인덱스                                               | 일별 집계, 당일 실시간 수치 계산, 90일 경과 기록 삭제                                              |
+| `daily_statistics(blog_id, post_id, stat_date)` UNIQUE NULLS NOT DISTINCT | 날짜·블로그·게시글당 1행 보장 (`post_id IS NULL`인 블로그 전체 행도 중복 생성되지 않고 `UPSERT`됨) |
+| `daily_statistics(blog_id, stat_date)` 인덱스                             | 블로그 대시보드 추이 및 누적 합계 조회                                                             |
+| 방문자 키 형식 CHECK (`^[0-9a-f]{64}$`) 및 수치 `>= 0` CHECK              | 해시되지 않은 원문 저장 차단 및 음수 통계 방지                                                     |
 
-| 잡 | 하는 일 |
-|---|---|
-| `analyticsDailyStatistics` | 최근 3일(어제, 그제, 그끄제)을 다시 집계하고, 90일 지난 방문 기록을 지운다 |
+- 물리적 외래키(FK) 및 `outbox_event`, `inbox_event` 테이블은 두지 않습니다.
+- `analytics_migrator` 롤이 스키마를 소유하며, `api_app`(방문 기록·조회)과 `batch_app`(일별 집계·오래된 기록 삭제) 롤은 DML 권한만 가집니다.
 
-`apps/batch`가 띄운다. `batch_app` 롤에 `analytics` 스키마의 DML을 더한다.
+## 일별 통계 집계 배치 및 애플리케이션 설정
 
-| 구성 | 위치 |
-|---|---|
-| 유스케이스 | `application/statistics/DailyStatisticsService`. 끝난 최근 3일을 날마다 트랜잭션 하나에서 다시 집계하고, 90일 지난 방문을 지운다 |
-| SQL | `infra/persistence/DailyStatisticsSql`. `GROUPING SETS ((blog_id, post_id), (blog_id))`에 `HAVING GROUPING(post_id) = 1 OR post_id IS NOT NULL`을 건다. 블로그 홈 방문(`post_id IS NULL`)이 따로 묶이면 블로그 전체 행과 같은 키가 되어, 한 문장 안에서 같은 행을 두 번 바꾸려다 실패한다 |
-| 잡 | `presentation/batch/DailyStatisticsJob`(`analyticsDailyStatistics`). 단계 자체는 트랜잭션이 없다 |
+매일 마감된 방문 기록을 일별 통계로 합산하고 보존 기한이 지난 원본 기록을 정리하는 배치 잡(`apps/batch`) 구성입니다.
 
-### 설정
+| 배치 잡 이름               | 구현 위치                                                         | 동작 방식                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `analyticsDailyStatistics` | `presentation/batch/DailyStatisticsJob`, `DailyStatisticsService` | 최근 3일(어제·그제·3일 전)을 날짜별 트랜잭션으로 재집계(`DailyStatisticsSql`)한 뒤 90일 지난 방문을 삭제합니다. |
 
-| 설정 | 담는 것 | 불러오는 곳 |
-|---|---|---|
-| `AnalyticsCoreConfiguration` | 엔티티, 리포지토리, 집계와 조회(`application/statistics`, `infra/persistence`). DB만 쓴다 | apps/api, apps/batch |
-| `AnalyticsWebConfiguration` | 방문 기록 전체(`presentation/web`, `application/visit`, `infra/client`, 방문자 키 비밀 키) | apps/api |
-| `AnalyticsBatchConfiguration` | 잡(`presentation/batch`) | apps/batch |
+- **SQL `GROUPING SETS` 주의점**: `DailyStatisticsSql`은 `GROUPING SETS ((blog_id, post_id), (blog_id))`로 게시글별 수치와 블로그 전체 수치를 한 번에 구하되, `HAVING GROUPING(post_id) = 1 OR post_id IS NOT NULL` 조건을 함께 지정합니다. 만약 이 조건이 없으면 블로그 홈 방문(`post_id IS NULL`) 그룹과 블로그 전체 집계 그룹이 동일한 키 `(blog_id, NULL, stat_date)`를 생성하여 단일 `INSERT ... ON CONFLICT DO UPDATE` 문 안에서 같은 행을 두 번 갱신하려다 오류가 발생하기 때문입니다.
 
-방문 기록은 출판에 묻고 비밀 키가 있어야 한다. 웹으로만 들어오는 흐름이라 그 전부를 웹 설정에 두었다. 배치는 출판과 비밀 키 없이 뜬다.
+### 프로세스별 스프링 설정 분리
 
-`apps/batch`에 잡이 여럿(`mediaImageCleanup`, `mediaVideoCleanup`, `analyticsDailyStatistics`)이라, 일정은 잡 이름(`--spring.batch.job.name` 또는 `BATCH_JOB_NAME`)을 꼭 넘겨야 한다. 이름 없이 띄우면 Spring Boot가 어느 잡을 돌릴지 정하지 못해 실패한다.
+API 서버(`apps/api`)와 배치 서버(`apps/batch`)가 각자 필요한 컴포넌트만 로드할 수 있도록 스프링 설정 클래스를 세 개로 분리합니다.
 
-## 단계
+| 설정 클래스                   | 스캔 및 등록 대상                                                                      | 로드하는 애플리케이션    |
+| ----------------------------- | -------------------------------------------------------------------------------------- | ------------------------ |
+| `AnalyticsCoreConfiguration`  | 엔티티, 리포지토리, 통계 조회·집계(`application/statistics`, `infra/persistence`)      | `apps/api`, `apps/batch` |
+| `AnalyticsWebConfiguration`   | 실시간 방문 기록(`presentation/web`, `application/visit`, `PublishingClient`, 비밀 키) | `apps/api`               |
+| `AnalyticsBatchConfiguration` | 일별 집계 배치 잡(`presentation/batch`)                                                | `apps/batch`             |
 
-| 단계 | 내용 | 완료 조건 |
-|---|---|---|
-| A0 | 이 문서와 01-rules, README | 결정 항목 확정 |
-| A1 | 모듈 골격(`analytics-api`, `analytics-core`), 레이어드 ArchUnit 규칙, 도메인(`Visit`) | 도메인 규칙마다 테스트 |
-| A2 | `analytics` 스키마와 롤, 마이그레이션 | 빈 DB에 적용, 엔티티 매핑 검사 통과 |
-| A3 | 방문 기록: 출판 번역 계층, 방문자 키, 30분 중복 제외, HTTP | 소유자 방문, 비공개 글, 남의 블로그 글, 30분 안 재방문을 버리는 HTTP 테스트 |
-| A4 | 일별 집계와 보관 잡(`apps/batch`) | 블로그 전체와 글마다의 수, 다시 집계해도 같은 결과, 90일 경계 |
-| A5 | `analytics-api` 조회, 출판의 제목·글 수 조회, `apps/api`의 블로그 대시보드 조합 | 오늘과 지난날을 합친 요약, 추이, 인기 글, 남의 블로그 거부 |
+- 방문 수집 흐름(`AnalyticsWebConfiguration`)만 출판 컨텍스트와 방문자 키 비밀 키를 필요로 하므로, `apps/batch`는 출판 모듈이나 비밀 키 환경 변수 없이 DB 연결만으로 기동됩니다.
+- `apps/batch`에는 여러 배치 잡(`mediaImageCleanup`, `mediaVideoCleanup`, `analyticsDailyStatistics`)이 함께 등록되어 있으므로 실행 시 반드시 `--spring.batch.job.name`(또는 `BATCH_JOB_NAME` 환경 변수)을 지정해야 합니다.
