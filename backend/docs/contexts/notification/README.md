@@ -19,8 +19,8 @@
 
 ## 관련 문서
 
-| 문서                                                                               | 다루는 내용                                                             |
-| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [strategic/04-context-map.md](../../strategic/04-context-map.md)                   | `PostPublished`, `CommentAdded` 이벤트 구독 및 상호작용 구독자 목록 조회|
-| [architecture/03-context-integration.md](../../architecture/03-context-integration.md) | 인박스(`inbox_event`) 기반의 멱등 이벤트 소비 파이프라인                |
-| [contexts/interaction/01-rules.md](../interaction/01-rules.md)                     | 알림의 발생 원인이 되는 블로그 구독 및 댓글·답글 규칙                   |
+| 문서                                                                                   | 다루는 내용                                                              |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [strategic/04-context-map.md](../../strategic/04-context-map.md)                       | `PostPublished`, `CommentAdded` 이벤트 구독 및 상호작용 구독자 목록 조회 |
+| [architecture/03-context-integration.md](../../architecture/03-context-integration.md) | 인박스(`inbox_event`) 기반의 멱등 이벤트 소비 파이프라인                 |
+| [contexts/interaction/01-rules.md](../interaction/01-rules.md)                         | 알림의 발생 원인이 되는 블로그 구독 및 댓글·답글 규칙                    |
