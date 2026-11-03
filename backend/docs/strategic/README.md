@@ -1,9 +1,6 @@
-# 전략적 설계 (Strategic Design)
+# 전략적 설계
 
-비즈니스 도메인을 어떤 기준으로 나누고 경계를 설정했는지 기록합니다.
-
-이 디렉터리의 문서는 특정 기술이나 프레임워크에 의존하지 않으므로 모듈명, 패키지 경로, 프레임워크 이름을 사용하지 않습니다.
-여기서 정의한 도메인 경계를 실제 코드로 구현하는 규칙은 [architecture/](../architecture/README.md)에 정리되어 있습니다.
+비즈니스 도메인을 어떤 기준으로 나누고 경계를 설정했는지 기록합니다. 이 디렉터리의 문서는 특정 기술이나 프레임워크에 의존하지 않으므로 코드 모듈명, 패키지 경로, 프레임워크 이름을 사용하지 않습니다. 여기서 정의한 도메인 경계를 실제 코드로 구현하는 규칙은 [architecture/](../architecture/README.md)에서 다룹니다.
 
 ## 문서 목록
 
@@ -11,13 +8,13 @@
 
 | 문서                                                   | 다루는 내용                                                           |
 | ------------------------------------------------------ | --------------------------------------------------------------------- |
-| [01-domain-overview.md](01-domain-overview.md)         | 제품의 핵심 전제, 행위자(Actor), 유스케이스, 서브도메인 분류          |
-| [02-ubiquitous-language.md](02-ubiquitous-language.md) | 유비쿼터스 언어(용어집) 및 컨텍스트별 용어 정의                       |
-| [03-bounded-contexts.md](03-bounded-contexts.md)       | 바운디드 컨텍스트 목록, 책임과 소유 범위, 경계 분리 기준 및 결정 이유 |
-| [04-context-map.md](04-context-map.md)                 | 컨텍스트 간 협력 관계, 도메인 이벤트, 동기 호출, 화면용 조회 조합     |
+| [01-domain-overview.md](01-domain-overview.md)         | 서비스 정의, 도메인 전제 조건, 행위자별 유스케이스, 서브도메인 분류   |
+| [02-ubiquitous-language.md](02-ubiquitous-language.md) | 컨텍스트별 핵심 도메인 용어 및 지양하는 표현                          |
+| [03-bounded-contexts.md](03-bounded-contexts.md)       | 바운디드 컨텍스트 분리 기준, 컨텍스트별 소유 범위 및 경계 설정 배경   |
+| [04-context-map.md](04-context-map.md)                 | 컨텍스트 간 협력 관계, 동기 호출, 도메인 이벤트, 삭제 전파, 조회 조합 |
 
-## 문서 유지보수 원칙
+## 유지보수 원칙
 
-- 컨텍스트 경계를 변경할 때는 `03-bounded-contexts.md`와 `04-context-map.md`를 함께 수정합니다.
-- 새로운 도메인 개념이나 용어가 등장하면 `02-ubiquitous-language.md`에 먼저 정의하며, 실제 코드의 명명 규칙도 이를 따릅니다.
-- 기존 설계 결정을 변경할 때는 `03-bounded-contexts.md`의 `결정과 이유` 절에 이전 결정 내용과 변경 사유를 함께 기록합니다.
+- 컨텍스트 경계를 변경할 때는 [03-bounded-contexts.md](03-bounded-contexts.md)와 [04-context-map.md](04-context-map.md)를 함께 수정합니다.
+- 새로운 도메인 개념이나 용어가 등장하면 [02-ubiquitous-language.md](02-ubiquitous-language.md)에 먼저 정의하며, 실제 코드의 명명 규칙도 이를 따릅니다.
+- 기존 설계 결정을 변경할 때는 해당 문서의 `설계 배경` 절에 이전 결정과 변경 사유를 함께 기록합니다.

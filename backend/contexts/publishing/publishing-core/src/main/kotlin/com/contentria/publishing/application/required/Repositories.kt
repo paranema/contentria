@@ -8,7 +8,7 @@ import org.springframework.data.repository.Repository
 import java.time.Instant
 import java.util.UUID
 
-// Spring Data marker repositories (docs/architecture/02-internal-architecture.md, 리포지토리).
+// Spring Data marker repositories (docs/architecture/02-context-architecture.md, 리포지토리).
 // Only the methods declared here exist.
 
 interface BlogRepository : Repository<Blog, UUID> {

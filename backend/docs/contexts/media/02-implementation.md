@@ -1,268 +1,148 @@
-# 규칙의 구현
+# 미디어 규칙의 구현
 
-[01-rules.md](01-rules.md)의 `계층` 열을 정하는 기준과, 그 열만으로는 담기 어려운 세부를 적는다.
-규칙이 바뀌면 01을, 구현 방법이 바뀌면 이 문서를 고친다.
+[01-rules.md](01-rules.md)에 정의된 이미지·영상 업로드, 검증·변환, 게시글 연결 동기화 및 미사용 파일 정기 정리 규칙을 실제 코드 계층과 데이터베이스에 어떻게 배치해 구현했는지 다룹니다.
 
-계층 정의는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 헥사고날 규칙을 따른다.
-불변식과 정책을 가르는 기준은 다른 컨텍스트와 같다. 애그리거트 하나만 보고 판단할 수 있으면 도메인, 다른 애그리거트나 저장소를 봐야 하면 앱이다.
+## 아키텍처
 
-## 애그리거트 경계
+### 계층 구조
 
-| 애그리거트 | 루트 | 멤버 | 식별자 |
-|---|---|---|---|
-| Media | `Media` | 연결된 글 ID 목록 (`media_attachments`) | 이미지 ID |
-| Video | `Video` | 연결된 글 ID 목록 (`video_attachments`) | 영상 ID |
+미디어 컨텍스트(`contexts/media`)는 오브젝트 스토리지(S3/R2), 이미지 재인코딩, Cloudflare Queues, 외부 `ffmpeg` 프로세스 등 다양한 외부 인프라와 연동하므로 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **헥사고날 아키텍처**를 따릅니다. 단일 애그리거트 상태만으로 판단할 수 있는 규칙은 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 스토리지를 조회해야 판단할 수 있는 규칙은 응용 계층(`앱`)에서 조율합니다.
 
-**연결은 이미지의 멤버다.** "완료된 이미지만, 올린 회원의 글에만 연결한다"와 "연결된 이미지는 지울 수 없다"는 이미지 하나만 보고 판단한다.
-연결을 글 쪽에 두지 않는다. 글은 출판의 애그리거트이고, 미디어는 글 ID만 안다.
+인바운드·아웃바운드 포트와 어댑터 구현체 구성은 다음과 같습니다.
 
-| 상태 | 뜻 | 바뀌는 때 |
-|---|---|---|
-| `UPLOADING` | 업로드 주소를 내줬다 | 흐름 1 |
-| `READY` | 검증을 마쳤다. 연결할 수 있다 | 흐름 2 |
+| 포트                                                    | 방향             | 어댑터 및 구현체                                 | 역할                                                                                                      |
+| ------------------------------------------------------- | ---------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `MediaRepository`, `VideoRepository`                    | 아웃바운드(필요) | Spring Data JPA (`application/required`)         | `Media`, `Video` 애그리거트 영속화 및 조회                                                                |
+| `ObjectStorage`                                         | 아웃바운드(필요) | `adapter/required/storage/S3ObjectStorage`       | Presigned URL 발급, 객체 존재 확인, 읽기·쓰기·삭제 (AWS S3 SDK로 Cloudflare R2 연동, 테스트는 MinIO 사용) |
+| `ImageCleaner`                                          | 아웃바운드(필요) | `adapter/required/image/ImageIoCleaner`          | JDK `ImageIO` 기반 `JPEG` 재인코딩을 통한 EXIF 메타데이터 제거                                            |
+| `VideoQueue`                                            | 아웃바운드(필요) | `adapter/required/queue/CloudflareVideoQueue`    | JDK `HttpClient`로 Cloudflare Queues HTTP Pull API(`messages/pull`, `messages/ack`) 호출                  |
+| `Transcoder`, `ProcessRunner`                           | 아웃바운드(필요) | `FfmpegTranscoder`, `LocalProcessRunner`         | `ffprobe` 스트림·길이 확인 및 `ffmpeg` HLS·포스터 변환 실행                                               |
+| 미디어 업로드 웹 API                                    | 인바운드(제공)   | `adapter/provided/web`                           | 이미지 준비·완료·삭제(흐름 1, 2, 5) 및 영상 준비(흐름 V1) HTTP 엔드포인트 제공                            |
+| `PostImageAttachments`, `PostVideoAttachments` (`-api`) | 인바운드(제공)   | `PostImageAttachmentService`, `PostVideoService` | 게시글 저장·삭제 시 이미지·영상 연결 동기화 및 해제(흐름 3, 4, V3)                                        |
+| `GetPostVideosQuery` (`-api`)                           | 인바운드(제공)   | `PostVideoService`                               | 독자용 첨부 영상 재생 정보 조회(흐름 V4, `apps/api`의 `GET /posts/{id}/video`에서 호출)                   |
+| 영상 변환 큐 폴러                                       | 인바운드(제공)   | `adapter/provided/queue/VideoQueuePoller`        | 큐 메시지 폴링 및 `TranscodeVideoUseCase`(`VideoTranscodingService`) 호출(흐름 V2)                        |
+| 이미지·영상 정리 배치 잡                                | 인바운드(제공)   | `adapter/provided/batch/{Image,Video}CleanupJob` | 만료·미연결 이미지 및 영상 정기 정리(흐름 6, V5)                                                          |
 
-검증에 실패한 이미지는 상태를 두지 않고 기록째 지운다. 지운 이미지도 상태를 두지 않는다.
-`unattached_since`는 READY인 이미지가 어떤 글에도 연결되지 않게 된 시각이다. 완료할 때 정해지고, 연결되면 비고, 마지막 연결이 풀리면 다시 정해진다. 정리는 이 열만 본다.
+### 스프링 설정 구성
 
-## 저장소의 주소
+웹 요청 처리(`apps/api`), 장시간 FFmpeg 변환(`apps/worker`), 정기 정리 배치(`apps/batch`) 세 프로세스가 각자 필요한 어댑터와 외부 의존성만 로드하도록 스프링 설정을 네 클래스로 분리합니다. 덕분에 `apps/api`와 `apps/batch`는 Cloudflare Queue 설정이나 `ffmpeg` 바이너리 없이 기동됩니다.
 
-| 항목 | 값 |
-|---|---|
-| 키 | `images/{이미지 ID}.{확장자}`. 확장자는 선언한 형식에서 정한다(`jpg`, `png`, `webp`, `gif`). 파일 이름은 쓰지 않는다 |
-| 이미지 주소 | `{공개 주소}/images/{이미지 ID}.{확장자}`. 공개 주소는 설정(`contentria.media.public-base-url`)이다 |
-| 원래 파일 이름 | 기록에만 남긴다. 화면이 보여줄 때 쓴다 |
+| 설정 클래스               | 등록 대상 컴포넌트                                                             | 로드 프로세스                           | DB 접속 롤     |
+| ------------------------- | ------------------------------------------------------------------------------ | --------------------------------------- | -------------- |
+| `MediaCoreConfiguration`  | 엔티티, 리포지토리, 응용 서비스, 스토리지·이미지 어댑터(`S3ObjectStorage` 등)  | `apps/api`, `apps/worker`, `apps/batch` | 각 프로세스 롤 |
+| `MediaWebConfiguration`   | 이미지·영상 업로드 REST 컨트롤러(`adapter/provided/web`)                       | `apps/api`                              | `api_app`      |
+| `MediaQueueConfiguration` | `CloudflareVideoQueue`, `FfmpegTranscoder`, `VideoTranscodingService`, 큐 폴러 | `apps/worker`                           | `worker_app`   |
+| `MediaBatchConfiguration` | 정기 정리 배치 잡(`ImageCleanupJob`, `VideoCleanupJob`)                        | `apps/batch`                            | `batch_app`    |
 
-출판이 넘긴 주소가 미디어의 것인지는 공개 주소로 시작하는지와 키의 형태로 판단한다. 이 판단은 미디어 안에 있다. 출판은 공개 주소를 모른다.
+## 데이터 모델
 
-## 규칙의 위치
+### 애그리거트 구성
 
-| 01의 규칙 | 위치 | 비고 |
-|---|---|---|
-| 흐름 1의 1, 2번 | 도메인(`ImageFormat`, `Media.prepare`) | 형식과 크기는 값만 보고 판단한다 |
-| 흐름 1의 3번 | 앱 | 오늘 준비한 양을 저장소에서 더한다 |
-| 흐름 2의 2, 6번 | 도메인(`Media.complete`) | 이미 READY면 그대로 |
-| 흐름 2의 3번 | 앱 + 저장소 포트 | 파일이 있는지 저장소에 묻는다 |
-| 흐름 2의 4번 | 도메인(`ImageFormat.matches(header)`) + 앱 | 시그니처는 순수한 바이트 비교다. 지우는 것은 앱 |
-| 흐름 2의 5번 | 앱 + 이미지 처리 포트 | EXIF 제거는 JDK ImageIO를 쓰는 어댑터다 |
-| 흐름 3의 1번 | 앱 | 주소를 이미지 ID로 바꾸는 것은 미디어의 주소 규칙이다 |
-| 흐름 3의 2~4번 | 도메인(`Media.attachTo(postId, ownerId)`) | |
-| 흐름 3의 연결 풀기, 흐름 4 | 도메인(`Media.detachFrom(postId, at)`) | 마지막 연결이 풀리면 `unattached_since`를 정한다 |
-| 흐름 5의 2번 | 도메인(`Media.requireDeletable()`) | |
-| 흐름 6 | 앱 + 배치 진입점 | 파일을 먼저 지우고 기록을 지운다. 파일이 실패하면 기록을 남긴다 |
+미디어 컨텍스트는 본문 이미지를 관리하는 `Media`와 첨부 영상을 관리하는 `Video` 두 애그리거트로 구성됩니다. "업로드된 파일만 업로더 본인의 게시글에 연결한다"는 규칙과 "게시글에 연결된 파일은 직접 삭제할 수 없다"는 규칙 모두 미디어 애그리거트 하나만 보고 판단할 수 있으므로, **게시글 연결 목록은 `Post`가 아닌 `Media`·`Video` 애그리거트 내부의 값 컬렉션(`@ElementCollection`)**으로 관리합니다.
 
-| 도메인 | 하는 일 |
-|---|---|
-| `ImageFormat` | 네 형식의 선언(`image/jpeg` 등), 확장자, 시그니처. `of(contentType)`는 허용하지 않은 형식에 null, `matches(header)`는 파일 앞 12바이트로 판단한다. WebP는 앞의 `RIFF`와 8바이트 뒤의 `WEBP`를 함께 본다 |
-| `Media.prepare(uploaderId, contentType, sizeBytes, fileName)` | 형식, 크기(1바이트~10MB), 파일 이름(1~255자). 키는 `images/{ID}.{확장자}` |
-| `Media.complete(at)` | 두 번째 부름은 false를 돌려주고 아무것도 바꾸지 않는다 |
-| `Media.attachTo(postId, postOwnerId)` | 연결되었는지를 돌려준다. 업로드 중이거나 남의 글이면 false |
-| `Media.detachFrom(postId, at)`, `requireDeletable()` | 마지막 연결이 풀릴 때만 `unattached_since`를 정한다 |
+| 애그리거트 (`media` 스키마) | 내부 구성 요소                         | 상태 및 미연결 추적 방식                                                                                                                       | 오브젝트 스토리지 키 규칙                                                                           |
+| --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `Media` (`media`)           | 연결된 게시글 ID (`media_attachments`) | `UPLOADING` → `READY` (검증 실패·삭제 시 즉시 물리 삭제). `READY` 진입 시점과 마지막 연결 해제 시점에 `unattached_since`를 기록합니다.         | `images/{이미지 ID}.{확장자}` (공개 URL은 `{public-base-url}/images/{이미지 ID}.{확장자}`)          |
+| `Video` (`videos`)          | 연결된 게시글 ID (`video_attachments`) | `PENDING` → `PROCESSING` → `COMPLETED` / `FAILED`. 생성 시점부터 미연결이면 `unattached_since`를 기록하고 게시글에 연결되면 `NULL`로 비웁니다. | 원본은 `raw/{영상 ID}/original.{확장자}`, 변환 결과는 `hls/{영상 ID}/`(`master.m3u8`, `poster.jpg`) |
 
-연결된 글 목록은 `@ElementCollection`으로 `media_attachments`에 매핑한다. 글 ID 값만 담는 멤버라 엔티티로 두지 않는다.
+출판 컨텍스트가 전달한 이미지 URL이 미디어 컨텍스트 소속인지 여부는 URL이 `{공개 기본 주소}/images/{UUID}.{확장자}` 패턴과 일치하는지로 판단하며(`ImageAddresses.mediaIdOf(url)`), 원본 파일 이름은 DB 레코드에만 보관합니다. 영상의 경우 R2 버킷에서 `raw/` 접두사의 객체 생성 이벤트만 Cloudflare Queue로 전송하도록 필터링하여, 변환 결과(`hls/`) 저장이 재변환을 유발하지 않도록 차단합니다([operations/cloudflare-video-pipeline.md](../../operations/cloudflare-video-pipeline.md) 참고).
 
-## 포트와 어댑터
+### 데이터베이스 스키마
 
-| 포트 | 방향 | 어댑터 | 내용 |
-|---|---|---|---|
-| `MediaRepository` | 필요 | Spring Data | `application/required`에 둔다 |
-| `ObjectStorage` | 필요 | `adapter/required/storage/S3ObjectStorage` | 업로드 주소 발급, 있는지, 읽기, 쓰기, 지우기. AWS SDK의 S3 클라이언트로 R2를 쓴다 |
-| `ImageCleaner` | 필요 | `adapter/required/image/ImageIoCleaner` | JPEG를 다시 저장해 사진 정보를 지운다 |
-| 업로드 HTTP | 제공 | `adapter/provided/web` | 흐름 1, 2, 5 |
-| 글의 이미지 연결 | 제공 | `media-api`의 포트를 `application`이 구현 | 흐름 3, 4. 출판이 부른다 |
-| 정리 | 제공 | `adapter/provided/batch` | 흐름 6. `apps/batch`가 띄운다 |
+`post_id`는 출판 컨텍스트의 게시글을 가리키므로 컨텍스트 간 외래키(FK)를 두지 않으며, Kafka 도메인 이벤트를 사용하지 않으므로 `outbox_event`·`inbox_event` 테이블도 두지 않습니다. 데이터 무결성과 정리 배치 조회를 위해 설정한 제약 조건과 인덱스는 다음과 같습니다.
 
-저장소 어댑터는 S3 호환 API만 쓴다. 테스트는 MinIO 컨테이너로 같은 어댑터를 검증한다.
+| 테이블                                   | 제약 조건 및 인덱스                                     | 보장하는 도메인 규칙 및 조회 용도                                             |
+| ---------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `media`, `videos`                        | `media(stored_key)` UNIQUE, `videos(source_key)` UNIQUE | 스토리지 객체 키당 하나의 레코드만 존재                                       |
+| `media`                                  | `CHECK (status IN ('UPLOADING', 'READY'))`              | 허용된 이미지 상태 값 강제                                                    |
+| `media`                                  | `CHECK (status = 'READY' OR unattached_since IS NULL)`  | 업로드 중(`UPLOADING`) 상태에서는 미연결 기준 시각을 두지 않음                |
+| `videos`                                 | 상태별 필수 컬럼 `CHECK` 제약                           | `PROCESSING`의 시작 시각, `COMPLETED`의 재생 메타데이터, `FAILED`의 사유 강제 |
+| `media_attachments`, `video_attachments` | `(media_id, post_id)` PK 및 FK (`ON DELETE CASCADE`)    | 동일 게시글 중복 연결 방지 및 애그리거트 내부 참조 무결성 보장                |
+| `media_attachments`, `video_attachments` | `(post_id)` 인덱스                                      | 특정 게시글에 연결된 이미지·영상 조회 및 일괄 해제                            |
+| `media`                                  | `(uploader_id, created_at)` 인덱스                      | 회원의 당일 이미지 업로드 용량 합계 조회                                      |
+| `media`, `videos`                        | `(status, created_at)`, `(unattached_since)` 인덱스     | 정기 정리 배치의 만료·미연결 대상 조회                                        |
 
-## HTTP
+## 비즈니스 흐름 구현
 
-| 요청 | 응답 | 01 |
-|---|---|---|
-| `POST /media/uploads` `{contentType, sizeBytes, fileName}` | 201. 이미지 ID, 업로드 주소, 이미지 주소, 업로드 주소의 만료 시각 | 흐름 1 |
-| `PUT {업로드 주소}` (브라우저가 저장소로) | 저장소의 응답. 선언한 형식(`Content-Type`)과 크기가 아니면 저장소가 거부한다 | 흐름 1 |
-| `POST /media/{id}/complete` | 200과 이미지(주소, 형식, 크기, 파일 이름). 이미 완료했어도 200 | 흐름 2 |
-| `DELETE /media/{id}` | 204 | 흐름 5 |
+[01-rules.md](01-rules.md)에 정의된 이미지 흐름(흐름 1~6)과 영상 흐름(흐름 V1~V5)의 계층별 구현입니다.
 
-모두 로그인이 필요하다.
+### 흐름 1·2·5. 이미지 업로드·검증·삭제
 
-| 실패 | 응답 |
-|---|---|
-| 허용하지 않은 형식 | 400 `UNSUPPORTED_IMAGE_FORMAT` |
-| 10MB를 넘거나 0바이트 | 400 `IMAGE_TOO_LARGE` |
-| 파일 이름이 비었거나 255자를 넘음 | 400 `INVALID_FILE_NAME` |
-| 오늘 100MB를 넘음 | 429 `DAILY_UPLOAD_LIMIT` |
-| 내 이미지가 아니거나 없음 | 404 `IMAGE_NOT_FOUND` |
-| 저장소에 아직 파일이 없음 | 409 `UPLOAD_NOT_FINISHED` |
-| 파일의 크기나 시그니처가 선언과 다름, JPEG를 읽을 수 없음 | 400 `IMAGE_CONTENT_MISMATCH`. 기록과 파일을 지운다 |
-| 글에 연결된 이미지를 지우려 함 | 409 `IMAGE_IN_USE` |
+오브젝트 스토리지 I/O는 DB 트랜잭션 밖에서 수행합니다. 업로드 완료(흐름 2) 처리 시에도 파일을 읽고 시그니처를 검증·재인코딩하는 작업은 트랜잭션 외부에서 마친 뒤, 마지막에 짧은 트랜잭션을 열어 상태만 변경합니다. 또한 이미지를 삭제할 때는 항상 **스토리지 파일을 먼저 삭제한 뒤 DB 기록을 삭제**하여, 스토리지 삭제 실패 시 고아 파일이 추적 불가능해지는 것을 막습니다.
 
-| 구현에서 정한 것 | 내용 |
-|---|---|
-| 저장소 호출과 트랜잭션 | 저장소는 트랜잭션 밖에서 부른다. 완료는 파일을 읽고 검증한 뒤 짧은 트랜잭션에서 상태만 바꾼다 |
-| 지우는 순서 | 파일을 먼저, 기록을 나중에 지운다. 기록이 먼저 사라지면 남은 파일을 찾을 길이 없다 |
-| 하루 양의 동시성 | 같은 순간에 준비한 두 업로드가 함께 한도를 넘을 수 있다. 한도는 남용을 막는 장치이고 장부가 아니다 |
-| JPEG를 읽지 못함 | JDK ImageIO가 읽지 못하는 JPEG(CMYK 등)는 형식이 다른 파일처럼 거부한다 |
-| 설정 | `contentria.media.public-base-url`, `upload-url-ttl`(10분), `storage.{endpoint, bucket, region, access-key-id, secret-access-key, path-style}`. R2의 region은 `auto` |
-| 테스트 저장소 | MinIO 컨테이너. MinIO가 Docker Hub에 이미지를 더 올리지 않아 Chainguard의 `cgr.dev/chainguard/minio:latest`를 쓴다. 무료 공개본은 `latest`만 있어 버전을 고정하지 못한다 |
+| 규칙 분류                             | 담당 위치                               | 구현 상세                                                                                                                    |
+| ------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 형식·크기 검증 및 준비 (흐름 1-1, 2)  | 도메인 (`ImageFormat`, `Media.prepare`) | 허용된 MIME 타입과 파일 크기(1바이트~10MB), 파일명 길이(1~255자)를 검증합니다.                                               |
+| 일일 100MB 한도 확인 (흐름 1-3)       | 앱                                      | 당일 준비된 업로드 용량 합계를 리포지토리로 조회해 비교합니다.                                                               |
+| 완료 상태 전이 (흐름 2-2, 6)          | 도메인 (`Media.complete(at)`)           | 이미 `READY` 상태이면 `false`를 반환하고 상태를 바꾸지 않습니다.                                                             |
+| 시그니처 검증 및 실패 삭제 (흐름 2-4) | 도메인 (`ImageFormat.matches`) + 앱     | 앞 12바이트 시그니처 비교는 도메인 함수가 수행하고(`WebP`는 `RIFF`와 `WEBP` 동시 확인), 실패 시 앱이 파일·기록을 삭제합니다. |
+| `JPEG` EXIF 제거 (흐름 2-5)           | 앱 + `ImageCleaner` 포트                | JDK `ImageIO`로 픽셀만 다시 인코딩해 EXIF를 제거한 뒤 동일 키에 덮어씁니다.                                                  |
+| 연결된 이미지 삭제 거부 (흐름 5-2)    | 도메인 (`Media.requireDeletable()`)     | 연결된 게시글이 하나라도 있으면 `IMAGE_IN_USE` 예외를 던집니다.                                                              |
 
-## 다른 컨텍스트와의 관계
+### 흐름 V1·V2·V4. 영상 업로드·변환·재생 조회
 
-미디어는 다른 컨텍스트를 호출하지 않는다. 출판이 미디어를 호출한다([strategic/04-context-map.md](../../strategic/04-context-map.md)의 "출판과 미디어의 방향").
+영상 트랜스코딩은 수 분이 걸릴 수 있으므로 `VideoTranscodingService`는 **① 상태를 `PROCESSING`으로 바꾸는 짧은 트랜잭션 → ② 트랜잭션 외부에서의 원본 다운로드·FFmpeg 변환·HLS 업로드 → ③ `COMPLETED` 또는 `FAILED`를 기록하는 짧은 트랜잭션**으로 분리하여 변환 동안 DB 커넥션을 점유하지 않습니다.
 
-| `media-api`의 포트 | 출판이 부르는 때 | 하는 일 |
-|---|---|---|
-| `syncPostImages(postId, ownerId, imageUrls)` | 글을 저장한 트랜잭션이 커밋된 뒤 | 흐름 3. 몇 번을 불러도 결과가 같다 |
-| `releasePostImages(postId)` | 글을 지운 트랜잭션이 커밋된 뒤 | 흐름 4 |
+| 구성 요소                                                         | 역할 및 구현 상세                                                                                                                                                                                                                                              |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Video.prepare(uploaderId, contentType, sizeBytes, fileName, at)` | 형식(`MP4`, `MOV`, `WebM`, `MKV`)과 크기(1바이트~500MB)를 검증하고 생성 시점부터 `unattached_since`를 설정합니다.                                                                                                                                              |
+| `Video.startTranscoding(at)`                                      | 이미 `COMPLETED`나 `FAILED`이면 `false`를 반환하고, `PROCESSING`이면 재시작을 허용합니다(워커 비정상 종료 후 큐가 재전달한 경우).                                                                                                                              |
+| `Video.complete(result)` / `Video.fail(reason)`                   | 변환 완료 메타데이터를 기록하거나 실패 사유(최대 500자)를 기록합니다.                                                                                                                                                                                          |
+| `FfmpegTranscoder` / `LocalProcessRunner`                         | `ffprobe`로 영상 스트림과 길이(5분 이하)를 확인한 뒤, 한 번의 `ffmpeg` 실행으로 HLS(fMP4 6초 세그먼트, `720p`·`480p`)와 포스터를 생성합니다. 표준 출력·에러를 별도 스레드로 소비해 버퍼 데드락을 방지하며 제한 시간(`20m`) 초과 시 프로세스를 강제 종료합니다. |
+| `GetPostVideosQuery` (`media-api`)                                | 독자용 영상 재생 조회는 `apps/api`의 `PostVideoController`(`GET /posts/{id}/video`)에서 출판 컨텍스트의 게시글 공개 여부를 먼저 확인한 뒤 조합해 반환합니다.                                                                                                   |
 
-쓰기지만 동기 호출이다. [architecture/01-module-structure.md](../../architecture/01-module-structure.md)의 예외("출판이 미디어를 호출해 첨부를 연결하는 것")에 해당한다.
+변환 워커(`apps/worker`)가 큐 폴링 주기와 FFmpeg 실행 환경을 제어하기 위해 사용하는 설정 프로퍼티(`contentria.media.worker`)는 다음과 같습니다.
 
-출판 쪽에서 하는 일:
+| 프로퍼티                                                                    | 환경 변수                                              | 기본값                                    |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| `poll-interval`                                                             | `WORKER_POLL_INTERVAL`                                 | `5s`                                      |
+| `queue.account-id`, `queue.queue-id`, `queue.api-token`                     | `CLOUDFLARE_ACCOUNT_ID`, `CF_QUEUE_ID`, `CF_API_TOKEN` | 없음 (Queues 편집 권한 토큰 사용)         |
+| `queue.visibility-timeout`, `queue.batch-size`                              | -                                                      | `30m`, `1` (최대 변환 시간보다 길게 설정) |
+| `transcode.ffmpeg-path`, `transcode.ffprobe-path`                           | `FFMPEG_PATH`, `FFPROBE_PATH`                          | `ffmpeg`, `ffprobe`                       |
+| `transcode.max-duration`, `transcode.process-timeout`, `transcode.work-dir` | -                                                      | `5m`, `20m`, JVM 임시 디렉터리            |
 
-| 일 | 위치 |
-|---|---|
-| 본문에서 이미지 주소 찾기 | 출판의 마크다운 어댑터(commonmark). 이미지 노드의 주소만 모은다 |
-| 글당 이미지 20개 | 출판의 앱 규칙. 저장 전에 본문으로 센다. 넘으면 저장하지 않는다 |
-| 연결 호출 | 출판의 `adapter/required/media`(번역 계층). 실패하면 기록만 남기고 저장 응답은 성공이다 |
+### 흐름 3·4·V3. 게시글 연결 동기화
 
-연결 호출이 실패하면 01의 "글을 저장한 뒤에 연결한다"대로 다음 저장이 다시 맞춘다. 출판은 실패를 되돌리지 않는다.
+미디어 컨텍스트는 다른 컨텍스트를 호출하지 않으며, 출판 컨텍스트가 게시글 저장·삭제 트랜잭션을 **커밋한 직후** `media-api`의 포트를 단방향으로 동기 호출합니다([architecture/01-module-structure.md](../../architecture/01-module-structure.md)에서 허용한 동기 호출 예외). 게시글 발행, 비공개 전환, slug 변경은 본문이나 첨부 영상을 수정하지 않으므로 동기화를 호출하지 않습니다.
 
-| 구현 | 위치 |
-|---|---|
-| `media-api`의 포트 | `PostImageAttachments`(`syncPostImages`, `releasePostImages`). `application/service/PostImageAttachmentService`가 구현한다 |
-| 주소를 이미지로 | `ImageAddresses.mediaIdOf(url)`. 공개 주소 + `images/{UUID}.{확장자}`가 아니면 null |
-| 이 글의 이미지 | named query `Media.findAttachedTo`(`?1 member of m.postIds`) |
-| 출판의 이미지 찾기 | `adapter/required/markdown/CommonmarkImages`. commonmark의 `Image` 노드만 모은다. 코드 안의 이미지 문법과 HTML `<img>`는 세지 않는다 |
-| 출판의 규칙과 호출 | `application/service/PostImageLinks`. 저장 전에 20개를 세고, 저장과 삭제가 커밋된 뒤 부른다. 실패는 기록만 남긴다 |
-| 출판의 번역 계층 | `adapter/required/media/MediaPostImages` |
+| `media-api` 공개 포트 및 도메인 메서드                  | 출판 컨텍스트의 호출 시점           | 동작 내용                                                                                       |
+| ------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `syncPostImages(postId, ownerId, imageUrls)`            | 게시글 작성·수정 트랜잭션 커밋 직후 | `ImageAddresses.mediaIdOf`로 ID를 추출해 `Media.attachTo`·`detachFrom` 수행 (멱등 보장)         |
+| `syncPostVideo(postId, ownerId, videoId)`               | 게시글 작성·수정 트랜잭션 커밋 직후 | 해당 게시글의 첨부 영상을 `Video.attachTo`·`detachFrom`으로 동기화                              |
+| `releasePostImages(postId)`, `releasePostVideo(postId)` | 게시글 삭제 트랜잭션 커밋 직후      | 해당 게시글에 연결된 모든 이미지·영상의 연결을 해제하고 마지막 연결이면 `unattached_since` 기록 |
 
-글을 쓰거나 고칠 때만 맞춘다. 발행, 비공개, slug 변경은 본문을 바꾸지 않으므로 부르지 않는다.
+### 흐름 6·V5. 미사용 파일 정기 정리 배치
 
-## 정리
+배치 서버(`apps/batch`)는 미완료 업로드, 미연결 파일, 장시간 멈춘 변환 작업을 정리하는 두 개의 배치 잡을 실행합니다. 매 실행 시 DB 조건만으로 남은 대상을 처음부터 조회하므로 Spring Batch 메타데이터 테이블 없이 기본 `ResourcelessJobRepository`로 동작합니다.
 
-| 구성 | 위치 |
-|---|---|
-| 유스케이스 | `application/provided/CleanUpImagesUseCase`, `application/service/ImageCleanupService` |
-| 만료 판단 | 도메인 `Media.isExpired(now)`. 업로드 중이면 만든 지 24시간, 사용 가능이면 `unattached_since`에서 7일 |
-| 대상 찾기 | named query `Media.findExpiredUploadIds`, `Media.findUnusedIds`. 오래된 것부터 종류마다 500개씩, 한 번 실행에 한 묶음 |
-| 지우기 | 이미지마다 트랜잭션 하나. `Media.findLockedById`(`SELECT ... FOR UPDATE`)로 잠그고 만료를 다시 판단한 뒤 파일, 기록 순으로 지운다 |
-| 잡 | `adapter/provided/batch/ImageCleanupJob`(`mediaImageCleanup`). 설정은 `config/MediaBatchConfiguration`, 띄우는 곳은 `apps/batch` |
+| 배치 잡 이름        | 구현 클래스 및 서비스                     | 동작 방식                                                                                                                                                                                                                      |
+| ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mediaImageCleanup` | `ImageCleanupJob` / `ImageCleanupService` | 만료된 업로드(24시간 경과)와 미연결 이미지(7일 경과)를 오래된 순으로 각 500건씩 조회한 뒤, 건별 트랜잭션에서 `SELECT ... FOR UPDATE`로 잠그고 만료 여부를 재확인한 다음 스토리지 파일 → DB 기록 순으로 삭제합니다.             |
+| `mediaVideoCleanup` | `VideoCleanupJob` / `VideoCleanupService` | ① 2시간 넘게 `PROCESSING`에 머문 영상을 먼저 `FAILED`로 전환한 뒤, ② 7일 넘게 미연결 상태인 영상을 잠그고 원본 파일, `hls/{ID}/` 하위 전체(`deletePrefix`), DB 기록 순으로 삭제합니다(아직 2시간이 안 된 변환 중 영상은 제외). |
 
-잠근 채 저장소를 부르는 것은 요청 경로의 규칙("저장소는 트랜잭션 밖에서")과 다르다. 잠금이 파일 삭제를 감싸야 그사이에 글이 그 이미지를 연결하지 못한다. 연결하려던 쪽은 잠금이 풀린 뒤 이미지가 없음을 보고 실패하고, 출판은 그 실패를 기록만 남긴다.
-파일을 지우지 못한 이미지는 기록을 남기고 다음 실행에 다시 지운다. 그런 이미지가 하나라도 있으면 잡을 실패로 끝내, 일정이 실패를 보이게 한다.
+정리 배치에서 개별 행을 잠근 채 스토리지 삭제를 호출하는 이유는, 파일을 지우는 도중에 게시글 저장 요청이 해당 파일을 다시 연결하는 경쟁 상태를 막기 위함입니다. 스토리지 삭제에 실패한 항목이 하나라도 있으면 해당 항목의 DB 기록을 남겨 다음 실행에서 재시도하게 하고, 배치 잡은 실패 상태로 종료하여 스케줄러 모니터링에서 감지할 수 있게 합니다.
 
-잡은 Spring Batch 메타데이터를 남기지 않는다(기본 `ResourcelessJobRepository`). 매번 처음부터 돌아도 남은 것을 찾으므로 이어서 실행할 필요가 없다. 그래서 `batch` 스키마와 `batch_migrator`는 아직 만들지 않았다.
-`apps/batch`는 `batch_app` 롤로 접속하고 `media` 스키마의 DML을 가진다. 일정은 `--spring.batch.job.name=mediaImageCleanup`(또는 `BATCH_JOB_NAME`)으로 이 잡을 고른다. 주기는 인프라 작업 때 정한다.
+### HTTP 엔드포인트
 
-영상 정리(흐름 V5)는 같은 방식의 다른 잡이다.
+브라우저가 이미지와 영상을 업로드하고 완료·삭제할 때 호출하는 엔드포인트입니다(모든 업로드·관리 요청은 로그인이 필요합니다).
 
-| 구성 (V4) | 위치 |
-|---|---|
-| 유스케이스 | `application/provided/CleanUpVideosUseCase`, `application/service/VideoCleanupService`. 결과는 실패로 바꾼 수, 지운 수, 지우지 못한 수 |
-| 대상 찾기 | named query `Video.findStuckIds`(변환 중이고 시작이 2시간 전보다 앞), `Video.findUnusedIds`(`unattached_since`가 7일 전보다 앞). 오래된 것부터 종류마다 500개씩 |
-| 멈춘 영상 | 영상마다 트랜잭션 하나. `Video.findLockedById`로 잠그고 `isStuck`을 다시 본 뒤 `fail(reason)` |
-| 쓰이지 않은 영상 | 영상마다 트랜잭션 하나. 잠그고 `isExpired`를 다시 본 뒤 원본, `hls/{ID}/` 아래 전부(`deletePrefix`), 기록 순으로 지운다. 상태와 상관없다 |
-| 순서 | 멈춘 영상을 먼저 본다. 멈춘 채 쓰이지 않은 영상은 한 번 실행에 실패로 바뀌고 지워진다 |
-| 아직 변환 중인 영상 | 쓰이지 않은 지 7일이 지났어도 변환 중이고 2시간이 안 됐으면 지우지 않는다. worker가 결과를 쓰는 중일 수 있어서다. 2시간이 지나면 실패로 바뀌고 그 실행에서 지워진다 |
-| 잡 | `adapter/provided/batch/VideoCleanupJob`(`mediaVideoCleanup`). 지우지 못한 영상이 있으면 잡을 실패로 끝낸다. 일정은 `--spring.batch.job.name=mediaVideoCleanup` |
+| HTTP 요청                                                    | 응답                                                                       | 대응 흐름                 |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------- |
+| `POST /media/uploads` (`{contentType, sizeBytes, fileName}`) | `201 Created` (이미지 ID, 업로드 주소, 공개 이미지 주소, 만료 시각 반환)   | 흐름 1 이미지 업로드 준비 |
+| `POST /media/{id}/complete`                                  | `200 OK` 및 이미지 정보 반환 (이미 완료된 이미지여도 `200`)                | 흐름 2 이미지 업로드 완료 |
+| `DELETE /media/{id}`                                         | `204 No Content`                                                           | 흐름 5 이미지 직접 삭제   |
+| `POST /media/videos` (`{contentType, sizeBytes, fileName}`)  | `201 Created` (영상 ID, 업로드 주소, 만료 시각 반환)                       | 흐름 V1 영상 업로드 준비  |
+| `GET /posts/{id}/video` (`apps/api` 조합 컨트롤러)           | 첨부 영상 상태 및 완료 시 HLS 재생 주소·포스터·해상도 반환 (비로그인 허용) | 흐름 V4 독자용 영상 조회  |
 
-원본을 지운 뒤 결과 폴더를 지우지 못해도 기록은 남는다. 다음 실행이 남은 것을 다시 지운다. 지우기는 몇 번 해도 결과가 같다.
+요청 검증에 실패했을 때 반환하는 HTTP 상태 코드와 오류 코드는 다음과 같습니다.
 
-## DB 제약
-
-| 제약 | 보증하는 것 |
-|---|---|
-| `media(stored_key)` UNIQUE | 한 파일에 기록 하나 |
-| CHECK `status IN ('UPLOADING', 'READY')` | 상태는 둘뿐이다 |
-| CHECK `status = 'READY' OR unattached_since IS NULL` | 업로드 중에는 정리 기준 시각이 없다 |
-| `media_attachments(media_id, post_id)` 기본키 | 한 글에 같은 이미지는 한 번만 연결 |
-| `media_attachments.media_id → media` 외래키 | 연결은 이미지의 멤버다. 애그리거트 안의 외래키다 |
-| `media_attachments(post_id)` 인덱스 | 글의 이미지 맞추기와 해제 |
-| `media(uploader_id, created_at)` 인덱스 | 오늘 준비한 양 |
-| `media(status, created_at)`, `media(unattached_since)` 인덱스 | 정리 대상 찾기 |
-
-마이그레이션은 `media-core/src/main/resources/db/migration/media/V1__create_media_tables.sql`이다. `media_migrator` 롤이 스키마를 소유하고, `api_app`은 DML만 가진다.
-형식(`ck_media_format`)과 크기(`ck_media_size`, 1바이트~10MB)도 CHECK로 한 번 더 막는다. `media_attachments`는 이미지를 지우면 함께 지워진다(`ON DELETE CASCADE`).
-
-`post_id`는 출판의 글을 가리키지만 외래키를 두지 않는다. 컨텍스트를 넘는 외래키는 없다.
-미디어는 이벤트를 발행하지도 소비하지도 않으므로 `outbox_event`와 `inbox_event`가 없다.
-
-## 단계
-
-| 단계 | 내용 | 완료 조건 |
-|---|---|---|
-| M0 | 이 문서와 01-rules, README | 결정 항목 확정 |
-| M1 | 모듈 골격(`media-api`, `media-core`), 헥사고날 ArchUnit 규칙, 도메인(`Media`, `ImageFormat`) | 도메인 규칙마다 테스트 |
-| M2 | `media` 스키마와 롤, 마이그레이션 | 빈 DB에 적용, 엔티티 매핑 검사 통과 |
-| M3 | 업로드 준비와 완료, 지우기 HTTP. 저장소와 이미지 처리 어댑터 | MinIO로 올리고 완료하는 HTTP 테스트. 시그니처가 다른 파일 거부, JPEG의 EXIF 제거 |
-| M4 | `media-api`의 연결 포트, 출판의 이미지 찾기와 글당 20개, 저장과 삭제 뒤의 호출 | 글 저장, 수정, 삭제에 따라 연결이 맞춰지는 테스트. 연결이 실패해도 저장은 성공 |
-| M5 | 정리(`apps/batch`) | 24시간, 7일 경계와 파일 삭제 실패 시 기록이 남는 테스트 |
-| V0 | 영상의 규칙과 구현 배치(01의 "영상", 이 문서의 "영상") | 결정 항목 확정 |
-| V1 | `Video` 도메인(상태 기계), 마이그레이션 | 상태 전이마다 테스트, 엔티티 매핑 검사 |
-| V2 | 영상 업로드 준비 HTTP, 출판의 첨부 영상(글의 `videoId`)과 저장 뒤 연결, 독자용 조회(`media-api`) | 첨부, 교체, 해제, 남의 영상 거부, 완료 영상만 재생 주소 |
-| V3 | `apps/worker`: Cloudflare Queue pull 어댑터, ffmpeg 변환 어댑터, 변환 유스케이스 | ffmpeg 컨테이너로 실제 HLS와 포스터, 영상이 아닌 파일은 실패, 같은 알림 두 번 |
-| V4 | 정리(`apps/batch`): 오래 변환 중인 영상, 쓰이지 않는 영상 | 2시간, 7일 경계, 결과 폴더까지 지우기 |
-
-## 영상
-
-| 항목 | 내용 |
-|---|---|
-| 상태 | `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`. 전이는 `Video`의 메서드로만 한다(`startTranscoding`, `complete(result)`, `fail(reason)`) |
-| 키 | 원본 `raw/{영상 ID}/original.{확장자}`, 변환 결과 `hls/{영상 ID}/`(마스터 `master.m3u8`, 포스터 `poster.jpg`) |
-| 연결 | 이미지와 같다. 연결된 글 ID 목록은 `video_attachments`, 정리 기준은 `unattached_since` |
-| 원본 이벤트 | R2가 `raw/` 접두사의 생성 이벤트만 큐에 보낸다. `hls/`에 쓴 결과가 다시 변환되지 않게 하는 장치다([operations/cloudflare-video-pipeline.md](../../operations/cloudflare-video-pipeline.md)) |
-
-| 프로세스 | 하는 일 | 진입점 |
-|---|---|---|
-| `apps/api` | 업로드 준비, 글과의 연결, 독자용 조회 | `adapter/provided/web`, `media-api` |
-| `apps/worker` | 큐에서 받아 변환 | `adapter/provided/queue` |
-| `apps/batch` | 정리 | `adapter/provided/batch` |
-
-| 포트 | 어댑터 | 내용 |
-|---|---|---|
-| `VideoQueue` | `adapter/required/queue/CloudflareVideoQueue` | Cloudflare Queues의 `http_pull`. 받기(pull)와 확인(ack). 확인하지 않은 메시지는 다시 온다 |
-| `Transcoder` | `adapter/required/transcode/FfmpegTranscoder` | ffprobe로 확인하고 ffmpeg로 HLS와 포스터를 만든다. 영상이 아니거나 너무 길면 "다시 시도하지 않을 실패"로 알린다 |
-| `ObjectStorage` | 이미지와 같은 S3 어댑터에 파일 받기, 파일 올리기, 접두사째 지우기를 더한다 | |
-
-| 도메인 메서드 | 하는 일 |
-|---|---|
-| `Video.prepare(uploaderId, contentType, sizeBytes, fileName, at)` | 형식, 크기(1바이트~500MB), 파일 이름. 원본 키는 `raw/{ID}/original.{확장자}`. 정리 기준 시각을 준비할 때부터 정한다(상태와 상관없이 연결할 수 있으므로) |
-| `startTranscoding(at)` | 완료나 실패면 false. 변환 중이면 다시 맡는다(worker가 죽고 큐가 다시 보낸 경우) |
-| `complete(result)` | 변환 중일 때만. 아니면 `NotTranscoding` |
-| `fail(reason)` | 완료나 실패면 그대로. 이유는 500자까지 |
-| `isStuck(now)`, `isExpired(now)` | 변환 시작에서 2시간, 마지막 연결이 풀린 뒤 7일 |
-
-마이그레이션은 `V2__create_video_tables.sql`(`videos`, `video_attachments`)이다. 상태마다 있어야 할 값(변환 중의 시작 시각, 완료의 재생 정보, 실패의 이유)을 CHECK로 막고, 원본 키는 고유하다.
-
-`media-api`에는 둘을 더한다. `PostVideoAttachments.syncPostVideo(postId, ownerId, videoId?)`(흐름 V3), `GetPostVideosQuery.videosOf(postIds)`(흐름 V4, 글 상세 조합용).
-출판은 글에 첨부 영상 ID(`videoId`)를 두고, 글을 쓰거나 고칠 때 받는다. 저장이 커밋된 뒤 이미지와 함께 미디어에 알린다.
-
-| 구현 (V2) | 위치 |
-|---|---|
-| 업로드 준비 | `application/service/VideoUploadService`, `POST /media/videos/uploads`(201: 영상 ID, 업로드 주소, 만료 시각). 실패는 400 `UNSUPPORTED_VIDEO_FORMAT`, `VIDEO_TOO_LARGE` |
-| 연결과 조회 | `application/service/PostVideoService`가 `PostVideoAttachments`, `GetPostVideosQuery`를 구현한다. 글이 지워질 때는 `releasePostImages`가 영상까지 풀어, 출판은 한 번만 부른다 |
-| 출판 | 글의 `video_id`(마이그레이션 V3). 쓰기와 고치기 요청의 `videoId`. 저장 뒤 `PostImageLinks`가 이미지와 영상을 따로 알린다. 하나가 실패해도 다른 하나는 맞춰진다 |
-| 독자용 조합 | `apps/api`의 `GET /posts/{id}/video`. 출판에서 글이 공개인지 확인하고, 미디어에서 영상을 받는다. 공개가 아니거나 영상이 없으면 404 `VIDEO_NOT_FOUND` |
-
-출판은 받은 `videoId`를 그대로 저장한다. 남의 영상이면 미디어가 연결하지 않으므로, 독자에게는 영상이 없는 글로 보인다.
-
-`apps/worker`는 `worker_app` 롤로 접속하고 `media` 스키마의 DML만 가진다. ffmpeg와 ffprobe는 worker의 컨테이너 이미지에 들어 있다.
-
-| 구현 (V3) | 위치 |
-|---|---|
-| 변환 유스케이스 | `application/provided/TranscodeVideoUseCase`를 `application/service/VideoTranscodingService`가 구현한다. 원본 키로 영상을 찾아 "변환 중"으로 바꾸는 트랜잭션, 트랜잭션 밖의 변환, "완료"나 "실패"로 바꾸는 트랜잭션으로 나눈다. 변환이 몇 분 걸려도 커넥션을 잡고 있지 않는다 |
-| 결과 | `SKIPPED`(기록 없음, 이미 완료나 실패), `COMPLETED`, `FAILED`(영상이 아님, 5분 초과). 셋 다 알림을 확인한다. 그 밖의 예외는 일시적 실패로 보고 확인하지 않는다 |
-| 원본 지우기 | 완료로 바꾼 뒤 지운다. 지우지 못하면 로그만 남긴다. 남은 원본은 R2 수명 규칙(`raw/` 7일)과 정리(V4)가 지운다 |
-| 큐 소비 | `adapter/provided/queue/VideoQueuePoller`. `@Scheduled` 고정 지연으로 받는다. `PutObject`, `CompleteMultipartUpload`가 아니거나 `raw/` 밖의 키면 바로 확인한다. 받기가 실패하면 다음 차례에 다시 받는다 |
-| 큐 어댑터 | `adapter/required/queue/CloudflareVideoQueue`. JDK `HttpClient`로 `messages/pull`과 `messages/ack`를 부른다. 메시지 본문이 객체로 오든 문자열로 오든 읽는다. 실패 메시지에는 상태 코드만 담고 토큰은 담지 않는다 |
-| 변환 어댑터 | `adapter/required/transcode/FfmpegTranscoder`. 원본을 작업 폴더에 받고, ffprobe로 영상 스트림과 길이를 본다. HLS(fMP4 조각, 6초)는 720p(CRF 23, 최대 3000k, 소리 128k)와 480p(CRF 24, 최대 1500k, 소리 96k)를 한 번의 ffmpeg 실행으로 만든다. 원본보다 높은 단은 빼고, 480p보다 작으면 원본 높이 한 단만 만든다. 포스터는 1초(짧으면 절반) 지점의 한 장이다. 끝나면 작업 폴더를 지운다 |
-| 프로세스 실행 | `ProcessRunner` 포트 뒤의 `LocalProcessRunner`. 표준 출력과 오류를 따로 읽어 버퍼가 차서 멈추는 일을 막는다. 시간을 넘기면 강제로 끝낸다 |
-| 설정 | `MediaQueueConfiguration`이 위 빈을 직접 만든다. `MediaCoreConfiguration`은 이것들을 스캔하지 않아서, api와 batch는 큐 설정과 ffmpeg 없이 뜬다 |
-
-| 설정 (`contentria.media.worker`) | 환경 변수 | 기본값 |
-|---|---|---|
-| `poll-interval` | `WORKER_POLL_INTERVAL` | `5s` |
-| `queue.account-id`, `queue.queue-id`, `queue.api-token` | `CLOUDFLARE_ACCOUNT_ID`, `CF_QUEUE_ID`, `CF_API_TOKEN` | 없음. 토큰은 계정의 Queues 편집 권한만 가진다 |
-| `queue.visibility-timeout`, `queue.batch-size` | | `30m`, `1`. 가장 긴 변환보다 길어서 진행 중인 일이 두 번 나가지 않는다 |
-| `transcode.ffmpeg-path`, `transcode.ffprobe-path` | `FFMPEG_PATH`, `FFPROBE_PATH` | `ffmpeg`, `ffprobe` |
-| `transcode.max-duration`, `transcode.process-timeout`, `transcode.work-dir` | | `5m`, `20m`, JVM 임시 폴더 |
-
-테스트(`apps/worker`)는 PostgreSQL, MinIO, ffmpeg 컨테이너(`jrottenberg/ffmpeg:7.1-ubuntu2404`)로 돈다. 작업 폴더를 ffmpeg 컨테이너에 같은 경로로 마운트하고, `ProcessRunner`를 그 컨테이너 안에서 실행하는 것으로 바꾼다. 큐는 가짜다. 테스트 영상은 ffmpeg의 `testsrc`와 `sine`으로 만든다. 마스터 재생 목록에서 시작해 플레이어가 받을 파일(재생 목록, 초기화 조각, 조각)이 모두 저장소에 있는지 확인한다. Cloudflare 어댑터는 JDK `HttpServer`로 띄운 가짜 API로 확인한다.
+| 실패 조건                                                          | HTTP 상태 코드 및 오류 코드                                 |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| 허용되지 않은 이미지·영상 형식                                     | `400 UNSUPPORTED_IMAGE_FORMAT` / `UNSUPPORTED_VIDEO_FORMAT` |
+| 파일 크기가 0바이트이거나 최대 크기(이미지 10MB, 영상 500MB) 초과  | `400 IMAGE_TOO_LARGE` / `VIDEO_TOO_LARGE`                   |
+| 파일 이름이 비어 있거나 255자를 초과함                             | `400 INVALID_FILE_NAME`                                     |
+| 이미지 일일 업로드 용량 한도(100MB) 초과                           | `429 DAILY_UPLOAD_LIMIT`                                    |
+| 본인이 준비한 미디어가 아니거나 존재하지 않음                      | `404 IMAGE_NOT_FOUND` / `VIDEO_NOT_FOUND`                   |
+| 스토리지에 아직 이미지 파일이 업로드되지 않음                      | `409 UPLOAD_NOT_FINISHED`                                   |
+| 파일 크기·시그니처가 선언과 다르거나 손상된 `JPEG`(CMYK 등) 파일임 | `400 IMAGE_CONTENT_MISMATCH` (파일 및 기록 즉시 삭제)       |
+| 게시글에 연결되어 있는 이미지를 삭제하려고 함                      | `409 IMAGE_IN_USE`                                          |

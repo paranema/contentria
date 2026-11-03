@@ -9,7 +9,7 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 
 /**
- * The rules of docs/architecture/02-internal-architecture.md, parameterised by context name.
+ * The rules of docs/architecture/02-context-architecture.md, parameterised by context name.
  *
  * Every rule allows an empty `that()` clause. A context grows layer by layer, and a rule about
  * `adapter.provided` must not fail just because the context has no inbound adapter yet.

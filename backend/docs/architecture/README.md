@@ -10,9 +10,9 @@
 | 문서                                                           | 다루는 내용                                                                                               |
 | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | [01-module-structure.md](01-module-structure.md)               | 디렉터리 및 Gradle 모듈 구성, 모듈 간 의존 규칙, 애플리케이션 조립 방식, 마이크로서비스 분리 시 변경점    |
-| [02-internal-architecture.md](02-internal-architecture.md)     | 컨텍스트 내부 아키텍처(헥사고날, 레이어드) 선정 기준 및 계층별 구현 규칙                                  |
+| [02-context-architecture.md](02-context-architecture.md)     | 컨텍스트 내부 아키텍처(헥사고날, 레이어드) 선정 기준 및 계층별 구현 규칙                                  |
 | [03-context-integration.md](03-context-integration.md)         | 컨텍스트 간 동기 조회, 비동기 이벤트(Kafka, Transactional Outbox·Inbox), 트랜잭션 경계 규칙               |
-| [04-persistence-conventions.md](04-persistence-conventions.md) | 데이터베이스 구성, 컨텍스트별 스키마 및 DB 계정(Role) 격리, Flyway 마이그레이션, Outbox·Inbox 테이블 규칙 |
+| [04-database-structure.md](04-database-structure.md)       | 데이터베이스 구성, 컨텍스트별 스키마 및 DB 계정(Role) 격리, Flyway 마이그레이션, Outbox·Inbox 테이블 규칙 |
 
 ## 핵심 원칙 요약
 
@@ -28,5 +28,5 @@
 문서에 정의된 규칙 중 정적 분석으로 검증할 수 있는 항목은 Gradle 모듈 의존성 제약과 ArchUnit 테스트를 통해 빌드 시점에 강제합니다.
 
 - 공통 검증 규칙은 `platform/architecture-rules` 모듈에 정의되어 있으며, 각 컨텍스트(예: `MemberArchitectureTest`)와 실행 앱(`apps/api`의 `ArchitectureTest`)의 테스트 코드에서 이를 호출해 검증합니다.
-- 상세 구현 방식과 규칙 자체에 대한 검증 방법은 [02-internal-architecture.md](02-internal-architecture.md)의 `ArchUnit` 절에 정리되어 있습니다.
+- 상세 구현 방식과 규칙 자체에 대한 검증 방법은 [02-context-architecture.md](02-context-architecture.md)의 `ArchUnit` 절에 정리되어 있습니다.
 - 설계 변경으로 인해 아키텍처 규칙을 수정해야 할 때는 테스트를 우회하지 않고 이 문서와 ArchUnit 테스트를 함께 변경합니다.

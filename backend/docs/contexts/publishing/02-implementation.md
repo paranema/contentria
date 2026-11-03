@@ -1,179 +1,117 @@
-# 규칙의 구현
+# 출판 규칙의 구현
 
-[01-rules.md](01-rules.md)의 `계층` 열을 정하는 기준과, 그 열만으로는 담기 어려운 세부를 적는다.
-규칙이 바뀌면 01을, 구현 방법이 바뀌면 이 문서를 고친다.
+[01-rules.md](01-rules.md)에 정의된 블로그 개설, 카테고리 트리 편집, 게시글 작성·발행·삭제 및 slug 이력 관리 규칙을 실제 코드 계층과 데이터베이스에 어떻게 배치해 구현했는지 다룹니다.
 
-계층 정의는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 헥사고날 규칙을 따른다.
-불변식과 정책을 가르는 기준은 회원과 같다([member/02-implementation.md](../member/02-implementation.md)의 "불변식과 정책을 가르는 기준"). 애그리거트 하나만 보고 판단할 수 있으면 도메인, 다른 애그리거트나 다른 컨텍스트를 조회해야 하면 앱이다.
+## 아키텍처
 
-## 애그리거트 경계
+### 계층 구조
 
-| 애그리거트 | 루트 | 멤버 | 식별자 |
-|---|---|---|---|
-| Blog | `Blog` | 없음 | 블로그 ID |
-| CategoryTree | `CategoryTree` | `Category` | 블로그 ID와 같은 값. 블로그마다 하나 |
-| Post | `Post` | `PostSlug` | 글 ID |
+출판 컨텍스트(`contexts/publishing`)는 핵심 도메인 모델의 불변식을 외부 기술 의존성으로부터 보호하기 위해 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **헥사고날 아키텍처**를 따릅니다. 단일 애그리거트 상태만으로 판단할 수 있으면 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 하면 응용 계층(`앱`)에서 조율합니다([member/02-implementation.md](../member/02-implementation.md) 참고).
 
-**카테고리는 하나하나가 아니라 블로그의 트리 전체가 애그리거트다.**
-깊이 2단계, 같은 부모 아래 이름 중복 금지, 하위가 남은 카테고리 삭제 금지는 모두 트리 전체를 봐야 판단할 수 있다.
-편집 화면도 트리 전체를 한 번에 저장한다. [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md)의 애그리거트 `Category`는 이 트리를 말한다.
+외부 컨텍스트와의 연동 및 도메인 이벤트 발행을 담당하는 포트와 어댑터 구성은 다음과 같습니다.
 
-**옛 slug는 글의 멤버다.** 옛 slug는 그 글로 가는 리디렉션이고, 글이 지워지면 함께 지워진다.
-현재 slug는 `posts.slug`에 두고, 그 글이 가진 적 있는 slug는 현재 것까지 모두 `post_slugs`에 둔다. 옛 slug는 `post_slugs`에서 현재 slug를 뺀 것이다.
-`post_slugs(blog_id, slug)`에 고유 제약을 걸어, 블로그 안에서 현재와 옛 slug를 합쳐 겹치지 않는다는 규칙을 DB가 보증한다.
-"현재" 표시 열은 두지 않는다. 옛 slug로 되돌릴 때 두 행의 표시를 맞바꾸면, 갱신 순서에 따라 잠깐 현재가 둘이 되어 부분 고유 인덱스에 걸린다. 표시가 없으면 `posts.slug` 하나만 바꾸면 된다.
+| 연동 방향 및 역할         | 포트 및 구현 위치                                                                                  | 동작 방식                                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 출판 → 회원 상태 조회     | `application/required/BloggerStatusPort` → `adapter/required/member` (`member-api` 호출)           | **쓰기 트랜잭션을 시작하기 전에** 호출하여 외부 응답 대기 중 DB 커넥션을 점유하지 않습니다(회원 서비스 미응답 시에도 안전을 위해 쓰기 거부).       |
+| 출판 → 미디어 연결 동기화 | `application/service/PostImageLinks` → `adapter/required/media/MediaPostImages` (`media-api` 호출) | 게시글 저장·삭제 트랜잭션이 **커밋된 이후**에 본문 이미지 목록과 첨부 영상(`posts.video_id`) 연결을 동기화합니다(연결 실패 시에도 글 저장은 성공). |
+| 출판 → 도메인 이벤트 발행 | `application/required/PostEvents` → `adapter/required/messaging/OutboxPostEvents` (`OutboxWriter`) | 비즈니스 트랜잭션 안에서 `publishing.outbox_event`에 `PostPublished`·`PostDeleted`를 기록합니다(토픽 `publishing.post`, 파티션 키는 게시글 ID).    |
+| 타 컨텍스트 → 출판 조회   | `publishing-api`의 `GetBlogReferencesQuery`, `GetPostReferencesQuery`, `GetPostOverviewsQuery`     | `ReferenceQueryService`가 구현하며 상호작용·분석 컨텍스트 및 대시보드 조합 계층이 호출합니다(자체 읽기 전용 트랜잭션, 무거운 `body` 컬럼 제외).    |
 
-**글은 블로그 소유자를 저장하지 않는다.** 블로그 ID만 들고, 소유 확인은 블로그를 읽어서 한다.
-1인 블로그라서 작성자는 언제나 블로그 소유자다. 글에 소유자를 복사하면 두 값이 어긋날 수 있다.
+### 스프링 설정 구성
 
-### 한 트랜잭션에 여러 애그리거트를 만드는 경우
+스프링 설정은 두 클래스로 분리되어 있으며, API 서버(`apps/api`)에서 로드됩니다.
 
-블로그를 만들 때 Blog, CategoryTree, 샘플 Post 두 개를 한 트랜잭션에서 만든다.
-회원 가입과 같은 이유로 허용한다. "한 트랜잭션에는 한 애그리거트"는 여러 애그리거트를 동시에 **수정**할 때의 경합을 피하려는 규칙이고, 새로 만드는 애그리거트에는 경합할 다른 트랜잭션이 없다.
+| 설정 클래스                   | 등록 대상 컴포넌트                                                                                    | 로드 프로세스 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- | ------------- |
+| `PublishingCoreConfiguration` | 엔티티, 리포지토리, 유스케이스 서비스(`application`), 아웃바운드 어댑터, 아웃박스(`publishingOutbox`) | `apps/api`    |
+| `PublishingWebConfiguration`  | 블로그·카테고리·게시글 REST 컨트롤러(`adapter/provided/web`)                                          | `apps/api`    |
 
-## DB 제약
+## 데이터 모델
 
-| 제약 | 보증하는 것 |
-|---|---|
-| `blogs.slug` UNIQUE | 블로그 slug는 플랫폼 전체에서 고유 |
-| `categories(tree_id, slug)` UNIQUE, `DEFERRABLE INITIALLY DEFERRED` | 카테고리 slug는 블로그 안에서 고유. 트리 ID가 블로그 ID다 |
-| `categories(tree_id, parent_id, name)`는 두지 않음 | 이름 비교는 대소문자를 가리지 않는다. 트리가 지킨다 |
-| `post_slugs(blog_id, slug)` UNIQUE | 글의 현재 slug와 옛 slug는 블로그 안에서 모두 합쳐 고유 |
+### 애그리거트 구성
 
-카테고리 slug 제약과 부모 외래키를 커밋 시점에 검사하는 이유: Hibernate는 한 번의 flush에서 삽입을 삭제보다 먼저 실행하고, 같은 엔티티끼리는 추가된 순서대로 넣는다. 트리를 한 번에 저장하면서 `x`를 지우고 새 `x`를 만들거나, 새 하위를 새 상위보다 먼저 넣으면 즉시 검사하는 제약은 커밋 전에 실패한다. `MigrationMatchesMappingTest`가 두 경우를 검증한다.
+출판 컨텍스트는 블로그(`Blog`), 카테고리 트리(`CategoryTree`), 게시글(`Post`) 세 개의 애그리거트로 구성됩니다.
 
-외래키는 애그리거트 안에만 둔다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "외래키").
+| 애그리거트 (`publishing` 스키마)  | 내부 구성 요소            | 식별자(PK)                           | 설계 특징                                                                                                           |
+| --------------------------------- | ------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Blog` (`blogs`)                  | 없음                      | 블로그 ID                            | 블로그의 고유 주소(`slug`)와 소유자 ID, 제목·설명을 보유합니다.                                                     |
+| `CategoryTree` (`category_trees`) | `Category` (`categories`) | 블로그 ID와 동일한 값 (블로그당 1개) | 최대 2단계 깊이·동일 부모 내 이름 중복·하위 존재 시 삭제 금지 규칙을 트리 전체 단위로 검증하고 한 번에 저장합니다.  |
+| `Post` (`posts`)                  | `PostSlug` (`post_slugs`) | 게시글 ID                            | `ownerId`를 중복 저장하지 않고 `blog_id`만 보유하며, 현재 slug와 과거 사용한 모든 slug를 `post_slugs`에 보관합니다. |
 
-| 외래키 | 있음 |
-|---|---|
-| `categories.tree_id → category_trees.id` | 있음. 같은 애그리거트 |
-| `categories.parent_id → categories.id` | 있음. 같은 애그리거트 |
-| `post_slugs.post_id → posts.id` | 있음. 같은 애그리거트 |
-| `posts.blog_id → blogs.id`, `posts.category_id → categories.id`, `category_trees.id → blogs.id` | 없음. 애그리거트 사이 |
+이전 slug(`PostSlug`)는 게시글(`Post`)의 내부 멤버이며 게시글이 삭제되면 함께 삭제됩니다. 현재 slug는 `posts.slug` 컬럼에 두고 해당 게시글이 사용한 적 있는 모든 slug(현재 slug 포함)는 `post_slugs` 테이블에 보관합니다. 별도의 '현재 여부(`is_current`)' 플래그 컬럼을 두면 이전 slug 복원 시 두 행의 플래그를 맞바꾸는 과정에서 부분 고유 인덱스에 걸릴 수 있으므로, 플래그 없이 `posts.slug` 값만 변경해 이 문제를 피합니다.
 
-### 앱 확인과 DB 제약이 함께 필요한 규칙
+블로그를 개설할 때는 `Blog`, `CategoryTree`, 그리고 샘플 `Post` 2개를 단일 트랜잭션 안에서 함께 생성합니다. "한 트랜잭션에는 하나의 애그리거트만 수정한다"는 원칙은 기존 애그리거트를 동시에 수정할 때 발생하는 잠금 경합을 피하기 위한 것이므로, 최초로 함께 생성(`INSERT`)하는 애그리거트들을 묶는 것은 경합을 일으키지 않습니다.
 
-| 규칙 | 앱이 하는 일 | 동시 요청에서 |
-|---|---|---|
-| 블로그 slug 중복 | 저장 전에 조회해 알아듣기 쉬운 오류를 준다 | 고유 제약이 막는다 |
-| 회원당 블로그 3개 | 저장 전에 그 회원의 블로그 수를 센다 | 막지 못한다. 동시에 두 개를 만들면 4개가 될 수 있다. 받아들인다 |
-| 글 slug 접미사(`-2`, `-3`) | 블로그의 같은 접두어 slug를 조회해 다음 번호를 고른다 | 고유 제약이 둘째를 막는다. 그 요청은 실패하고 다시 시도하면 된다 |
-| 글이 있는 카테고리 삭제 금지 | 지우기 전에 그 카테고리의 글이 있는지 조회한다 | 막지 못한다. 지우는 사이에 그 카테고리로 저장된 글은 없는 카테고리를 가리킨다. 읽을 때 분류 없음으로 다룬다 |
+### 데이터베이스 스키마
 
-## 이벤트
+`publishing` 스키마에서 주소(slug)의 유일성을 보장하기 위해 설정한 제약 조건과 외래키 구성입니다. 외래키(FK)는 동일한 애그리거트 내부 테이블 사이에만 설정하고 서로 다른 애그리거트 간(`posts.blog_id`, `posts.category_id`, `category_trees.id`)에는 설정하지 않습니다.
 
-| 이벤트 | 언제 | 소비 | 담는 것 |
-|---|---|---|---|
-| `PostPublished` | 글을 처음 발행할 때. 다시 공개할 때는 아니다 | 알림 | 글 ID, 블로그 ID, 블로그 소유자 ID, 발행 시각 |
-| `PostDeleted` | 글을 지울 때 | 상호작용 | 글 ID, 블로그 ID |
+| 테이블 및 경로                                                     | 제약 조건                                                    | 설정 이유 및 보장하는 도메인 규칙                                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `blogs(slug)`                                                      | `UNIQUE`                                                     | 플랫폼 전체에서 블로그 slug의 유일성 보장                                       |
+| `categories(tree_id, slug)`                                        | `UNIQUE DEFERRABLE INITIALLY DEFERRED`                       | 블로그(`tree_id`) 내에서 카테고리 slug의 유일성 보장 (커밋 시점 지연 검사)      |
+| `categories(tree_id, parent_id, name)`                             | DB 제약 미설정                                               | 대소문자 구분 없는 동일 부모 내 이름 중복 검사는 `CategoryTree` 도메인에서 수행 |
+| `post_slugs(blog_id, slug)`                                        | `UNIQUE`                                                     | 블로그 내에서 현재 slug와 이전 slug 전체의 유일성 보장                          |
+| `categories.tree_id`, `categories.parent_id`, `post_slugs.post_id` | 애그리거트 내부 외래키(FK) 설정 (`parent_id`는 `DEFERRABLE`) | 동일 애그리거트 루트와 내부 엔티티 간의 참조 무결성 보장                        |
 
-이벤트는 상태를 바꾸는 트랜잭션 안에서 `publishing.outbox_event`에 기록한다([architecture/03-context-integration.md](../../architecture/03-context-integration.md)).
-트랜잭션이 롤백되면 이벤트도 남지 않는다. 아웃박스에서 Kafka로 보내는 릴레이는 첫 소비자(상호작용)를 만들 때 함께 만든다.
+카테고리 slug 고유 제약과 부모 자기참조 외래키를 커밋 시점(`DEFERRABLE INITIALLY DEFERRED`)에 검사하는 이유는, Hibernate가 한 번의 flush 안에서 `INSERT`를 `DELETE`보다 먼저 실행하고 같은 엔티티끼리는 추가된 순서대로 삽입하기 때문입니다. 트리를 교체 저장하면서 기존 `x` 카테고리를 지우고 새 `x` 카테고리를 추가하거나 새 하위 카테고리를 상위보다 먼저 넣으면 즉시 검사(Immediate) 제약은 커밋 전에 실패합니다(`MigrationMatchesMappingTest`에서 검증).
 
-| 항목 | 구현 |
-|---|---|
-| 포트와 어댑터 | `application/required/PostEvents`를 `adapter/required/messaging/OutboxPostEvents`가 구현한다 |
-| 기록기 | `platform/messaging`의 `OutboxWriter`. 스키마마다 하나를 만들고, 진행 중인 트랜잭션이 없으면 기록을 거부한다. JPA 트랜잭션이 쓰는 JDBC 연결을 함께 쓴다 |
-| 이벤트 타입 | `publishing-api`의 `event/PublishingEvents.kt`(`PublishingTopics.POST`, `PostPublished`, `PostDeleted`). 소비 측이 같은 타입을 읽는다 |
-| 행 | `aggregate_type`은 `post`(스키마와 함께 토픽 `publishing.post`), `aggregate_id`는 글 ID(메시지 키), 본문은 JSON |
-| 발생 시각 | `PostPublished`는 글의 발행 시각, `PostDeleted`는 지운 시각 |
+## 비즈니스 흐름 구현
 
-`PostPublished`가 블로그 소유자 ID를 담는 이유: 알림이 "누구의 블로그인가"를 출판에 다시 묻지 않게 한다. 출판은 발행할 때 이미 블로그를 읽었다.
+[01-rules.md](01-rules.md)에 정의된 다섯 가지 비즈니스 흐름을 처리하는 도메인 메서드와 응용 계층의 세부 구현입니다. 모든 흐름은 `01-rules.md`의 조건 표 순서대로 검증하여 가장 먼저 걸리는 오류를 반환합니다.
 
-## 다른 컨텍스트 호출
+### 흐름 1·2. 블로그 개설·카테고리 편집
 
-| 호출 | 위치 | 방식 |
-|---|---|---|
-| 회원: 계정이 ACTIVE인가 | 출판의 포트 `BloggerStatusPort.canPublish(bloggerId)`를 번역 계층 `adapter/required/member`가 구현한다. 그 안에서만 `member-api`의 `GetAccountStatusQuery`를 부른다 | 쓰기 트랜잭션을 열기 **전에** 조회한다. 회원 조회가 원격 호출이 되어도 트랜잭션이 그동안 DB 연결을 붙잡지 않는다 |
+애플리케이션의 사전 조회와 동시 요청 경합 시의 데이터베이스 제약 분담, 그리고 도메인 메서드 매핑은 다음과 같습니다.
 
-이름과 구조는 [architecture/03-context-integration.md](../../architecture/03-context-integration.md)의 "예시: 출판이 계정 상태를 확인한다"를 따른다.
-`GetAccountStatusQuery`는 ID 묶음 조회(`getAll`)와 단건 조회(`get`)를 공개하고, 회원의 도메인 상태 대신 공개용 상태(`ACTIVE`, `SUSPENDED`, `CLOSED`)를 돌려준다. 회원이 모르는 ID는 결과에 없고, 출판은 그 계정을 "쓸 수 없음"으로 본다.
-회원이 별도 서비스가 되어 응답하지 않으면 그때도 "쓸 수 없음"으로 본다. 거부한 쓰기는 다시 시도하면 되지만, 정지된 블로거의 쓰기를 통과시키면 되돌릴 수 없다.
-글의 첨부 영상은 `posts.video_id`(V3)다. 쓰기와 고치기가 받고, 저장 뒤 미디어에 알린다. 영상이 쓸 수 있는지는 미디어가 정한다.
-분석의 블로그 대시보드 조합에는 `GetPostOverviewsQuery`(글 ID 묶음의 제목과 slug, 발행한 글 수)를 공개한다. 상태와 상관없이 주며, 소유자 확인은 조합하는 쪽이 한다.
-미디어 연결은 같은 문서의 "예: 글 저장과 이미지 연결"을 따른다. 저장과 삭제가 커밋된 뒤 미디어를 부르고, 실패해도 저장은 성공이다(`application/service/PostImageLinks`, [media/02-implementation.md](../media/02-implementation.md)). 글당 이미지 20개는 저장 전에 같은 클래스가 센다.
+| 규칙 및 도메인 메서드                            | 애플리케이션 및 도메인의 처리                                                      | 동시성 제어 및 경합 시 동작                                                                                            |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Blog.create(ownerId, slug, title, description)` | 계정 활성 확인(트랜잭션 외부) → 보유 블로그 수(3개) 조회 → 형식·예약어·중복 확인   | `slug` 중복 경합 시 DB 고유 제약이 차단(`BLOG_SLUG_TAKEN`). 3개 상한은 별도 잠금을 두지 않으며 극단적 동시 생성은 수용 |
+| `Blog.changeSettings(title, description)`        | 유스케이스에서 소유자 일치 확인 후 제목·설명 변경 (`slug`는 변경 메서드 미제공)    | -                                                                                                                      |
+| `CategoryTree.replaceWith(edit)`                 | 소유권 확인 → 트리 불변식(깊이·이름 중복·하위 존재) 검증 → 삭제 대상의 게시글 확인 | 삭제 직전 동시에 해당 카테고리로 저장된 글은 조회 시 '분류 없음'으로 처리                                              |
 
-## 규칙과 도메인 메서드
+카테고리 트리는 편집 화면을 열 때 받은 버전과 현재 버전이 다르면 `409 CATEGORY_TREE_CHANGED`를 반환합니다. `Category`는 연관관계의 역방향이므로 하위 카테고리만 수정·추가되어도 루트인 `CategoryTree`의 버전이 반드시 올라가도록 Named Query에서 `OPTIMISTIC_FORCE_INCREMENT`로 조회하며, 커밋 완료 후 트리를 다시 조회해 증가된 최신 버전과 함께 반환합니다. 샘플 게시글 본문은 `publishing-core`의 `samples/*.md` 리소스 파일을 읽어 생성합니다.
 
-| 01의 규칙 | 메서드 | 비고 |
-|---|---|---|
-| 블로그 slug 형식, 변경 불가 | `Blog.create(ownerId, slug, title, description)` | slug에 setter가 없다 |
-| 블로그 제목, 설명 수정 | `Blog.changeSettings(title, description)` | 소유 확인은 유스케이스 |
-| 카테고리 깊이, 이름 중복, 하위가 남은 삭제 | `CategoryTree.replaceWith(edit)` | 트리 전체를 받아 검증하고 바꾼다. 글이 있는지는 유스케이스가 먼저 확인한다 |
-| 카테고리 slug | `CategoryTree` 안에서 이름으로 만든다 | 트리 안에서 겹치면 접미사 |
-| 새 글은 DRAFT | `Post.draft(blogId, title, body, summary, categoryId, slug)` | slug는 유스케이스가 고유하게 정해 넘긴다 |
-| 발행, 비공개, 다시 공개 | `Post.publish(now)`, `Post.hide()`, `Post.republish()` | 각각 DRAFT, PUBLISHED, PRIVATE에서만 된다. `publish`는 언제나 처음 발행이므로 유스케이스는 그때만 `PostPublished`를 기록한다 |
-| 발행 전 slug는 제목을 따라감 | `Post.revise(content, categoryId, draftSlug)` | `draftSlug`는 DRAFT일 때만 받는다 |
-| 발행 후 slug 바꾸기, 옛 slug, 되돌리기 | `Post.changeSlug(newSlug)` | 새 slug를 `post_slugs`에 더하고 `posts.slug`를 바꾼다. 자기 옛 slug면 더하지 않는다. DRAFT에서는 옛 slug를 남기지 않는다 |
-| slug 만들기, 접미사 | `Slugs.from(text, fallback, maxLength)`, `Slugs.nextAvailable(base, taken, maxLength)` | 순수 함수. 무엇이 쓰였는지(`taken`)는 유스케이스가 조회해 넘긴다 |
-| 요약 | `PostSummary.written(text)`, `PostSummary.derived(text)` | 도메인은 300자 제한과 작성자가 썼는지만 안다. 본문에서 뽑는 일은 앱이 마크다운 파서로 한다(P4). 레거시도 commonmark로 했다(`post/application/MarkdownService.kt`) |
+### 흐름 3·4·5. 게시글 작성·발행·삭제
 
-## 유스케이스
+게시글 생명주기와 slug·요약 계산을 담당하는 도메인 메서드 매핑입니다. 1인 블로그 특성상 동일 게시글을 여러 사람이 동시에 편집할 일이 없으므로 게시글에는 별도의 낙관적 잠금 버전을 두지 않습니다.
 
-`application/provided`의 유스케이스와 그 구현이다. 하위 단계마다 늘어난다.
+| 담당 도메인 메서드                                           | 검증 및 구현 상세                                                                                                                                                     |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Post.draft(blogId, title, body, summary, categoryId, slug)` | 유스케이스가 블로그 내 유일한 slug를 계산해 전달하며 `DRAFT` 상태로 생성합니다.                                                                                       |
+| `Post.revise(content, categoryId, draftSlug)`                | 본문·제목을 수정합니다. `DRAFT` 게시글이라도 제목이 바뀌지 않았으면 작성자가 수동 지정한 slug를 덮어쓰지 않고 유지합니다.                                             |
+| `Post.publish(now)`, `Post.hide()`, `Post.republish()`       | 각각 `DRAFT`, `PUBLISHED`, `PRIVATE` 상태에서만 허용되며, 최초 발행(`publish`) 시에만 `PostPublished`(소유자 ID 포함)를 아웃박스에 기록합니다.                        |
+| `Post.changeSlug(newSlug)`                                   | 새 slug를 `post_slugs`에 추가하고 `posts.slug`를 갱신합니다(자신의 이전 slug로 복원할 때는 중복 추가하지 않음).                                                       |
+| `Slugs.from(...)`, `Slugs.nextAvailable(...)`                | 순수 함수로 구현하며, 해당 블로그의 `post_slugs`에서 동일 접두어 slug 목록(`Post.findSlugsTakenInBlog`, 현재 글 자신은 제외)을 조회해 전달합니다.                     |
+| `PostSummary.written(text)`, `PostSummary.derived(text)`     | 도메인은 300자 제한과 직접 작성 여부만 관리하며, `commonmark` AST에서 순수 텍스트 노드만 추출(링크 URL·이미지·코드 블록·HTML 제외)하는 작업은 응용 계층이 수행합니다. |
 
-| 01의 흐름 | 유스케이스 | 구현 | HTTP |
-|---|---|---|---|
-| 흐름 1 블로그 만들기 | `CreateBlogUseCase` | `BlogService` | `POST /blogs` → 201 |
-| 블로그 설정 | `ChangeBlogSettingsUseCase` | `BlogService` | `PATCH /blogs/{slug}` (소유자) |
-| 블로그 조회 | `GetBlogQuery` | `BlogService` | `GET /blogs/{slug}`(공개), `GET /me/blogs` |
-| 흐름 2 카테고리 조회 | `GetCategoryTreeQuery` | `CategoryTreeService` | `GET /blogs/{slug}/categories`(공개). 트리와 버전 |
-| 흐름 2 카테고리 편집 | `EditCategoryTreeUseCase` | `CategoryTreeService` | `PUT /blogs/{slug}/categories` (소유자). 트리 전체와 편집을 연 때의 버전 |
-| 흐름 3 글 쓰기 | `WritePostUseCase` | `PostService` | `POST /blogs/{slug}/posts` → 201, 임시저장 |
-| 흐름 3 글 고치기 | `RevisePostUseCase` | `PostService` | `PUT /posts/{id}` |
-| 글 slug 바꾸기 | `ChangePostSlugUseCase` | `PostService` | `PUT /posts/{id}/slug`. `slug`가 없으면 제목에서 다시 만든다 |
-| 흐름 4 발행, 비공개, 다시 공개 | `ChangePostStatusUseCase` | `PostService` | `POST /posts/{id}/publish`, `/hide`, `/republish` |
-| 흐름 5 글 삭제 | `DeletePostUseCase` | `PostService` | `DELETE /posts/{id}` → 204 |
-| 소유자의 글 | `GetMyPostsQuery` | `PostService` | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts?page=` (임시저장 포함, 최근 수정 순) |
-| 공개 글 목록 | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&page=` |
-| 홈의 최근 글 | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?page=` |
-| 발행된 글의 제목 | `GetPublishedPostsQuery.titles` | `PublishedPostService` | `GET /posts/titles?ids=a,b` (100개까지, 누구나). 발행된 글만 답한다. 알림함처럼 글을 ID로 가리키는 화면이 쓴다. 비공개로 돌리거나 지운 글은 빠져서 제목이 새지 않는다 |
-| 공개 글 상세, 옛 slug | `GetPublishedPostsQuery.find` | `PublishedPostService` | `GET /blogs/{slug}/posts/{postSlug}` → 200, 옛 slug면 301 |
-| 다른 컨텍스트에 글과 블로그 공개 | `GetPostReferencesQuery`, `GetBlogReferencesQuery` (`publishing-api`) | `ReferenceQueryService` | 상호작용의 번역 계층이 호출. 자기 읽기 전용 트랜잭션, 본문은 읽지 않는다 |
+### HTTP 엔드포인트
 
-`apps/api`의 필터 체인은 `/blogs/` 아래의 GET과 `GET /posts`를 누구에게나 열고, 나머지는 세션을 요구한다. 이 경로의 조회는 발행된 글만 돌려준다.
+`application/provided` 패키지에 선언된 인바운드 유스케이스 인터페이스와 구현 서비스, 그리고 매핑되는 HTTP 경로입니다. `apps/api`의 보안 필터 체인은 `/blogs/` 하위의 `GET` 요청과 `GET /posts` 요청을 비로그인 독자에게 열어두며, 해당 공개 경로는 항상 `PUBLISHED` 상태인 게시글만 반환합니다.
 
-### 구현에서 정한 것
+| 도메인 흐름                    | 유스케이스 인터페이스           | 구현 서비스            | HTTP 엔드포인트 및 응답                                                                                |
+| ------------------------------ | ------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| 흐름 1 블로그 개설             | `CreateBlogUseCase`             | `BlogService`          | `POST /blogs` → `201 Created`                                                                          |
+| 블로그 설정 수정               | `ChangeBlogSettingsUseCase`     | `BlogService`          | `PATCH /blogs/{slug}` (소유자 전용)                                                                    |
+| 블로그 조회                    | `GetBlogQuery`                  | `BlogService`          | `GET /blogs/{slug}` (전체 공개), `GET /me/blogs` (내 블로그 목록)                                      |
+| 흐름 2 카테고리 트리 조회      | `GetCategoryTreeQuery`          | `CategoryTreeService`  | `GET /blogs/{slug}/categories` (전체 공개, 트리와 현재 버전 반환)                                      |
+| 흐름 2 카테고리 트리 편집      | `EditCategoryTreeUseCase`       | `CategoryTreeService`  | `PUT /blogs/{slug}/categories` (소유자 전용, 트리 전체와 편집 시작 버전 전달)                          |
+| 흐름 3 게시글 작성             | `WritePostUseCase`              | `PostService`          | `POST /blogs/{slug}/posts` → `201 Created` (`DRAFT` 상태)                                              |
+| 흐름 3 게시글 수정             | `RevisePostUseCase`             | `PostService`          | `PUT /posts/{id}`                                                                                      |
+| 게시글 slug 변경               | `ChangePostSlugUseCase`         | `PostService`          | `PUT /posts/{id}/slug` (`slug` 값을 비우면 현재 제목에서 재생성)                                       |
+| 흐름 4 발행·비공개·재공개      | `ChangePostStatusUseCase`       | `PostService`          | `POST /posts/{id}/publish`, `/hide`, `/republish`                                                      |
+| 흐름 5 게시글 삭제             | `DeletePostUseCase`             | `PostService`          | `DELETE /posts/{id}` → `204 No Content`                                                                |
+| 소유자용 내 게시글 조회        | `GetMyPostsQuery`               | `PostService`          | `GET /me/posts/{id}`, `GET /me/blogs/{slug}/posts?page=` (`DRAFT`·`PRIVATE` 포함, 최근 수정 순)        |
+| 블로그별 발행 게시글 목록      | `GetPublishedPostsQuery.inBlog` | `PublishedPostService` | `GET /blogs/{slug}/posts?category=&page=`                                                              |
+| 플랫폼 홈 최근 발행 글 목록    | `GetPublishedPostsQuery.recent` | `PublishedPostService` | `GET /posts?page=`                                                                                     |
+| 발행된 게시글 제목 일괄 조회   | `GetPublishedPostsQuery.titles` | `PublishedPostService` | `GET /posts/titles?ids=a,b` (최대 100개, 비로그인 허용, `PUBLISHED` 글만 반환하여 비공개 글 제목 보호) |
+| 공개 게시글 상세 및 리다이렉트 | `GetPublishedPostsQuery.find`   | `PublishedPostService` | `GET /blogs/{slug}/posts/{postSlug}` → 현재 slug면 `200 OK`, 이전 slug면 `301 Moved Permanently`       |
 
-| 항목 | 내용 |
-|---|---|
-| 검사 순서 | 01의 표 순서대로 검사해 처음 걸리는 규칙을 알린다. 블로그 만들기는 계정 상태(트랜잭션 밖), 블로그 수, 형식과 예약어, 중복 순이다. 카테고리 편집은 소유, 트리 규칙(2~4번), 글이 있는 삭제(5번) 순이다 |
-| slug 경합 | 같은 주소를 동시에 만들면 고유 제약이 둘째를 막는다. 그 실패는 `BLOG_SLUG_TAKEN`으로 알린다 |
-| 트리 버전 | 편집을 연 때의 버전을 받아 지금 버전과 다르면 409 `CATEGORY_TREE_CHANGED`다. 편집용으로 읽을 때 `OPTIMISTIC_FORCE_INCREMENT`로 읽어 저장마다 버전을 올린다. 카테고리는 연관의 역방향이라, 이름만 바뀌거나 카테고리가 더해져도 Hibernate는 트리의 버전을 올리지 않는다. 잠금 방식은 리포지토리가 아니라 `CategoryTree`의 named query에 둔다 |
-| 편집 응답 | 커밋한 뒤 트리를 다시 읽어 돌려준다. 버전은 커밋하면서 오르기 때문이다 |
-| 요약 | commonmark의 문법 트리에서 읽히는 글자만 모은다. 링크 주소, 이미지, 코드 블록, HTML은 뺀다. 레거시가 쓴 `TextContentRenderer`는 링크를 `"글" (주소)`로, 취소선을 `/글/`로 써서 요약에 섞였다 |
-| 샘플 본문 | `publishing-core`의 `samples/*.md`. 제목은 따로 있으므로 본문에 다시 쓰지 않는다 |
-| 정지된 계정 | 쓰기 전에 회원에게 묻는다. 액세스 토큰은 정지 뒤에도 만료까지 통과하므로 토큰만 믿지 않는다 |
-| 남의 글 | 글 ID로 오는 요청은 소유자가 아니면 상태와 상관없이 404 `POST_NOT_FOUND`다. 남의 임시저장 글이 있다는 사실을 알리지 않는다. 블로그는 공개이므로 남의 블로그에 글을 쓰려 하면 403 `NOT_BLOG_OWNER`다 |
-| slug가 쓰였는지 | 그 블로그의 `post_slugs`에서 같은 접두어로 시작하는 slug를 조회한다(`Post`의 named query `findSlugsTakenInBlog`). 그 글 자신의 slug는 빼서 자기 옛 slug로 돌아갈 수 있게 한다. slug에는 LIKE 와일드카드 문자가 올 수 없어 접두어를 그대로 쓴다 |
-| 임시저장 글의 slug | 제목이 바뀐 때만 다시 만든다. 본문만 고치면 작성자가 직접 정한 slug가 그대로 남는다 |
-| 새 글의 slug | 글의 ID를 알아야 자기 slug를 뺄 수 있으므로, 임시 slug로 만든 뒤 저장 전에 제목의 slug로 바꾼다 |
-| 목록의 페이지 | 20개씩, 쪽 번호(오프셋) 방식이다. `?page=`는 0부터 센다. 응답은 `items`, `page`, `totalItems`, `totalPages`다. 범위 밖의 쪽은 빈 목록, 음수는 400 `INVALID_PAGE`다. 목록 쿼리마다 같은 조건의 개수 쿼리가 짝으로 있다 |
-| 쪽 번호를 고른 이유 | 처음에는 커서(키셋) 방식이었다. 커서는 글이 새로 발행돼도 다음 페이지가 밀리지 않고, 깊은 페이지도 첫 페이지만큼 싸다. 화면이 쪽 번호로 이동해야 해서 바꿨다. 둘러보는 동안 새 글이 발행되면 뒤 페이지가 한 칸 밀리는 것은 받아들인다. 블로그 하나의 글 수로는 오프셋의 비용이 문제 되지 않는다. 블로그 글 목록만 무한 스크롤로 바꾸게 되면 그 목록만 커서로 돌린다 |
-| 목록의 정렬 | 공개 목록과 홈은 발행 시각 최신순, 소유자 목록은 최근 수정 순. 둘 다 같은 시각이면 ID 역순 |
-| 목록이 읽는 열 | 본문을 읽지 않는다. `Post`의 named query가 목록에 필요한 열만 별칭으로 고르고, `PostRow` 프로젝션으로 받는다. 페이지 크기와 위치는 쿼리의 `limit ?`, `offset ?` 매개변수로 넘긴다. Spring Data의 `Limit`, `Pageable`을 시그니처에 쓰지 않는 규약 때문이다 |
-| 작성자 | 목록의 글과 공개 글 상세에 `authorId`(블로그 소유자)를 담는다. 화면이 회원의 공개 프로필을 ID 묶음으로 조회해 이름과 사진을 붙인다. 출판은 표시 이름을 가져오지 않는다([strategic/04-context-map.md](../../strategic/04-context-map.md), 조회 조합) |
-| 옛 slug 응답 | 301과 `Location`(현재 주소). 본문에도 블로그 slug와 현재 slug를 담아, 스스로 라우팅하는 프론트엔드가 쓸 수 있게 한다 |
-| 공개 조회에서 숨기는 것 | 임시저장, 비공개 글은 상세와 목록 모두에서 없는 글과 같다(404, 목록에서 빠짐) |
-| 동시 수정 | 같은 글을 동시에 고치면 나중 것이 남는다. 1인 블로그라 버전을 두지 않았다 |
+목록 조회와 리다이렉트, 권한 오류 응답에 적용된 세부 규약은 다음과 같습니다.
 
-## 단계
-
-member 이전과 같이 단계마다 PR을 하나씩 낸다.
-
-| 단계 | 내용 | 완료 조건 |
-|---|---|---|
-| P0 | 이 문서와 01-rules, README | 결정 항목 확정 |
-| P1 | 모듈 골격(`publishing-api`, `publishing-core`), ArchUnit 규칙, 도메인 | 도메인 규칙마다 테스트 |
-| P2 | `publishing` 스키마, Flyway V1, 마이그레이터에 컨텍스트 추가, 매핑 테스트 | 빈 DB에 적용, 스키마를 넘는 FK 검사 통과 |
-| P3 | `member-api`의 계정 상태 조회와 출판의 번역 계층 | 정지된 계정의 쓰기 거부 |
-| P4 | 유스케이스와 웹. 블로그, 카테고리, 글, 공개 조회, 옛 slug 리디렉션 | 01-rules 흐름별 HTTP 테스트 |
-| P5 | 아웃박스 기록 | 롤백되면 이벤트도 남지 않는 테스트 |
-
-## 아직 없는 것
-
-| 항목 | 상태 |
-|---|---|
-| 카테고리별 글 수 | 블로그 레이아웃의 카테고리 옆 숫자. 화면이 필요로 할 때 만든다 |
-| 아웃박스 릴레이와 Kafka, 보낸 행 정리 | 상호작용을 만들 때. 지금은 행이 쌓이기만 한다 |
-| 미디어 연결(대표 이미지, 본문 이미지) | 미디어를 만들 때 |
+| 항목                       | 응답 및 동작 상세                                                                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 오프셋 목록 페이지네이션   | UI의 페이지 번호 이동 요구사항에 맞춰 페이지당 20건씩 오프셋 방식(`?page=0`부터 시작)으로 조회하며 `items`, `page`, `totalItems`, `totalPages`를 반환합니다(범위 초과 시 빈 목록, 음수 페이지는 `400 INVALID_PAGE`). |
+| 목록 정렬 및 프로젝션      | 공개 목록은 `발행 시각 최신순(동일 시각이면 ID 역순)`, 소유자 관리 목록은 `최근 수정 순`으로 정렬하며, 무거운 `body` 컬럼을 제외하고 `PostRow` 프로젝션으로 조회합니다.                                              |
+| 이전 slug 리다이렉트 응답  | `301` 상태 코드와 `Location` 헤더(현재 주소)를 반환하며, SPA 프론트엔드가 자체 라우팅에 활용할 수 있도록 응답 본문에도 블로그 slug와 현재 게시글 slug를 함께 담습니다.                                               |
+| 타인 리소스 접근 응답 구분 | 게시글 ID로 직접 요청하는 수정·삭제·조회는 소유자가 아니면 `404 POST_NOT_FOUND`로 존재를 숨기며, 공개 자원인 타인의 블로그에 글을 쓰려 하면 `403 NOT_BLOG_OWNER`를 반환합니다.                                       |

@@ -1,46 +1,29 @@
 # media 컨텍스트 (미디어)
 
-글 본문에 들어가는 이미지와 글에 첨부하는 영상의 업로드, 검증, 변환, 글과의 연결, 정리를 담당한다. 지원 서브도메인이다.
+게시글 본문에 삽입되는 이미지와 게시글에 첨부되는 영상의 업로드, 형식 검증, 트랜스코딩(변환), 게시글과의 연결 및 미사용 파일 정리를 담당하는 지원(Supporting) 서브도메인입니다.
 
-| 애그리거트 | 멤버 | 공개 범위 |
-|---|---|---|
-| `Media` (이미지) | 연결된 글 ID 목록 | 파일은 주소를 아는 누구나. 기록은 올린 회원만 |
-| `Video` (영상) | 연결된 글 ID 목록 | 변환이 끝난 영상은 주소를 아는 누구나. 기록은 올린 회원만 |
+| 애그리거트       | 내부 구성 요소        | 공개 범위                                                                   |
+| ---------------- | --------------------- | --------------------------------------------------------------------------- |
+| `Media` (이미지) | 연결된 게시글 ID 목록 | 이미지 파일은 URL을 아는 누구나 조회 가능, 업로드 기록은 업로더 본인만 조회 |
+| `Video` (영상)   | 연결된 게시글 ID 목록 | 변환이 완료된 영상은 누구나 재생 가능, 업로드 기록은 업로더 본인만 조회     |
 
-**내부 구조: 헥사고날.** 규칙은 작지만 외부 의존(R2, Cloudflare Queue, ffmpeg)이 많고 바뀔 수 있다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/media/`(`media-api`, `media-core`)다. 이미지 묶음(M0~M5)을 마쳤다. 업로드 준비, 완료(검증과 사진 정보 제거), 지우기, 글과의 연결, 정리가 있다. 영상은 도메인, 스키마, 업로드 준비, 글과의 연결, 독자용 조회(V2), 변환(V3, `apps/worker`), 정리(V4, `apps/batch`)까지 마쳤다.
+- **내부 아키텍처: 헥사고날.** 도메인 규칙 자체는 간결하지만 오브젝트 스토리지(Cloudflare R2 / S3), 메시지 큐(Cloudflare Queues), 미디어 처리 도구(ImageIO, FFmpeg) 등 교체 가능한 외부 인프라 의존성이 많아 헥사고날 아키텍처를 적용합니다([architecture/02-context-architecture.md](../../architecture/02-context-architecture.md) 참고).
+- **모듈 위치**: `backend/contexts/media/` (`media-api`, `media-core`)
+- **실행 프로세스**: 업로드 준비·완료·연결·조회는 `apps/api`에서, 영상 트랜스코딩은 `apps/worker`에서, 미사용 이미지·영상 정리는 `apps/batch`에서 각각 실행하되 모두 `media-core`의 동일한 도메인 모델을 공유합니다.
 
 ## 문서 목록
 
-| 파일 | 내용 | 읽는 사람 |
-|---|---|---|
-| [01-rules.md](01-rules.md) | 업로드, 검증, 글과의 연결, 정리 규칙 | 누구나 |
-| [02-implementation.md](02-implementation.md) | 각 규칙을 어느 계층에 두는지, 포트와 어댑터, 단계 | 구현하는 사람 |
+| 문서                                         | 다루는 내용                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| [01-rules.md](01-rules.md)                   | 이미지·영상 업로드, 검증, 게시글 연결 및 미사용 파일 정리 규칙         |
+| [02-implementation.md](02-implementation.md) | 각 도메인 규칙의 계층별 배치, 포트·어댑터 구성 및 프로세스별 구현 상세 |
 
-## 다른 문서와의 관계
+## 관련 문서
 
-| 문서 | 다루는 것 |
-|---|---|
-| [strategic/04-context-map.md](../../strategic/04-context-map.md) | 출판이 미디어를 호출하는 방향. 미디어는 다른 컨텍스트를 호출하지 않는다 |
-| [architecture/03-context-integration.md](../../architecture/03-context-integration.md) | 글 저장과 이미지 연결의 순서 |
-| [publishing/01-rules.md](../publishing/01-rules.md) | 본문 형식과 글당 이미지 수. 본문에서 이미지를 찾는 것은 출판이다 |
-
-## 레거시
-
-레거시 구현은 태그 `legacy-final`에 있다. 참고만 하고, 이 폴더의 규칙을 기준으로 새로 만든다.
-
-| 기능 | 레거시 위치 |
-|---|---|
-| 이미지 업로드 주소, 승격, 검증, EXIF 제거 | `backend/blog-api/.../api/media/` |
-| 영상 업로드 주소, 글과의 연결 | `backend/blog-api/.../api/video/` |
-| 영상 변환 (Cloudflare Queue pull, ffmpeg HLS) | `backend/blog-worker/` |
-| 영상 정리 | `backend/blog-batch/.../jobs/video/VideoGcJobConfig.kt` |
-
-레거시가 왜 그렇게 만들었는지는 두 기록에 있다. 새 구조에서도 근거로 쓴다.
-
-| 문서 | 내용 |
-|---|---|
-| [design-notes/media-upload-hardening.md](../../design-notes/media-upload-hardening.md) | 요청 수와 용량 제한, 파일 시그니처 검증, EXIF 제거, CDN 응답 헤더 |
-| [operations/cloudflare-video-pipeline.md](../../operations/cloudflare-video-pipeline.md) | R2 이벤트, Cloudflare Queue, 재시도와 DLQ, `raw/` 접두사 |
-
-레거시와 달라진 점은 01-rules의 "레거시와 다른 점"에 모았다.
+| 문서                                                                                     | 다루는 내용                                                                       |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [strategic/04-context-map.md](../../strategic/04-context-map.md)                         | 출판 컨텍스트가 미디어를 단방향으로 호출하는 의존 방향                            |
+| [architecture/03-context-integration.md](../../architecture/03-context-integration.md)   | 게시글 저장 트랜잭션 커밋 이후 미디어 첨부 연결을 동기화하는 흐름                 |
+| [publishing/01-rules.md](../publishing/01-rules.md)                                      | 마크다운 본문 내 이미지 개수 제한 및 본문 이미지 추출 책임                        |
+| [design-notes/media-upload-hardening.md](../../design-notes/media-upload-hardening.md)   | 업로드 용량 제한, 파일 시그니처(Magic Bytes) 검증, EXIF 메타데이터 제거 설계 배경 |
+| [operations/cloudflare-video-pipeline.md](../../operations/cloudflare-video-pipeline.md) | R2 이벤트 알림, Cloudflare Queues, 재시도·DLQ 및 `raw/` 접두사 파이프라인 구성    |

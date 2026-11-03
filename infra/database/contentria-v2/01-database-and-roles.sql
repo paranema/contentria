@@ -1,5 +1,5 @@
 -- 새 구조(backend/contexts, backend/apps)의 데이터베이스와 롤.
--- 레거시가 쓰는 contentria 데이터베이스와 따로 둔다 (backend/docs/architecture/04-persistence-conventions.md).
+-- 레거시가 쓰는 contentria 데이터베이스와 따로 둔다 (backend/docs/architecture/04-database-structure.md).
 --
 -- 슈퍼유저로 postgres 데이터베이스에 접속해 한 번 실행한다. 비밀번호는 psql 변수로 넘긴다.
 --   psql -d postgres \

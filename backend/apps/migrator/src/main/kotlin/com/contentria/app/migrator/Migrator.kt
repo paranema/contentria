@@ -5,7 +5,7 @@ import org.flywaydb.core.api.output.MigrateResult
 
 /**
  * 이 프로세스가 스키마를 마이그레이션하는 컨텍스트. 스키마 이름, 마이그레이션 위치, 소유 롤이
- * 모두 컨텍스트 이름을 따른다(docs/architecture/04-persistence-conventions.md).
+ * 모두 컨텍스트 이름을 따른다(docs/architecture/04-database-structure.md).
  */
 data class ContextSchema(val context: String) {
     val schema: String get() = context

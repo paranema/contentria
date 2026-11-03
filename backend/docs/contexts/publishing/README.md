@@ -1,35 +1,31 @@
 # publishing 컨텍스트 (출판)
 
-블로그, 카테고리, 글의 작성과 발행을 담당한다. 핵심 서브도메인이다.
+블로그, 카테고리, 게시글의 작성과 발행을 담당하는 핵심(Core) 서브도메인입니다.
 
-| 애그리거트 | 멤버 | 공개 범위 |
-|---|---|---|
-| `Blog` | 없음 | 누구나 |
-| `CategoryTree` | `Category` | 누구나 |
-| `Post` | `PostSlug` (현재 slug와 옛 slug) | 발행된 글은 누구나, 나머지는 블로그 소유자만 |
+| 애그리거트     | 내부 구성 요소                   | 공개 범위                                                |
+| -------------- | -------------------------------- | -------------------------------------------------------- |
+| `Blog`         | 없음                             | 전체 공개                                                |
+| `CategoryTree` | `Category`                       | 전체 공개                                                |
+| `Post`         | `PostSlug` (현재 슬러그 및 이력) | 발행된 게시글은 전체 공개, 나머지는 블로그 소유자만 조회 |
 
-**내부 구조: 헥사고날.** 발행 상태, slug, 카테고리 트리, 소유권처럼 규칙이 가장 많은 컨텍스트다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)).
-코드 위치는 `backend/contexts/publishing/`(`publishing-api`, `publishing-core`)다. P0~P5를 마쳤다. 아웃박스의 이벤트는 `platform/messaging`의 릴레이가 `publishing.post`로 보낸다.
+- **내부 아키텍처: 헥사고날.** 게시글 발행 상태 전이, 슬러그(slug) 이력 관리, 카테고리 트리 제약, 소유권 검증 등 도메인 규칙이 가장 풍부한 핵심 컨텍스트이므로 헥사고날 아키텍처를 적용합니다([architecture/02-context-architecture.md](../../architecture/02-context-architecture.md) 참고).
+- **모듈 위치**: `backend/contexts/publishing/` (`publishing-api`, `publishing-core`)
+- **이벤트 발행**: 아웃박스(`publishing.outbox_event`)에 기록된 도메인 이벤트는 `platform/messaging`의 릴레이가 Kafka `publishing.post` 토픽으로 전달합니다.
 
 ## 문서 목록
 
-| 파일 | 내용 | 읽는 사람 |
-|---|---|---|
-| [01-rules.md](01-rules.md) | 블로그, 카테고리, 글, slug 규칙 | 누구나 |
-| [02-implementation.md](02-implementation.md) | 각 규칙을 어느 계층에 두는지 | 구현하는 사람 |
+| 문서                                         | 다루는 내용                                                     |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| [01-rules.md](01-rules.md)                   | 블로그, 카테고리, 게시글, 슬러그(slug) 관련 도메인 규칙         |
+| [02-implementation.md](02-implementation.md) | 각 도메인 규칙의 계층별 배치, 애그리거트 경계 및 세부 구현 구조 |
 
-01은 아키텍처를 모른다. 제품이 어떻게 동작하는지만 적는다.
-02는 01을 전제로 배치를 적는다. 아키텍처가 바뀌면 02만 바뀐다.
+- `01-rules.md`는 내부 아키텍처와 무관하게 제품이 어떻게 동작해야 하는지만 정의합니다.
+- `02-implementation.md`는 `01-rules.md`의 규칙을 실제 코드 계층에 어떻게 배치했는지 기록하며, 내부 아키텍처나 기술 구현이 바뀌면 `02-implementation.md`만 수정합니다.
 
-## 다른 문서와의 관계
+## 관련 문서
 
-| 문서 | 다루는 것 |
-|---|---|
-| [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md) | 블로그, 카테고리, 글을 한 컨텍스트로 묶은 이유. 조회수와 좋아요 수를 출판이 소유하지 않는 이유 |
-| [strategic/04-context-map.md](../../strategic/04-context-map.md) | 회원, 미디어, 상호작용, 알림과 주고받는 것. `PostPublished`, `PostDeleted` 이벤트 |
-| [architecture/03-context-integration.md](../../architecture/03-context-integration.md) | 회원 조회를 원격 호출처럼 다루는 방법, 아웃박스 |
-
-## 레거시
-
-레거시 구현은 태그 `legacy-final`에 있다(`backend/blog-api/.../api/{blog,category,post}`). 참고만 하고, 이 폴더의 규칙을 기준으로 새로 만든다.
-레거시와 달라진 점은 01-rules의 "레거시와 다른 점"에 모았다.
+| 문서                                                                                   | 다루는 내용                                                                               |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [strategic/03-bounded-contexts.md](../../strategic/03-bounded-contexts.md)             | 블로그·카테고리·게시글을 한 컨텍스트로 묶은 배경, 조회수와 좋아요 수를 분리한 이유        |
+| [strategic/04-context-map.md](../../strategic/04-context-map.md)                       | 회원·미디어·상호작용·알림 컨텍스트와의 연동 관계 및 `PostPublished`, `PostDeleted` 이벤트 |
+| [architecture/03-context-integration.md](../../architecture/03-context-integration.md) | 컨텍스트 간 동기 호출 원칙과 트랜잭셔널 아웃박스 패턴                                     |
