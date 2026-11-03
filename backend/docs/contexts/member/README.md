@@ -7,7 +7,7 @@
 | `Account`  | `Credential`, `Role` | 계정 본인만 조회 가능 (타 컨텍스트에는 계정 활성 상태만 공개) |
 | `Profile`  | 없음                 | 전체 공개 (표시 이름, 프로필 사진)                            |
 
-- **내부 아키텍처: 헥사고날.** 서브도메인 분류상으로는 일반(Generic) 도메인이지만 인증·세션 등 보안 규칙이 복잡하고 Google OAuth, 이메일(SMTP), reCAPTCHA 등 외부 연동 지점이 많아 헥사고날 구조를 적용합니다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md) 참고).
+- **내부 아키텍처: 헥사고날.** 서브도메인 분류상으로는 일반(Generic) 도메인이지만 인증·세션 등 보안 규칙이 복잡하고 Google OAuth, 이메일(SMTP), reCAPTCHA 등 외부 연동 지점이 많아 헥사고날 구조를 적용합니다([architecture/02-context-architecture.md](../../architecture/02-context-architecture.md) 참고).
 - **모듈 위치**: `backend/contexts/member/` (`member-api`, `member-core`)
 
 ## 문서 목록

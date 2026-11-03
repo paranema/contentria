@@ -8,7 +8,7 @@
 | `CategoryTree` | `Category`                       | 전체 공개                                                |
 | `Post`         | `PostSlug` (현재 슬러그 및 이력) | 발행된 게시글은 전체 공개, 나머지는 블로그 소유자만 조회 |
 
-- **내부 아키텍처: 헥사고날.** 게시글 발행 상태 전이, 슬러그(slug) 이력 관리, 카테고리 트리 제약, 소유권 검증 등 도메인 규칙이 가장 풍부한 핵심 컨텍스트이므로 헥사고날 아키텍처를 적용합니다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md) 참고).
+- **내부 아키텍처: 헥사고날.** 게시글 발행 상태 전이, 슬러그(slug) 이력 관리, 카테고리 트리 제약, 소유권 검증 등 도메인 규칙이 가장 풍부한 핵심 컨텍스트이므로 헥사고날 아키텍처를 적용합니다([architecture/02-context-architecture.md](../../architecture/02-context-architecture.md) 참고).
 - **모듈 위치**: `backend/contexts/publishing/` (`publishing-api`, `publishing-core`)
 - **이벤트 발행**: 아웃박스(`publishing.outbox_event`)에 기록된 도메인 이벤트는 `platform/messaging`의 릴레이가 Kafka `publishing.post` 토픽으로 전달합니다.
 

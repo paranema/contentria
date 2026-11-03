@@ -6,7 +6,7 @@
 
 ### 계층 구조
 
-알림 컨텍스트(`contexts/notification`)는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **레이어드 아키텍처**(`presentation → application → domain ← infra`)를 따릅니다. 단일 애그리거트나 단일 이벤트 페이로드만으로 판단할 수 있는 규칙은 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 판단할 수 있는 규칙은 응용 계층(`앱`)에서 조율합니다.
+알림 컨텍스트(`contexts/notification`)는 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **레이어드 아키텍처**(`presentation → application → domain ← infra`)를 따릅니다. 단일 애그리거트나 단일 이벤트 페이로드만으로 판단할 수 있는 규칙은 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 판단할 수 있는 규칙은 응용 계층(`앱`)에서 조율합니다.
 
 ### 스프링 설정 구성
 
@@ -35,7 +35,7 @@
 
 ### 데이터베이스 스키마
 
-알림 컨텍스트는 이벤트를 소비만 하고 발행하지 않으므로 `outbox_event` 테이블을 두지 않으며([architecture/04-persistence-conventions.md](../../architecture/04-persistence-conventions.md) 참고), 참조 대상이 모두 외부 컨텍스트에 있으므로 외래키(FK)도 두지 않습니다. `notification_migrator` 롤이 스키마를 소유하며 `api_app` 롤은 DML 권한만 가집니다. 중복 알림 방지와 알림함 조회 성능을 위해 설정한 제약 조건과 인덱스는 다음과 같습니다.
+알림 컨텍스트는 이벤트를 소비만 하고 발행하지 않으므로 `outbox_event` 테이블을 두지 않으며([architecture/04-database-structure.md](../../architecture/04-database-structure.md) 참고), 참조 대상이 모두 외부 컨텍스트에 있으므로 외래키(FK)도 두지 않습니다. `notification_migrator` 롤이 스키마를 소유하며 `api_app` 롤은 DML 권한만 가집니다. 중복 알림 방지와 알림함 조회 성능을 위해 설정한 제약 조건과 인덱스는 다음과 같습니다.
 
 | 테이블          | 제약 조건 및 인덱스                                | 보장하는 도메인 규칙 및 조회 용도                                               |
 | --------------- | -------------------------------------------------- | ------------------------------------------------------------------------------- |

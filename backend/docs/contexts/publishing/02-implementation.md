@@ -6,7 +6,7 @@
 
 ### 계층 구조
 
-출판 컨텍스트(`contexts/publishing`)는 핵심 도메인 모델의 불변식을 외부 기술 의존성으로부터 보호하기 위해 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **헥사고날 아키텍처**를 따릅니다. 단일 애그리거트 상태만으로 판단할 수 있으면 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 하면 응용 계층(`앱`)에서 조율합니다([member/02-implementation.md](../member/02-implementation.md) 참고).
+출판 컨텍스트(`contexts/publishing`)는 핵심 도메인 모델의 불변식을 외부 기술 의존성으로부터 보호하기 위해 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **헥사고날 아키텍처**를 따릅니다. 단일 애그리거트 상태만으로 판단할 수 있으면 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 하면 응용 계층(`앱`)에서 조율합니다([member/02-implementation.md](../member/02-implementation.md) 참고).
 
 외부 컨텍스트와의 연동 및 도메인 이벤트 발행을 담당하는 포트와 어댑터 구성은 다음과 같습니다.
 

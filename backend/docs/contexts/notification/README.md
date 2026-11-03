@@ -6,7 +6,7 @@
 | -------------- | -------------- | ----------------------- |
 | `Notification` | 없음           | 알림 수신자 본인만 조회 |
 
-- **내부 아키텍처: 레이어드.** 도메인 이벤트를 구독하여 알림 레코드를 저장하고 사용자의 알림함 조회·읽음 처리를 제공하는 단순한 흐름이므로 4계층 레이어드 아키텍처를 적용합니다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md) 참고).
+- **내부 아키텍처: 레이어드.** 도메인 이벤트를 구독하여 알림 레코드를 저장하고 사용자의 알림함 조회·읽음 처리를 제공하는 단순한 흐름이므로 4계층 레이어드 아키텍처를 적용합니다([architecture/02-context-architecture.md](../../architecture/02-context-architecture.md) 참고).
 - **모듈 위치**: `backend/contexts/notification/` (`notification-api`, `notification-core`)
 - **생명주기**: 생성된 지 90일이 지난 알림은 읽음 여부와 무관하게 매일 자동으로 삭제됩니다.
 

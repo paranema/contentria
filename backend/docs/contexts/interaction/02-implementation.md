@@ -6,7 +6,7 @@
 
 ### 계층 구조
 
-상호작용 컨텍스트(`contexts/interaction`)는 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **레이어드 아키텍처**(`presentation → application → domain ← infra`)를 따르며, 계층 간 의존 규칙은 ArchUnit의 `ContextRules.forLayered`가 검증합니다. 단일 애그리거트 상태만으로 판단할 수 있으면 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 판단할 수 있으면 응용 계층(`앱`)에서 조율합니다.
+상호작용 컨텍스트(`contexts/interaction`)는 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **레이어드 아키텍처**(`presentation → application → domain ← infra`)를 따르며, 계층 간 의존 규칙은 ArchUnit의 `ContextRules.forLayered`가 검증합니다. 단일 애그리거트 상태만으로 판단할 수 있으면 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 컨텍스트를 조회해야 판단할 수 있으면 응용 계층(`앱`)에서 조율합니다.
 
 ### 스프링 설정 구성
 

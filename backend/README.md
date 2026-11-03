@@ -14,7 +14,7 @@
 | [media](docs/contexts/media/README.md) (미디어)               | 헥사고날      | 이미지·영상 업로드, 파일 검증, HLS 변환, 게시글 연결 및 미사용 파일 정리      |
 | [analytics](docs/contexts/analytics/README.md) (분석)         | 레이어드      | 방문 기록 수집, 일별 통계 집계, 조회수 관리                                   |
 
-컨텍스트 경계를 나눈 기준은 [docs/strategic/03-bounded-contexts.md](docs/strategic/03-bounded-contexts.md)에서, 컨텍스트별 내부 아키텍처 선정 이유는 [docs/architecture/02-internal-architecture.md](docs/architecture/02-internal-architecture.md)에서 확인할 수 있습니다.
+컨텍스트 경계를 나눈 기준은 [docs/strategic/03-bounded-contexts.md](docs/strategic/03-bounded-contexts.md)에서, 컨텍스트별 내부 아키텍처 선정 이유는 [docs/architecture/02-context-architecture.md](docs/architecture/02-context-architecture.md)에서 확인할 수 있습니다.
 
 ## 디렉터리 구조
 
@@ -169,4 +169,4 @@ export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_DOCKE
 | 2    | 컨텍스트별 스키마 생성 및 권한 부여 (슈퍼유저, 최초 1회) | `infra/database/contentria-v2/02-schemas-and-grants.sql` |
 | 3    | 스키마 마이그레이션 실행 (배포 시마다 실행)              | `apps/migrator`                                          |
 
-상세한 데이터베이스 및 영속성 규칙은 [docs/architecture/04-persistence-conventions.md](docs/architecture/04-persistence-conventions.md)에 정리되어 있습니다.
+상세한 데이터베이스 및 영속성 규칙은 [docs/architecture/04-database-structure.md](docs/architecture/04-database-structure.md)에 정리되어 있습니다.

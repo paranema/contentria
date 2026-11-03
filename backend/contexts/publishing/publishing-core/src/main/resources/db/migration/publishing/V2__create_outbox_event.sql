@@ -1,4 +1,4 @@
--- 컨텍스트 간 이벤트의 아웃박스 (docs/architecture/04-persistence-conventions.md, 아웃박스와 인박스).
+-- 컨텍스트 간 이벤트의 아웃박스 (docs/architecture/04-database-structure.md, 아웃박스와 인박스).
 -- 글을 바꾸는 트랜잭션 안에서 기록하고, 릴레이가 커밋된 행을 Kafka로 보낸다. 릴레이는 아직 없다.
 
 CREATE TABLE outbox_event (

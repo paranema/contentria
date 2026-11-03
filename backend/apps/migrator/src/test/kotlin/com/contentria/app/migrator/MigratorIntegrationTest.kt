@@ -19,7 +19,7 @@ import java.util.UUID
  * Provisions a PostgreSQL 17 database with the real scripts in infra/database/contentria-v2,
  * then migrates it the way the deployment Job does: one Flyway per context, as that context's
  * migration role. The assertions are the stage-1 enforcement of
- * docs/architecture/04-persistence-conventions.md.
+ * docs/architecture/04-database-structure.md.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MigratorIntegrationTest {
@@ -306,7 +306,7 @@ class MigratorIntegrationTest {
         /** The Gradle test task runs in the module directory, backend/apps/migrator. */
         val PROVISIONING_SCRIPTS: Path = Path.of("../../../infra/database/contentria-v2").toAbsolutePath().normalize()
 
-        /** docs/architecture/04-persistence-conventions.md, 1단계 강제 장치 */
+        /** docs/architecture/04-database-structure.md, 1단계 강제 장치 */
         const val CROSS_SCHEMA_FOREIGN_KEYS = """
             SELECT con.conname
             FROM pg_constraint con

@@ -6,7 +6,7 @@
 
 ### 계층 구조
 
-회원 컨텍스트(`contexts/member`)는 OAuth2/OIDC, 메일 발송, reCAPTCHA 검증 등 외부 연동으로부터 도메인 모델을 격리하기 위해 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **헥사고날 아키텍처**를 따릅니다.
+회원 컨텍스트(`contexts/member`)는 OAuth2/OIDC, 메일 발송, reCAPTCHA 검증 등 외부 연동으로부터 도메인 모델을 격리하기 위해 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **헥사고날 아키텍처**를 따릅니다.
 
 단일 애그리거트 내부 상태만으로 판단할 수 있으면 도메인 불변식(`도메인`)이고, 다른 애그리거트나 외부 저장소를 조회해야 판단할 수 있으면 애플리케이션 정책(`앱`)입니다. 예를 들어 `Account` 엔티티 객체 하나만으로는 "이 이메일을 사용하는 다른 계정이 이미 존재하는가?"를 알 수 없으므로, 중복 검사와 같은 규칙은 **애플리케이션 사전 조회**와 **데이터베이스 고유 제약(`UNIQUE`)**을 결합(`앱 + DB`)하여 역할을 분담합니다.
 

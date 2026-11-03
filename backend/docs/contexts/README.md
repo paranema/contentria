@@ -14,7 +14,7 @@
 | 분석     | [analytics/](analytics/README.md)       | 레이어드      | `01-rules.md`, `02-implementation.md` |
 | 알림     | [notification/](notification/README.md) | 레이어드      | `01-rules.md`, `02-implementation.md` |
 
-컨텍스트마다 내부 아키텍처(헥사고날, 레이어드)를 다르게 선정한 기준은 [architecture/02-internal-architecture.md](../architecture/02-internal-architecture.md)에서 다룹니다.
+컨텍스트마다 내부 아키텍처(헥사고날, 레이어드)를 다르게 선정한 기준은 [architecture/02-context-architecture.md](../architecture/02-context-architecture.md)에서 다룹니다.
 
 ## 컨텍스트 폴더 구성 규칙
 

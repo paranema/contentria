@@ -7,7 +7,7 @@
 | `Media` (이미지) | 연결된 게시글 ID 목록 | 이미지 파일은 URL을 아는 누구나 조회 가능, 업로드 기록은 업로더 본인만 조회 |
 | `Video` (영상)   | 연결된 게시글 ID 목록 | 변환이 완료된 영상은 누구나 재생 가능, 업로드 기록은 업로더 본인만 조회     |
 
-- **내부 아키텍처: 헥사고날.** 도메인 규칙 자체는 간결하지만 오브젝트 스토리지(Cloudflare R2 / S3), 메시지 큐(Cloudflare Queues), 미디어 처리 도구(ImageIO, FFmpeg) 등 교체 가능한 외부 인프라 의존성이 많아 헥사고날 아키텍처를 적용합니다([architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md) 참고).
+- **내부 아키텍처: 헥사고날.** 도메인 규칙 자체는 간결하지만 오브젝트 스토리지(Cloudflare R2 / S3), 메시지 큐(Cloudflare Queues), 미디어 처리 도구(ImageIO, FFmpeg) 등 교체 가능한 외부 인프라 의존성이 많아 헥사고날 아키텍처를 적용합니다([architecture/02-context-architecture.md](../../architecture/02-context-architecture.md) 참고).
 - **모듈 위치**: `backend/contexts/media/` (`media-api`, `media-core`)
 - **실행 프로세스**: 업로드 준비·완료·연결·조회는 `apps/api`에서, 영상 트랜스코딩은 `apps/worker`에서, 미사용 이미지·영상 정리는 `apps/batch`에서 각각 실행하되 모두 `media-core`의 동일한 도메인 모델을 공유합니다.
 

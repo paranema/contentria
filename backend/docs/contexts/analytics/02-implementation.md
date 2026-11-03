@@ -6,7 +6,7 @@
 
 ### 계층 구조
 
-분석 컨텍스트(`contexts/analytics`)는 단건 방문 기록 추가(`INSERT`)를 제외한 대부분의 작업이 SQL 집계 쿼리 중심이므로 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **레이어드 아키텍처**(`presentation → application → domain ← infra`)를 따릅니다. 단일 애그리거트만으로 판단할 수 있는 값 형식 검증과 정규화는 도메인(`Visit`)에서 처리하고, 출판 컨텍스트 조회나 기존 기록 조회가 필요한 규칙은 응용 계층에서 조율합니다.
+분석 컨텍스트(`contexts/analytics`)는 단건 방문 기록 추가(`INSERT`)를 제외한 대부분의 작업이 SQL 집계 쿼리 중심이므로 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **레이어드 아키텍처**(`presentation → application → domain ← infra`)를 따릅니다. 단일 애그리거트만으로 판단할 수 있는 값 형식 검증과 정규화는 도메인(`Visit`)에서 처리하고, 출판 컨텍스트 조회나 기존 기록 조회가 필요한 규칙은 응용 계층에서 조율합니다.
 
 ### 스프링 설정 구성
 

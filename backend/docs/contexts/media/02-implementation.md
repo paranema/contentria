@@ -6,7 +6,7 @@
 
 ### 계층 구조
 
-미디어 컨텍스트(`contexts/media`)는 오브젝트 스토리지(S3/R2), 이미지 재인코딩, Cloudflare Queues, 외부 `ffmpeg` 프로세스 등 다양한 외부 인프라와 연동하므로 [architecture/02-internal-architecture.md](../../architecture/02-internal-architecture.md)의 **헥사고날 아키텍처**를 따릅니다. 단일 애그리거트 상태만으로 판단할 수 있는 규칙은 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 스토리지를 조회해야 판단할 수 있는 규칙은 응용 계층(`앱`)에서 조율합니다.
+미디어 컨텍스트(`contexts/media`)는 오브젝트 스토리지(S3/R2), 이미지 재인코딩, Cloudflare Queues, 외부 `ffmpeg` 프로세스 등 다양한 외부 인프라와 연동하므로 [architecture/02-context-architecture.md](../../architecture/02-context-architecture.md)의 **헥사고날 아키텍처**를 따릅니다. 단일 애그리거트 상태만으로 판단할 수 있는 규칙은 도메인(`도메인`)에서 처리하고, 다른 애그리거트나 외부 스토리지를 조회해야 판단할 수 있는 규칙은 응용 계층(`앱`)에서 조율합니다.
 
 인바운드·아웃바운드 포트와 어댑터 구현체 구성은 다음과 같습니다.
 

@@ -5,7 +5,7 @@ import java.time.Instant
 import java.util.UUID
 
 // Spring Data marker repository, in the domain as the layered structure has it
-// (docs/architecture/02-internal-architecture.md, 리포지토리). Only the methods declared here exist.
+// (docs/architecture/02-context-architecture.md, 리포지토리). Only the methods declared here exist.
 interface VisitRepository : Repository<Visit, UUID> {
     fun save(visit: Visit): Visit
 
