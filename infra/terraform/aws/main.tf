@@ -25,7 +25,7 @@ data "aws_ami" "rocky" {
   lifecycle {
     postcondition {
       condition     = can(regex("(?i)rocky[-_ ]?(linux[-_ ]?)?10([._ -]|$)", self.name))
-      error_message = "Rocky Linux 10 공식 AMI를 지정해야 한다."
+      error_message = "Rocky Linux 10 공식 AMI를 지정해야 합니다."
     }
   }
 }
@@ -79,7 +79,7 @@ resource "aws_security_group" "nodes" {
   vpc_id      = aws_vpc.cluster.id
 }
 
-# 같은 보안 그룹의 노드끼리 CNI, etcd, kubelet 통신을 허용한다.
+# 동일한 보안 그룹 내 노드 간 CNI, etcd, kubelet 통신을 허용합니다.
 resource "aws_vpc_security_group_ingress_rule" "peers" {
   security_group_id            = aws_security_group.nodes.id
   referenced_security_group_id = aws_security_group.nodes.id
@@ -125,7 +125,7 @@ resource "aws_instance" "node" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.nodes.id]
   key_name                    = aws_key_pair.admin.key_name
-  # CNI가 Pod 트래픽을 중계할 수 있도록 source/destination 검사를 끈다.
+  # CNI가 Pod 트래픽을 라우팅할 수 있도록 Source/Destination Check를 비활성화합니다.
   source_dest_check = false
 
   metadata_options {
@@ -147,8 +147,4 @@ resource "aws_instance" "node" {
       cpu_credits = "standard"
     }
   }
-
-  tags = { Name = "${var.name}-${each.key}" }
-
-  depends_on = [aws_route.internet, aws_route_table_association.nodes]
 }
