@@ -1,108 +1,135 @@
-# 컨테이너 이미지: 빌드, 게시, 실행
+# 컨테이너 이미지 운영
 
-`api`, `batch`, `worker`, `migrator`는 각각 이미지 하나로 배포한다. 컨텍스트와 플랫폼 모듈은 그 앱의 실행 JAR 안에 들어간다.
+백엔드 애플리케이션의 컨테이너 이미지 구성, 빌드 절차 및 컨테이너 구동 요구사항을 설명합니다.
 
-| 앱 | 실행 방식 | 붙는 곳 |
-|---|---|---|
-| api | HTTP 서버. 8080 포트, context path `/api` | PostgreSQL, Kafka, R2 |
-| worker | 큐를 가져와(pull) 처리하는 상주 프로세스 | PostgreSQL, R2, Cloudflare Queues. 이미지 안의 ffmpeg·ffprobe |
-| batch | 잡 이름을 받아 실행하고 끝난다. 잡마다 CronJob이나 Job을 만든다 | PostgreSQL, R2 |
-| migrator | 컨텍스트마다 Flyway를 실행하고 끝난다 | PostgreSQL. 컨텍스트별 마이그레이션 롤 |
+## 개요
 
-## 이미지 구성
+### 배포 대상
 
-이미지는 Gradle이 미리 만든 실행 JAR를 담기만 한다. 이미지 안에서 Gradle을 돌리지 않는다.
+`api`, `worker`, `batch`, `migrator`는 각각 독립된 컨테이너 이미지로 패키징하여 배포합니다. 각 애플리케이션이 사용하는 컨텍스트 및 플랫폼 모듈은 실행 JAR에 포함됩니다.
 
-| 항목 | 내용 |
-|---|---|
-| Dockerfile | `apps/<앱>/Dockerfile` |
-| 빌드 컨텍스트 | `backend/`. `.dockerignore`가 `apps/*/build/libs/application.jar`만 남기고 모두 뺀다 |
-| 기반 이미지 | `eclipse-temurin:25-jre-noble` (build arg `JRE_IMAGE`) |
-| 첫 단계 | JAR에서 Spring Boot 레이어를 추출한다. 결과가 아키텍처와 무관하므로 빌드 머신의 플랫폼에서 돈다 |
-| 실행 단계 | JRE와 추출한 레이어만 담는다. UID/GID `10001:10001`로 실행한다 |
-| worker만 다른 점 | Ubuntu 패키지의 ffmpeg(libx264, AAC, HLS/fMP4)와 tini를 더한다. tini는 Java와 자식 ffmpeg 프로세스에 종료 신호를 전달한다 |
+| 애플리케이션 | 역할                                                             | 주요 외부 의존성                       |
+| ------------ | ---------------------------------------------------------------- | -------------------------------------- |
+| `api`        | HTTP 요청을 처리하는 상주 서버 (포트 `8080`, context path `/api`) | PostgreSQL, Kafka, R2                  |
+| `worker`     | 영상 변환 메시지를 조회하고 처리하는 상주 프로세스               | PostgreSQL, R2, Cloudflare Queues      |
+| `batch`      | 지정된 잡을 실행한 뒤 종료되는 일회성 프로세스                   | PostgreSQL, R2                         |
+| `migrator`   | 컨텍스트별 Flyway 마이그레이션을 적용한 뒤 종료되는 프로세스     | PostgreSQL, 컨텍스트별 마이그레이션 롤 |
 
-다른 아키텍처로 구울 때 에뮬레이션은 실행 단계의 `RUN`(사용자 생성, worker의 패키지 설치)에만 걸린다.
+### 이미지 구성
 
-`25-jre-noble`은 보안 업데이트가 반영되는 가변 태그다. 새 기반 이미지를 받으려면 `--pull`로 다시 굽는다. 재현성이 필요하면 `JRE_IMAGE`에 digest를 포함한 참조를 넘긴다.
+Dockerfile은 `backend/apps/<앱>/Dockerfile`에 위치하며, 빌드 컨텍스트는 `backend/`입니다. **컨테이너 내부에서는 Gradle 빌드를 수행하지 않으므로 실행 JAR를 사전에 생성해야 합니다.**
 
-## 로컬에서 빌드
+| 항목           | 세부 구성                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| 입력 파일      | `apps/<앱>/build/libs/application.jar` (`.dockerignore`를 통해 해당 JAR 파일만 컨텍스트에 포함)    |
+| 기반 이미지    | `eclipse-temurin:25-jre-noble` (`JRE_IMAGE` 빌드 인자로 재정의 가능)                             |
+| 레이어 추출    | 빌드 머신 환경에서 Spring Boot JAR의 계층화된 레이어를 사전 추출하여 캐싱 효율을 극대화합니다.    |
+| 실행 계정      | 최소 권한 원칙에 따라 non-root UID/GID `10001:10001`로 구동합니다.                                |
+| 워커 추가 패키지 | ffmpeg, ffprobe 및 프로세스 종료 시그널 전파를 위한 tini를 포함합니다.                            |
 
-BuildKit과 실행 중인 Docker가 필요하다. `backend/`에서 네 앱의 JAR를 만든 뒤, 저장소 루트에서 이미지를 굽는다.
+## 이미지 빌드
 
+### 로컬 빌드
+
+JDK 25 및 BuildKit을 지원하는 Docker 환경이 필요합니다. 아래 명령은 **저장소 루트**에서 수행합니다.
+
+1. 네 개 애플리케이션의 실행 JAR를 먼저 생성합니다.
 ```bash
 (cd backend && ./gradlew :apps:api:bootJar :apps:batch:bootJar :apps:worker:bootJar :apps:migrator:bootJar)
+```
+
+2. 생성된 JAR를 기반으로 이미지를 빌드합니다.
+```bash
 for app in api batch worker migrator; do
   docker build -f "backend/apps/$app/Dockerfile" -t "contentria/$app:local" backend/
 done
 ```
 
-- JAR는 버전 없이 `apps/<앱>/build/libs/application.jar`로 나온다.
-- JAR 없이 `docker build`를 실행하면 `COPY` 단계에서 실패한다.
-- 이전 빌드의 JAR가 남아 있으면 그 JAR로 구워진다. 소스를 바꿨다면 `bootJar`부터 다시 실행한다.
-- 기본으로는 Docker daemon의 아키텍처로 굽는다. 다른 아키텍처가 필요하면 `--platform linux/amd64`처럼 지정한다.
+- 소스코드가 변경되면 JAR 생성 단계부터 다시 수행해야 최신 변경사항이 이미지에 반영됩니다.
+- 타 아키텍처용 빌드 시 `--platform linux/amd64`와 같이 명시하며, 에뮬레이션 환경(QEMU 등)이 필요합니다.
 
-## CI에서 게시
+### CI 자동 빌드
 
-[`.github/workflows/backend-images.yml`](../../../.github/workflows/backend-images.yml)이 main에 `backend/` 변경이 들어올 때 돈다. 수동 실행(workflow_dispatch)도 된다.
+[Backend images 워크플로](../../../.github/workflows/backend-images.yml)는 `main` 브랜치에 `backend/` 코드 또는 워크플로 변경사항이 병합되면 자동으로 실행됩니다.
 
-| 단계 | 하는 일 | 도는 곳 |
-|---|---|---|
-| 1 | `./gradlew build --continue`로 테스트를 돌리고 네 앱의 JAR를 만든다. 한 모듈이 실패해도 나머지 테스트는 마저 돈다 | 모든 브랜치 |
-| 2 | 앱마다 같은 JAR로 linux/amd64와 linux/arm64 이미지를 구워 한 태그로 올린다. 레이어 캐시는 GitHub Actions 캐시에 앱별로 둔다 | main만 |
+1. `./gradlew build --continue`로 전체 테스트를 수행하고 네 애플리케이션의 JAR를 빌드합니다.
+2. 테스트가 성공하면 멀티 아키텍처(`linux/amd64`, `linux/arm64`) 이미지를 빌드하여 GitHub Container Registry(GHCR)에 푸시합니다.
 
-- 1단계가 실패하면 이미지를 굽지 않는다.
-- 다른 브랜치에서 수동으로 돌리면 1단계까지만 돈다. 머지 전에 Linux에서 테스트를 확인할 때 쓴다.
-- 이미지 이름은 `ghcr.io/seung7642/contentria-<앱>`이다. 태그는 `sha-<커밋 앞 12자>`와 `latest` 두 개를 붙인다.
-- 배포에는 바뀌지 않는 `sha-` 태그를 쓴다.
-- 게시한 이미지는 GitHub 프로필의 [Packages 탭](https://github.com/seung7642?tab=packages)에서 본다.
+### 태그 정책
 
-## 실행 계약
+이미지 게시 경로는 `ghcr.io/<소유자>/contentria-<앱>` 형식입니다. (예: `ghcr.io/seung7642/contentria-api`)
 
-### 파일 시스템
+| 태그 규칙            | 용도 및 특징                                                                    |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `sha-<커밋 앞 12자>` | 특정 소스 커밋에 고정된 배포 이미지를 지정할 때 사용합니다. (배포 환경 기본 권장) |
+| `latest`             | 가장 최근에 빌드된 이미지를 가리키며, 새로운 빌드 시 대상이 갱신됩니다.          |
 
-이미지는 비루트(`10001:10001`)로 돈다. Kubernetes에서 `runAsNonRoot`, `readOnlyRootFilesystem`을 켜고, `/tmp`에 쓰기 가능한 `emptyDir`을 마운트한다. worker는 원본과 변환 결과를 `/tmp`에 임시로 두므로 영상 크기에 맞춰 ephemeral storage를 잡는다.
+## 컨테이너 구동 요구사항
 
-### 설정
+백엔드 컨테이너 이미지가 런타임(Docker 또는 Kubernetes)에서 정상 동작하기 위해 만족해야 하는 환경 계약(Contract)입니다.
 
-환경 변수는 앱 폴더의 `.env.sample`을 따른다([backend README](../../README.md)의 "설정"). `.env`, 개인키, 실제 배포 설정은 이미지에 넣지 않는다. 실행할 때 Kubernetes의 Secret·ConfigMap이나 로컬 `--env-file`로 넘긴다.
+### 환경 변수 주입
 
-컨테이너 안의 `localhost`는 그 컨테이너 자신이다. DB, Kafka, 저장소 주소에는 다른 컨테이너의 DNS 이름이나 실제 서비스 주소를 쓴다.
+- 각 앱의 `.env.sample`을 기준으로 환경 설정을 구성합니다.
+- `.env` 파일이나 비밀키를 이미지 내부에 포함하지 않습니다. 로컬 환경에서는 `--env-file`, Kubernetes에서는 Secret 및 ConfigMap으로 환경 변수를 주입합니다.
+- 컨테이너 내부의 `localhost`는 격리된 컨테이너 자신을 가리키므로, 외부 인프라(DB, Kafka 등) 연결 시 컨테이너에서 접근 가능한 DNS 또는 서비스 IP를 지정합니다.
 
-### 인자와 순서
+### 보안 실행 권한
 
-`java -jar application.jar` 뒤에 인자가 이어진다. batch는 같은 이미지에 잡 이름만 바꿔 넘긴다.
+- 모든 이미지는 비루트 사용자 `10001:10001`로 패키징되어 있습니다.
+- Kubernetes 매니페스트 구성 시 `securityContext.runAsNonRoot: true`를 지정하여 비루트 실행을 강제합니다.
+
+### 파일 시스템 제약
+
+- 컨테이너 런타임에서 `readOnlyRootFilesystem: true` 설정을 지원하도록 설계되었습니다.
+- 임시 파일 작성이 필요한 디렉터리(`/tmp`)에는 쓰기 가능한 임시 파일 시스템(`tmpfs` 또는 Kubernetes `emptyDir`)을 마운트해야 합니다.
+- `worker`는 영상 다운로드 및 HLS 트랜스코딩 결과물을 임시 디렉터리에 보관하므로 충분한 용량의 `ephemeral-storage`를 할당해야 합니다.
+
+### 컨테이너 기동 순서
+
+서비스 기동 시 의존성 충돌을 방지하기 위해 다음 순서로 컨테이너를 구동해야 합니다.
+
+```mermaid
+flowchart TD
+    m["1. migrator 실행"] --> c{"종료 코드 0 확인"}
+    c -- 성공 --> s["2. api 및 worker 기동"]
+    s --> b["3. batch 스케줄러 등록"]
+    c -- 실패 --> f["기동 중단 및 롤백"]
+```
+
+1. **`migrator` 실행**: 데이터베이스 스키마 마이그레이션을 우선 적용합니다.
+2. **종료 상태 검증**: `migrator`가 종료 코드 `0`으로 성공한 것을 확인한 후 다음 단계로 진행합니다. 실패 시 후속 애플리케이션 구동을 중단합니다.
+3. **`api` 및 `worker` 실행**: 상주 프로세스를 기동합니다.
+4. **`batch` 등록**: 필요한 배치 작업을 Job 또는 CronJob으로 스케줄링합니다.
+
+### 배치 잡 구동 방식
+
+`batch` 이미지는 컨테이너 실행 인자로 잡 이름을 전달받아 실행된 후 프로세스가 종료됩니다.
 
 ```bash
 docker run --rm --read-only --tmpfs /tmp:rw,mode=1777 \
-  --env-file /안전한경로/batch.env contentria/batch:local \
+  --env-file backend/apps/batch/.env contentria/batch:local \
   --spring.batch.job.name=analyticsDailyStatistics
 ```
 
-| batch 잡 이름 | 정의 |
-|---|---|
-| `mediaImageCleanup` | `contexts/media/media-core/.../ImageCleanupJob.kt` |
-| `mediaVideoCleanup` | `contexts/media/media-core/.../VideoCleanupJob.kt` |
-| `analyticsDailyStatistics` | `contexts/analytics/analytics-core/.../DailyStatisticsJob.kt` |
+| 잡 이름                    | 수행 작업           |
+| -------------------------- | ------------------- |
+| `mediaImageCleanup`        | 미디어 이미지 정리  |
+| `mediaVideoCleanup`        | 미디어 영상 정리    |
+| `analyticsDailyStatistics` | 일별 방문 통계 집계 |
 
-배포마다 migrator를 먼저 성공시킨 뒤 api, worker를 띄운다. migrator가 실패하면 0이 아닌 코드로 끝난다.
+## 동작 검증
 
-### 헬스 체크
+### 앱별 정상 동작 기준
 
-api에는 Actuator가 없어서 Kubernetes용 health endpoint가 없다. 레거시의 probe 설정을 그대로 가져다 쓰면 안 된다.
+| 대상       | 검증 항목                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `migrator` | 스키마 마이그레이션 성공 여부, 종료 코드 `0` 확인, 멱등 재실행 시 정상 종료                                    |
+| `api`      | 공개 API 응답 확인, 인증 실패 시 401 응답 및 인가 제어 정상 여부                                               |
+| `batch`    | 지정된 잡의 실행 완료(COMPLETED) 상태 및 데이터 결과 반영 확인                                                  |
+| `worker`   | 큐 메시지 수신, HLS 트랜스코딩 완료 및 R2 업로드 확인 ([파이프라인 동작 검증](cloudflare-video-pipeline.md#동작-검증) 참고) |
 
-## 확인한 것과 남은 것
+### 헬스 체크 현황
 
-CI가 생기기 전에 Linux ARM64(Colima)와 AMD64에서 네 이미지를 직접 굽고 띄워 봤다. 확인한 범위는 다음과 같다.
-- migrator: 6개 스키마 마이그레이션과 재실행
-- api: 공개 경로와 보호 경로의 응답
-- batch: 잡 3개 실행
-- worker: 영상 변환, HLS와 poster 업로드
-
-CI는 이미지를 굽고 올리기만 한다. 이미지를 실제 DB나 큐에 붙여 띄워 보지는 않는다.
-
-| 남은 것 | 상태 |
-|---|---|
-| 실제 클라우드 서비스(R2, Cloudflare Queues)와 이미지 연동 | 확인하지 않았다 |
-| Kubernetes 배포와 GitOps 매니페스트 전환 | 별도 작업. 현재 클러스터는 레거시 이미지로 돈다 |
-| api의 health endpoint와 probe | 없다. 위 "헬스 체크" 참고 |
+현재 백엔드 애플리케이션에는 Spring Actuator 기반의 헬스 엔드포인트가 구성되어 있지 않습니다.
+Kubernetes liveness/readiness probe를 적용하기 전 별도의 헬스 체크 엔드포인트 구현이 선행되어야 합니다.

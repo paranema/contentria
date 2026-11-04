@@ -28,7 +28,7 @@ contentria:
       region: auto
       access-key-id: ${R2_ACCESS_KEY_ID}
       secret-access-key: ${R2_SECRET_ACCESS_KEY}
-    # docs/operations/cloudflare-video-pipeline.md, 3
+    # docs/operations/cloudflare-video-pipeline.md#워커-설정
     worker:
       poll-interval: ${WORKER_POLL_INTERVAL:5s}
       queue:
