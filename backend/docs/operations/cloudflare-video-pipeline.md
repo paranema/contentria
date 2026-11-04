@@ -1,42 +1,62 @@
-# Cloudflare 설정: 영상 변환 파이프라인
+# 영상 변환 파이프라인 설정
 
-영상 기능이 쓰는 Cloudflare 쪽 설정 절차다. 원본이 R2에 올라오면 R2가 이벤트를 내고, `apps/worker`가 **Cloudflare Queue를 HTTP로 직접 가져와**(pull) 알게 된다. Cloudflare Worker와 웹훅은 없다.
+영상 변환에 필요한 Cloudflare 자원과 워커의 연결 설정, 동작 확인 방법을 설명합니다.
 
+## 개요
+
+프론트엔드가 원본을 R2에 업로드하면 R2 이벤트 알림이 Cloudflare Queues로 전달됩니다. 백엔드의 `apps/worker`는 HTTP pull 방식으로 메시지를 가져와 영상을 변환하고, 결과를 같은 R2 버킷에 저장합니다.
+
+```mermaid
+flowchart LR
+    frontend["프론트엔드"]
+    subgraph r2["R2 버킷"]
+        raw["원본 영상 · raw/"]
+        hls["변환 결과 · hls/"]
+    end
+    queue["작업 큐"]
+    worker["변환 워커 · apps/worker"]
+    dlq["DLQ"]
+
+    frontend -->|업로드| raw
+    raw -->|객체 생성 알림| queue
+    queue -->|메시지 수신 · HTTP pull| worker
+    worker -->|변환 결과 저장| hls
+    queue -.->|재시도 한도 초과| dlq
 ```
-프론트엔드 ──PUT (미리 서명된 주소)──▶ R2 (raw/{영상 ID}/original.{확장자})
-                                         │  object-create 이벤트
-                                         ▼
-                                 Cloudflare Queue ──(3번 실패 → DLQ)
-                                         │  HTTP pull (http_pull 소비자)
-                                         ▼
-                                   apps/worker ──변환──▶ R2 (hls/{영상 ID}/...)
-```
 
-**Worker 대신 pull을 쓰는 이유:** 자바스크립트 배포와, 보호해야 할 웹훅 엔드포인트가 없어진다. 재시도, DLQ, 처리 중에 죽은 작업의 재전달(가시성 타임아웃)은 큐가 맡는다. Cloudflare 의존은 R2와 Queues만 남는다.
+메시지 재전달과 재시도 한도 관리는 큐가 담당하며, 별도의 Cloudflare Worker는 사용하지 않습니다. 영상의 상태 전이와 변환 규칙은 [미디어 도메인 규칙](../contexts/media/01-rules.md), 코드 구성은 [미디어 구현 구조](../contexts/media/02-implementation.md)를 참고합니다.
 
-영상의 상태와 규칙은 [contexts/media/01-rules.md](../contexts/media/01-rules.md)의 흐름 V2, 코드 배치는 [02-implementation.md](../contexts/media/02-implementation.md)에 있다.
+## 환경 구성
 
----
+### 사전 준비
 
-## 1. 만들 자원
+설정을 시작하기 전에 다음 항목을 준비합니다.
 
-대시보드나 `wrangler`로 만든다. 이름은 예시다. 바꾸면 워커 설정(3절)도 맞춘다.
+- 원본과 변환 결과를 저장할 R2 버킷 및 공개 주소
+- 해당 버킷의 객체를 읽고 쓸 수 있는 R2 자격증명
+- Cloudflare 자원을 설정할 수 있는 계정과 인증된 `wrangler` 실행 환경
+- 워커가 접속할 PostgreSQL 데이터베이스 및 마이그레이션이 완료된 스키마
 
-### 1.1 큐와 DLQ
+개발 환경과 운영 환경은 버킷과 큐를 각각 분리합니다. 개발 워커가 운영 큐를 조회하면 개발 DB에 없는 영상의 메시지를 변환 없이 처리 완료(ack)할 수 있습니다.
 
-| 자원 | 이름 | 설명 |
-|---|---|---|
-| 작업 큐 | `contentria-video-transcode` | R2의 object-create 이벤트를 받는다 |
-| DLQ | `contentria-video-transcode-dlq` | 재시도를 다 쓴 메시지가 쌓인다 |
+### 원본 보관 기간 설정
+
+R2 버킷의 수명 규칙에서 `raw/` 객체가 **7일 뒤 만료**되도록 설정합니다. 워커는 변환 성공 시 원본을 직접 삭제하며, 수명 규칙은 실패하거나 중단된 작업의 원본이 계속 남는 것을 방지합니다.
+
+### 큐 생성
+
+작업 큐는 원본 업로드 알림을 받고, DLQ(Dead Letter Queue)는 재시도 한도를 초과한 메시지를 보관합니다. 아래 큐 이름은 예시이며 환경에 맞게 변경할 수 있습니다.
 
 ```bash
 wrangler queues create contentria-video-transcode
 wrangler queues create contentria-video-transcode-dlq
 ```
 
-### 1.2 HTTP pull 소비자
+작업 큐를 생성한 뒤 큐 ID를 기록합니다. 이 값은 [워커 설정](#워커-설정)의 `CF_QUEUE_ID`에 사용합니다.
 
-워커는 **pull** 소비자다(Worker push 소비자가 아니다). 작업 큐에 `http_pull` 소비자를 붙이고, 재시도 3회와 DLQ를 지정한다.
+### HTTP pull 소비자 연결
+
+작업 큐에 `http_pull` 소비자를 연결하고 재시도 횟수, 가시성 타임아웃, DLQ를 지정합니다.
 
 ```bash
 wrangler queues consumer http add contentria-video-transcode \
@@ -45,14 +65,13 @@ wrangler queues consumer http add contentria-video-transcode \
   --dead-letter-queue contentria-video-transcode-dlq
 ```
 
-| 옵션 | 뜻 |
-|---|---|
-| `--message-retries 3` | 세 번 전달에 실패하면 DLQ로 간다. 옵션 이름은 `--message-retries`다. `--max-retries`는 없다 |
-| `--visibility-timeout-secs 1800` | 소비자의 기본 가시성 타임아웃(30분). 워커도 가져올 때마다 `visibility_timeout_ms`를 보낸다(3절). 둘 다 30분이므로 하나가 빠져도 설계가 유지된다 |
+`--message-retries 3`은 처리에 실패한 메시지의 재시도 한도입니다. 한도를 초과한 메시지는 DLQ로 이동합니다. 가시성 타임아웃은 소비자가 가져간 메시지를 다른 소비자에게 다시 전달하지 않는 시간이며, 여기서는 30분으로 설정합니다.
 
-### 1.3 R2 이벤트 알림
+워커도 메시지를 가져올 때 30분의 가시성 타임아웃을 요청합니다. 변환 중인 메시지가 재전달되지 않도록 이 시간은 다운로드·변환·업로드를 포함한 작업 시간보다 길어야 합니다. 명령 옵션은 [Cloudflare Queues 명령 참조](https://developers.cloudflare.com/workers/wrangler/commands/queues/)에서 확인할 수 있습니다.
 
-`raw/` 접두사에 새 객체가 생기면 큐에 알린다.
+### R2 이벤트 알림 연결
+
+원본 경로인 `raw/`에 객체가 생성되면 작업 큐로 알림을 보내도록 설정합니다. `<R2_BUCKET_NAME>`은 준비한 버킷 이름으로 바꿉니다.
 
 ```bash
 wrangler r2 bucket notification create <R2_BUCKET_NAME> \
@@ -61,86 +80,70 @@ wrangler r2 bucket notification create <R2_BUCKET_NAME> \
   --queue contentria-video-transcode
 ```
 
-- **`object-create`** 는 `PutObject`(한 번에 올리기)와 `CompleteMultipartUpload`(나눠 올리기)를 포함한다. 종류는 메시지 본문의 `action`에 있다. 워커는 이 둘만 변환하고 나머지(`CopyObject` 등)는 받은 것으로 처리하고 넘긴다.
-- **`raw/` 접두사는 반드시 건다.** 워커는 변환 결과를 **같은 버킷**의 `hls/`에 쓰고, 이것도 object-create 이벤트를 낸다. 거르지 않으면 워커가 자기 결과를 다시 변환하는 무한 반복이 생긴다. 워커도 `raw/`로 시작하지 않는 키는 변환하지 않고 넘기지만(`VideoQueuePoller`), 큐에 쌓이지 않게 R2에서 먼저 거른다. 결과를 다른 버킷에 쓰게 되면 이 필터는 없어도 된다.
+**`raw/` 접두사 필터를 반드시 지정합니다.** 변환 결과가 저장되는 `hls/`에서도 객체 생성 이벤트가 발생하므로, 필터가 없으면 결과 파일의 알림까지 작업 큐에 쌓입니다. 워커에서도 `raw/` 외의 경로를 제외하지만, R2에서 먼저 알림 대상을 제한합니다.
 
-### 1.4 워커의 API 토큰
+이벤트 설정 옵션은 [R2 이벤트 알림 문서](https://developers.cloudflare.com/r2/buckets/event-notifications/)를 참고합니다.
 
-워커가 큐를 가져오고 확인(ack)하려면 Cloudflare **API 토큰**이 필요하다.
+### 워커용 API 토큰 발급
 
-- 권한: **Account → Queues → Edit**. 가져오기와 확인 모두 쓰기 권한이다.
-- 이 계정으로만 범위를 좁히고 주기적으로 바꾼다.
-- Kubernetes Secret이나 환경 변수로 넣는다. **커밋하지 않는다.**
+메시지 조회와 처리 완료 응답(ack)에 사용할 API 토큰을 발급합니다. 권한은 **Account → Queues → Edit**로 지정하고 대상 계정으로 범위를 제한합니다.
 
-### 1.5 R2 수명 규칙 (raw/ 안전망)
+이 토큰은 R2 객체 접근용 자격증명과 별개이며, 워커의 `CF_API_TOKEN`으로 전달합니다. 운영 환경에서는 Kubernetes Secret 등 비밀값 저장 수단으로 관리합니다.
 
-워커는 변환에 성공하면 원본을 직접 지운다. 실패했거나 끝나지 않은 작업의 원본을 위해 수명 규칙을 둔다.
+### 워커 설정
 
-- 접두사 `raw/`, **7일 뒤 만료**.
-- 나눠 올리기를 도입하면 **끝나지 않은 multipart 업로드 중단**도 N일로 켠다. 남은 조각을 치운다.
+[워커 환경 변수 예시](../../apps/worker/.env.sample)를 기준으로 데이터베이스, R2, 큐 연결 정보를 준비합니다. 큐 관련 값은 앞에서 설정한 버킷·큐와 같은 환경을 가리켜야 합니다.
 
----
+| 환경 변수                     | 설정 내용                                  |
+| ----------------------------- | ------------------------------------------ |
+| `CLOUDFLARE_ACCOUNT_ID`       | 작업 큐가 속한 Cloudflare 계정 ID          |
+| `CF_QUEUE_ID`                 | 작업 큐 ID (큐 이름이나 DLQ ID가 아님)     |
+| `CF_API_TOKEN`                | Queues Edit 권한으로 발급한 API 토큰       |
+| `WORKER_POLL_INTERVAL`        | 메시지 조회 간격. 기본값 `5s`              |
+| `FFMPEG_PATH`, `FFPROBE_PATH` | 변환 도구 경로. 기본값 `ffmpeg`, `ffprobe` |
 
-## 2. 메시지 형태
+[워커 설정 파일](../../apps/worker/src/main/resources/application.yml)에서 위 값을 읽습니다. 워커는 기본적으로 메시지를 한 번에 1개씩 가져오며, 가시성 타임아웃은 30분입니다.
 
-큐에 들어오는 R2 이벤트 알림은 다음과 같다.
+연결 정보를 설정한 뒤 워커를 실행합니다. 워커 이미지에는 ffmpeg와 ffprobe가 포함되어 있으며, 실행 방법은 [컨테이너 이미지 운영](container-images.md)을 참고합니다.
 
-```json
-{
-  "account": "<account_id>",
-  "bucket": "<R2_BUCKET_NAME>",
-  "object": { "key": "raw/<uuid>/original.mp4", "size": 12345678, "eTag": "..." },
-  "action": "PutObject",
-  "eventTime": "2026-06-03T12:34:56.000Z"
-}
-```
+## 동작 검증
 
-워커는 `object.key`와 `action`만 읽는다. `object.key`로 `videos`의 `raw_key`를 찾는다(DB에서 고유하다). 키로 찾으므로 키에서 영상 ID를 해석할 필요가 없다.
+개발 환경에서 다음 순서로 확인합니다. 단순히 R2에 파일을 넣으면 영상의 DB 기록이 없어 변환되지 않으므로, 애플리케이션의 영상 업로드 기능을 사용합니다.
 
----
+### 영상 처리
 
-## 3. 워커 설정
+1. 작은 영상을 업로드하고 `raw/`에 원본이 생성되는지 확인합니다. Cloudflare 대시보드에서 작업 큐의 메시지 유입도 확인합니다.
+2. 워커가 메시지를 처리한 뒤 `hls/`에 HLS 파일과 poster가 생성되고 원본이 삭제되는지 확인합니다. 애플리케이션에서도 영상이 재생되는지 확인합니다.
+3. `hls/` 객체 생성으로 작업 큐에 추가 메시지가 유입되지 않는지 확인합니다.
 
-`apps/worker`의 `application.yml`이 환경 변수를 `contentria.media.worker`에 묶는다(`MediaWorkerProperties`).
+### 실패 처리
 
-| 환경 변수 | 속성 | 예 | 용도 |
-|---|---|---|---|
-| `CLOUDFLARE_ACCOUNT_ID` | `queue.account-id` | `<account_id>` | REST API 경로 |
-| `CF_QUEUE_ID` | `queue.queue-id` | `<queue_id>` | 가져올 작업 큐 |
-| `CF_API_TOKEN` | `queue.api-token` | `<token>` | Queues Edit 권한. 비밀값이다 |
-| `WORKER_POLL_INTERVAL` | `poll-interval` | `5s`(기본) | 큐를 가져오는 간격 |
-| `FFMPEG_PATH`, `FFPROBE_PATH` | `transcode.ffmpeg-path`, `transcode.ffprobe-path` | `ffmpeg`, `ffprobe`(기본) | 변환 도구 경로 |
+개발 환경에서 저장소 접근 실패 같은 일시 오류를 발생시킨 뒤 다음 순서로 확인합니다.
 
-코드의 기본값을 쓰는 값:
+1. 워커 로그에서 메시지 처리 실패를 확인합니다.
+2. 처리 완료되지 않은 메시지가 가시성 타임아웃 이후 재전달되는지 확인합니다.
+3. 오류가 지속되어 재시도 한도를 초과하면 메시지가 DLQ로 이동하는지 확인합니다.
 
-| 속성 | 기본값 | 이유 |
-|---|---|---|
-| `queue.batch-size` | `1` | 워커 하나가 한 번에 한 작업만 한다 |
-| `queue.visibility-timeout` | 30분 | 가장 긴 변환보다 길어야 처리 중인 작업이 다시 전달되지 않는다 |
+## 장애 대응
 
-가져오기와 확인 엔드포인트:
+### 메시지 처리 기준
 
-```
-POST https://api.cloudflare.com/client/v4/accounts/{account_id}/queues/{queue_id}/messages/pull
-  본문: { "visibility_timeout_ms": 1800000, "batch_size": 1 }
-  → 메시지마다 lease_id가 온다
+워커는 R2 알림의 `object.key`와 `action`을 읽습니다. 객체 키를 DB의 `videos.raw_key`와 대조하며, 처리 결과에 따라 다음과 같이 응답합니다.
 
-POST .../messages/ack
-  본문: { "acks": [ { "lease_id": "..." } ] }
-```
+| 처리 결과                                                                                                        | 큐 응답 및 후속 동작                                                                       |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 변환 성공                                                                                                        | 메시지를 처리 완료(ack)합니다.                                                             |
+| 영구 실패 (영상 형식이 아니거나 길이가 5분을 초과함)                                                             | 영상을 실패 상태로 변경하고 ack합니다. 동일 입력을 재시도하지 않습니다.                    |
+| 일시 실패 (네트워크·저장소 오류 등)                                                                              | ack하지 않습니다. 가시성 타임아웃 이후 재전달되며 재시도 한도를 초과하면 DLQ로 이동합니다. |
+| 변환 대상 아님 (`raw/` 외 경로, `PutObject`·`CompleteMultipartUpload` 외의 작업, DB 기록 없음, 이미 처리한 영상) | 변환 없이 ack합니다.                                                                       |
 
-| 결과 | 처리 |
-|---|---|
-| 성공 | `lease_id`를 확인한다 |
-| 영구 실패(영상이 아니거나 5분을 넘음) | 영상을 "실패"로 바꾸고 확인한다. 같은 입력은 다시 해도 실패한다 |
-| 일시 실패(네트워크, 저장소) | 확인하지 않는다. 가시성 타임아웃 뒤 다시 오고, 3번 실패하면 DLQ로 간다 |
-| 변환 대상이 아님(`raw/` 밖의 키, 다른 `action`, 기록이 없는 원본, 이미 끝난 영상) | 확인하고 넘긴다 |
+### 증상별 확인 항목
 
----
+| 증상                                       | 확인할 항목                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------ |
+| 업로드했지만 큐에 메시지가 없음            | 업로드 버킷, R2 알림의 대상 큐, `object-create` 이벤트와 `raw/` 필터를 확인합니다.   |
+| 워커가 메시지를 가져오지 못함              | 워커 로그와 계정 ID·큐 ID, API 토큰의 권한을 확인합니다.                             |
+| 메시지는 처리되었지만 영상이 변환되지 않음 | 해당 객체 키의 DB 기록이 있는지, 워커의 DB·버킷·큐가 같은 환경인지 확인합니다.       |
+| 메시지가 반복 전달되거나 DLQ로 이동함      | 워커 로그에서 실패 원인을 찾고 DB·R2 연결, 변환 도구, 임시 디스크 공간을 확인합니다. |
 
-## 4. 확인 절차
-
-1. 미리 서명된 주소로 작은 영상을 올린다. `raw/` 아래에 객체가 생기는지 본다.
-2. `contentria-video-transcode`에 메시지가 들어오는지 본다(대시보드의 큐 지표, 또는 직접 `messages/pull`).
-3. `hls/` 아래에 객체를 써도 메시지가 생기지 **않는지** 본다(접두사 필터가 동작한다).
-4. 일부러 세 번 실패시켜 메시지가 DLQ로 가는지 본다.
+진단 목적으로 메시지를 직접 pull하면 해당 메시지는 가시성 타임아웃 동안 워커에 전달되지 않습니다. 큐 유입 여부만 확인할 때는 대시보드의 지표를 우선 사용합니다.

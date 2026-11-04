@@ -5,7 +5,7 @@ import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
 
-/** The worker's settings (docs/operations/cloudflare-video-pipeline.md, 3). No secret has a default. */
+/** The worker's settings (docs/operations/cloudflare-video-pipeline.md#워커-설정). No secret has a default. */
 @ConfigurationProperties("contentria.media.worker")
 data class MediaWorkerProperties(
     val queue: Queue,
