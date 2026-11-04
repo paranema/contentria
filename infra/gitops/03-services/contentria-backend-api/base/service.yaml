@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: contentria-backend-api
+  labels:
+    app: contentria-backend-api
+spec:
+  type: ClusterIP
+  selector:
+    app: contentria-backend-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

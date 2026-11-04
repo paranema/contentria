@@ -120,7 +120,7 @@ TypeScript 7.0(`@typescript/native`)은 네이티브 컴파일러로 전환되�
 `Dockerfile`은 의존성 설치, 빌드, 런타임 실행 단계를 분리한 멀티 스테이지 빌드로 구성되어 있습니다. Next.js의 `standalone` 빌드 결과물만 이미지에 포함하며, 보안을 위해 non-root 사용자로 `node server.js`(포트 `3000`)를 실행합니다.
 
 ```bash
-docker build -t contentria/blog-frontend:<태그> .
+docker build -t contentria/contentria-frontend:<태그> .
 ```
 
-운영 환경 배포는 `infra/gitops/03-services/blog-frontend-web` 매니페스트를 통해 ArgoCD가 동기화합니다.
+운영 환경 배포는 `infra/gitops/03-services/contentria-frontend-web` 매니페스트를 통해 ArgoCD가 동기화합니다.
