@@ -73,27 +73,57 @@ aws ec2 describe-images --region ap-northeast-2 --owners 792107900819 \
 curl -s https://checkip.amazonaws.com
 ```
 
-확인한 AMI ID, 소유자 ID, SSH 공개키 문자열, 관리자 IP 대역(`/32`)을 `terraform.tfvars`에 정의합니다.
+예시 템플릿(`terraform.example.tfvars`)을 복사하여 환경별 변수 파일(`terraform.<환경>.tfvars`)을 생성하고 실제 값을 설정합니다. 환경별 변수 파일은 Git 추적에서 제외됩니다.
+
+```bash
+# dev 환경 변수 파일 생성
+cp terraform.example.tfvars terraform.dev.tfvars
+```
 
 ## 프로비저닝 절차
 
-### 인프라 배포
+인프라 명령은 `infra/Makefile`의 단축 명령어를 사용하거나, Terraform CLI를 직접 실행할 수 있습니다.
+
+### 방법 1. Makefile 사용 (권장)
+
+`infra/` 디렉터리에서 `make` 명령어로 워크스페이스 선택과 변수 파일 매핑을 자동화할 수 있습니다.
 
 ```bash
-# 1. 변수 템플릿 복사 및 값 수정
-cp terraform.tfvars.example terraform.tfvars
+cd infra
 
-# 2. 공급자 초기화 및 구문 검증
+# 1. 초기화 및 코드 검증
+make tf-init
+make tf-validate
+make tf-test
+
+# 2. dev 환경 실행 계획 수립 및 배포 (기본 ENV=dev)
+make tf-plan ENV=dev
+make tf-apply ENV=dev
+
+# 3. Ansible 인벤토리 자동 추출
+make tf-inventory
+```
+
+### 방법 2. Terraform CLI 직접 실행
+
+```bash
+cd infra/terraform/aws
+
+# 1. 공급자 초기화 및 구문 검증
 terraform init
 terraform fmt -check -recursive
 terraform validate
-
-# 3. 단위 테스트 및 실행 계획 수립
 terraform test
-terraform plan -out=cluster.tfplan
 
-# 4. 인프라 프로비저닝 실행
-terraform apply cluster.tfplan
+# 2. dev 워크스페이스 선택 (없으면 생성)
+terraform workspace select -or-create dev
+
+# 3. dev 환경 실행 계획 수립 및 배포
+terraform plan -var-file=terraform.dev.tfvars -out=dev.tfplan
+terraform apply dev.tfplan
+
+# 4. Ansible 인벤토리 파일 생성
+terraform output -raw ansible_inventory > inventory.yaml
 ```
 
 ### 노드 접속 확인
@@ -104,30 +134,24 @@ terraform apply cluster.tfplan
 ssh -i ~/.ssh/id_ed25519 rocky@<출력된_공인IP>
 ```
 
-### Ansible 인벤토리 생성
-
-Terraform 출력값을 기반으로 Kubespray가 소비할 인벤토리 파일을 생성합니다.
-
-```bash
-terraform output -raw ansible_inventory > inventory.yaml
-```
-
-- **노드 매핑**: 모든 인스턴스가 `kube_control_plane`과 `kube_node` 그룹에 공통 지정됩니다.
-- **etcd 토폴로지**: 짝수 etcd 구성을 방지하기 위해 1~2노드 환경에서는 첫 번째 노드만 etcd로 지정하며, 3노드 이상에서는 상위 3대를 etcd로 지정합니다.
-
 ## 환경 관리
 
 ### 상태 파일 관리
 
-- 기본적으로 로컬 State 파일(`terraform.tfstate`)을 생성합니다.
+- 환경 격리를 위해 **Terraform Workspace**(`dev` 등)를 사용합니다. 워크스페이스별 상태는 `terraform.tfstate.d/<환경>/` 하위에 분리 보관됩니다.
 - 팀 협업 또는 지속적 배포 환경에서는 원격 백엔드(S3 버킷 및 DynamoDB 락 테이블)로 마이그레이션하여 관리합니다.
-- `terraform.tfvars`, `terraform.tfstate`, `inventory.yaml` 파일은 Git 버전 관리에서 제외합니다.
+- `terraform.*.tfvars`, `*.tfplan`, `*.tfstate`, `inventory.yaml` 파일은 Git 버전 관리에서 제외됩니다.
 
 ### 리소스 삭제
 
 테스트 완료 후 과금을 방지하기 위해 프로비저닝된 모든 AWS 리소스를 삭제합니다.
 
 ```bash
-terraform plan -destroy -out=destroy.tfplan
-terraform apply destroy.tfplan
+# Makefile 사용 시
+make -C infra tf-destroy ENV=dev
+
+# Terraform CLI 직접 사용 시
+cd infra/terraform/aws
+terraform workspace select dev
+terraform destroy -var-file=terraform.dev.tfvars
 ```

@@ -1,5 +1,5 @@
 output "nodes" {
-  description = "SSH에는 공인 IP, 노드 간 통신에는 사설 IP를 사용한다."
+  description = "노드 접속 정보입니다. SSH에는 공인 IP, 노드 간 통신에는 사설 IP를 사용합니다."
   value = {
     for name, node in aws_instance.node : name => {
       instance_id = node.id
@@ -11,7 +11,7 @@ output "nodes" {
 }
 
 output "ansible_inventory" {
-  description = "Kubespray용 YAML 인벤토리. 모든 노드가 control plane·worker이며 etcd는 1대 또는 3대다."
+  description = "Kubespray용 YAML 인벤토리입니다. 모든 노드가 control plane 및 worker 역할을 수행하며, etcd는 1대 또는 3대로 구성됩니다."
   value = yamlencode({
     all = {
       hosts = {

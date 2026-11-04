@@ -1,206 +1,126 @@
 # GitOps
 
-ArgoCD가 감시하는 배포 매니페스트 모음이다. 클러스터 구축과 ArgoCD 설치는 [Ansible EE](../ansible/README.md)가 담당하고, 그 이후의 배포는 ArgoCD가 이 폴더를 기준으로 동기화한다.
+Kubernetes 클러스터에 배포되는 플랫폼 인프라와 비즈니스 서비스의 선언적 배포 명세 모음입니다.
+Argo CD가 본 저장소를 지속적으로 감시하며 클러스터의 실제 상태를 선언된 매니페스트 상태와 동일하게 유지합니다.
 
-## 배포 흐름
+## 아키텍처 개요
 
-| 단계 | 도구                | 작업                                                                                         |
-| ---- | ------------------- | -------------------------------------------------------------------------------------------- |
-| 1    | Terraform           | AWS 테스트 VM과 네트워크 생성                                                                       |
-| 2    | Ansible (kubespray) | 쿠버네티스 클러스터 구축, kube-vip 설정                                                      |
-| 3    | Ansible             | ArgoCD 설치, 시크릿 존재 확인, 환경별 root 앱 적용                                           |
-| 4    | ArgoCD              | root 앱이 `01-bootstrap/<env>/`를 감시하고, 그 안의 Application이 platform과 services를 배포 |
+### App of Apps 패턴
 
-Ansible은 OS 준비, Kubespray, Argo CD 설치, root 앱 적용을 별도 플레이북으로 제공한다. root 앱을 적용하기 전에 시크릿과 스토리지, LoadBalancer IP 할당을 준비한다. 자세한 실행 순서는 [Ansible 문서](../ansible/README.md)를 따른다.
+GitOps 저장소는 하나의 Root Application이 하위 Application들을 계층적으로 관리하는 **App of Apps** 패턴을 따릅니다.
 
-## 디렉토리 구조
+```mermaid
+flowchart TD
+    root["Root Application (Cluster 진입점)"] --> bdev["01-bootstrap/<env> (Wave 제어)"]
+    bdev --> p["02-platform (공용 인프라)"]
+    bdev --> s["03-services (비즈니스 앱)"]
 
-```
-gitops/
-├── 01-bootstrap/                          # 환경별 Application 정의와 배포 순서
-│   └── dev/                               # dev 클러스터의 root 앱이 감시
-│       ├── 01-envoy-gateway.yaml
-│       ├── 01-postgres-operator.yaml
-│       ├── 02-cert-manager.yaml
-│       ├── 02-postgres-cluster.yaml
-│       ├── 03-keycloak.yaml
-│       ├── 03-openfga.yaml
-│       └── 04-services.yaml               # ApplicationSet: 03-services/*/overlays/dev마다 앱 생성
-│
-├── 02-platform/                           # 클러스터 공용 컴포넌트
-│   ├── cert-manager/
-│   │   ├── values.yaml
-│   │   ├── values-dev.yaml
-│   │   ├── base/
-│   │   │   ├── kustomization.yaml
-│   │   │   └── cluster-issuer.yaml        # Let's Encrypt 발급자
-│   │   └── overlays/
-│   │       └── dev/
-│   │           └── kustomization.yaml
-│   ├── envoy-gateway/
-│   │   ├── values.yaml
-│   │   ├── values-dev.yaml
-│   │   ├── base/
-│   │   │   ├── kustomization.yaml
-│   │   │   └── gateway.yaml               # GatewayClass, Gateway(외부 진입점), HTTPS 리다이렉트
-│   │   └── overlays/
-│   │       └── dev/
-│   │           ├── kustomization.yaml
-│   │           └── gateway-patch.yaml     # 도메인, 인증서
-│   ├── postgres/
-│   │   ├── operator/
-│   │   │   ├── values.yaml                # CNPG operator
-│   │   │   └── values-dev.yaml
-│   │   └── cluster/
-│   │       ├── base/
-│   │       │   ├── kustomization.yaml
-│   │       │   ├── cluster.yaml           # Postgres 클러스터
-│   │       │   ├── databases.yaml         # keycloak, openfga용 DB (블로그 DB는 cluster.yaml의 initdb)
-│   │       │   └── scheduled-backup.yaml  # 백업 저장소 구성 전까지 미적용
-│   │       └── overlays/
-│   │           └── dev/
-│   │               ├── kustomization.yaml
-│   │               └── cluster-patch.yaml # 인스턴스 수, 스토리지 크기
-│   ├── keycloak/
-│   │   ├── values.yaml
-│   │   └── values-dev.yaml
-│   └── openfga/
-│       ├── values.yaml
-│       └── values-dev.yaml
-│
-└── 03-services/                           # 직접 개발한 배포 단위
-    ├── blog-backend-api/
-    │   ├── base/
-    │   │   ├── kustomization.yaml
-    │   │   ├── deployment.yaml
-    │   │   ├── service.yaml
-    │   │   ├── configmap.yaml
-    │   │   └── httproute.yaml
-    │   └── overlays/
-    │       └── dev/
-    │           ├── kustomization.yaml     # 이미지 태그, replicas
-    │           ├── configmap-patch.yaml
-    │           └── httproute-patch.yaml   # 도메인
-    ├── blog-backend-batch/
-    │   ├── base/
-    │   │   ├── kustomization.yaml
-    │   │   ├── configmap.yaml
-    │   │   ├── daily-statistics-cronjob.yaml
-    │   │   └── refresh-token-cleanup-cronjob.yaml
-    │   └── overlays/
-    │       └── dev/
-    │           ├── kustomization.yaml
-    │           └── configmap-patch.yaml
-    └── blog-frontend-web/
-        ├── base/
-        │   ├── kustomization.yaml
-        │   ├── deployment.yaml
-        │   ├── service.yaml
-        │   ├── configmap.yaml
-        │   ├── httproute.yaml
-        │   └── backend-traffic-policy.yaml # 쿠키 기반 고정 세션
-        └── overlays/
-            └── dev/
-                ├── kustomization.yaml
-                ├── configmap-patch.yaml
-                └── httproute-patch.yaml
+    p --> p1["PostgreSQL / Envoy / cert-manager"]
+    s --> s1["ApplicationSet: API / Batch / Web"]
 ```
 
-## 배포 순서
+Root Application이 환경별 부트스트랩 디렉터리(`01-bootstrap/<env>/`)를 감시하면, 그 안에 정의된 개별 Application 매니페스트들이 플랫폼 컴포넌트와 비즈니스 서비스를 클러스터에 프로비저닝합니다.
 
-`01-bootstrap/<env>/`의 Application마다 `argocd.argoproj.io/sync-wave`를 지정해 순서를 정한다. root 앱은 앞 wave의 Application이 Healthy가 된 뒤 다음 wave를 배포한다.
+### 저장소 디렉터리 구성
 
-| wave | Application                      | 의존 대상                       |
-| ---- | -------------------------------- | ------------------------------- |
-| 1    | envoy-gateway, postgres-operator | 없음                            |
-| 2    | cert-manager                     | envoy-gateway (Gateway API CRD) |
-| 2    | postgres-cluster                 | postgres-operator               |
-| 3    | keycloak, openfga                | postgres-cluster                |
-| 4    | services (ApplicationSet)        | platform 전체                   |
+책임 경계에 따라 3개의 계층으로 구분됩니다.
 
-cert-manager가 Gateway를 감시하려면 Gateway API CRD가 먼저 있어야 한다. CRD는 envoy-gateway 차트가 설치하므로 envoy-gateway를 먼저 배포한다. Gateway는 cert-manager가 인증서를 발급하기 전까지 HTTPS 리스너만 준비되지 않은 상태로 대기한다.
+| 디렉터리 | 담당 역할 | 포함 리소스 |
+|---|---|---|
+| `01-bootstrap/` | 환경별 부트스트랩 엔트리포인트 및 배포 순서 정의 | Root App이 감시할 Application 및 ApplicationSet 정의 |
+| `02-platform/` | 클러스터 전역에서 공유하는 인프라 미들웨어 | Envoy Gateway, PostgreSQL (CloudNativePG), cert-manager, Keycloak, OpenFGA |
+| `03-services/` | Contentria 비즈니스 마이크로서비스 | `contentria-backend-api`, `contentria-backend-batch`, `contentria-frontend-web` |
 
-파일명 규칙은 다음과 같다.
+## 배포 파이프라인
 
-- 파일명 번호는 sync-wave 값과 같게 둔다.
-- 같은 wave는 같은 번호를 쓴다. 같은 번호끼리는 동시에 배포된다.
-- 순서를 바꿀 때는 파일명과 어노테이션을 함께 바꾼다.
+### 단계별 동기화 순서
 
-`03-services/` 안의 서비스끼리는 배포 순서를 두지 않는다. 프론트엔드가 백엔드를 호출하는 것은 실행 중 의존이므로, 배포 순서 대신 API 하위 호환으로 맞춘다.
+`01-bootstrap/<env>/`의 각 Application에 `argocd.argoproj.io/sync-wave` 어노테이션을 부여하여 컴포넌트 간 기동 순서를 강제합니다.
+선행 wave의 모든 리소스가 `Healthy` 상태에 도달해야만 다음 wave의 동기화가 시작됩니다.
 
-## platform 컴포넌트 구성
+| Wave | Application | 주요 배포 리소스 | 선행 의존 조건 |
+|---|---|---|---|
+| **1** | `envoy-gateway`<br>`postgres-operator` | Gateway API CRD, Envoy 컨트롤러<br>CloudNativePG Operator 및 CRD | 클러스터 기본 환경 |
+| **2** | `cert-manager`<br>`postgres-cluster` | cert-manager 컨트롤러, ClusterIssuer<br>PostgreSQL 인스턴스 및 데이터베이스 | Wave 1의 Gateway API CRD<br>Wave 1의 CloudNativePG Operator |
+| **3** | `keycloak`<br>`openfga` | IAM 인증 서비스<br>세부 권한 관리 엔진 | Wave 2의 PostgreSQL DB 준비 완료 |
+| **4** | `services` | 백엔드 API, 배치 작업, 프론트엔드 (ApplicationSet) | Wave 1~3의 플랫폼 인프라 전체 |
 
-platform 컴포넌트는 두 종류의 리소스로 나뉜다.
+- 파일명의 숫자 접두사는 `sync-wave` 값과 일치시킵니다. (예: `01-envoy-gateway.yaml` → wave `1`)
+- 동일한 wave 번호를 가진 Application들은 병렬로 동시에 배포됩니다.
 
-| 구분           | 내용                                                  | 관리 방식                                 |
-| -------------- | ----------------------------------------------------- | ----------------------------------------- |
-| 설치           | 외부 차트가 제공하는 컨트롤러, CRD, webhook           | Helm (`values.yaml`, `values-<env>.yaml`) |
-| 설치 후 리소스 | 설치된 CRD로 직접 만드는 리소스. 차트에 포함되지 않음 | Kustomize (`base/`, `overlays/<env>/`)    |
+### 서비스 간 의존성 정책
 
-| 컴포넌트      | 설치 (Helm)                              | 설치 후 리소스 (Kustomize)                  | Application 수 |
-| ------------- | ---------------------------------------- | ------------------------------------------- | -------------- |
-| cert-manager  | cert-manager 컨트롤러, CRD               | `ClusterIssuer` (Let's Encrypt 발급자)      | 1              |
-| envoy-gateway | Envoy Gateway 컨트롤러, Gateway API CRD  | `GatewayClass`, `Gateway`, HTTPS 리다이렉트 | 1              |
-| postgres      | `operator/`: CloudNativePG operator, CRD | `cluster/`: Postgres 클러스터, DB           | 2              |
+`03-services/`에 속한 개별 마이크로서비스 간에는 인위적인 배포 wave 순서를 지정하지 않습니다.
+프론트엔드와 백엔드 간의 통신은 런타임 의존성이므로, 배포 타이밍을 조절하는 대신 API의 하위 호환성을 보장하는 방식으로 해결합니다.
 
-Application 수가 다른 이유는 다른 앱이 설치 후 리소스의 준비를 기다리는지 여부다.
+## 컴포넌트 패키징 규약
 
-- **cert-manager, envoy-gateway**: Helm 차트와 Kustomize 리소스를 Application 하나의 multi-source로 배포한다. Kustomize 리소스에 앱 내부 sync-wave `1`을 달아 차트보다 늦게 적용한다. 다른 앱이 이 리소스의 준비를 기다리지 않으므로 앱 내부 순서로 충분하다.
-- **postgres**: keycloak, openfga가 Postgres 클러스터 준비를 기다려야 한다. 클러스터 생성은 몇 분이 걸리므로 operator와 클러스터를 별도 Application으로 나누고, wave로 health를 확인한 뒤 다음 단계로 넘어간다.
+### 플랫폼 인프라
 
-## 환경 분리
+플랫폼 컴포넌트는 외부 Helm 차트와 사후 생성 커스텀 리소스로 나누어 관리합니다.
 
-환경마다 클러스터와 ArgoCD를 따로 둔다. 각 클러스터의 root 앱은 자기 환경의 `01-bootstrap/<env>/`만 감시한다. 어느 환경인지는 Ansible이 root 앱을 적용할 때 인벤토리 변수 `gitops_env`로 정한다. root 앱의 `path`는 `infra/gitops/01-bootstrap/{{ gitops_env }}`이다.
+| 구분 | 관리 리소스 | 패키징 방식 | 관리 파일 |
+|---|---|---|---|
+| 컨트롤러 설치 | 외부 공급자의 컨트롤러, CRD, Webhook | Helm | `values.yaml`, `values-<env>.yaml` |
+| 커스텀 리소스 | Gateway, ClusterIssuer, DB 인스턴스 | Kustomize | `base/`, `overlays/<env>/` |
 
-| 대상                      | 공통          | 환경별                              |
-| ------------------------- | ------------- | ----------------------------------- |
-| Application 정의          | 없음          | `01-bootstrap/<env>/`               |
-| Helm 차트                 | `values.yaml` | `values-<env>.yaml`                 |
-| 일반 매니페스트 (CR 포함) | `base/`       | `overlays/<env>/`                   |
-| Secret                    | 없음          | `infra/secrets/<env>/` (git 미추적) |
+- **단일 Application 통합 배포 (`cert-manager`, `envoy-gateway`)**: Helm 차트와 Kustomize 매니페스트를 하나의 Application 내 Multi-Source로 묶어 배포합니다. Kustomize 리소스에 내부 sync-wave `1`을 주어 차트 설치 직후 커스텀 리소스가 배포되도록 합니다.
+- **Application 분리 배포 (`postgres`)**: Operator 설치와 Cluster 인스턴스 생성을 별도 Application으로 분리합니다. DB 클러스터 생성에는 수 분이 소요되므로 Wave 레벨에서 명확히 상태를 확인한 뒤 다음 단계로 넘어갑니다.
 
-- Helm은 뒤에 지정한 values 파일이 앞의 값을 덮어쓴다. Application의 `valueFiles`에 `values.yaml`, `values-<env>.yaml` 순서로 지정한다.
-- Secret은 이 폴더에 두지 않는다. [시크릿](#시크릿) 참고.
-- 이미지 태그는 `overlays/<env>/kustomization.yaml`의 `images` 항목에서 관리한다.
+### 비즈니스 애플리케이션
 
-prod 환경은 다음 순서로 추가한다.
+모든 비즈니스 서비스는 Kustomize로 패키징하며, `01-bootstrap/<env>/04-services.yaml`의 **ApplicationSet**이 `03-services/*/overlays/<env>` 경로를 자동으로 탐색하여 독립된 Application으로 등록합니다.
 
-1. `01-bootstrap/dev/`를 `01-bootstrap/prod/`로 복사하고, 파일 안의 `dev` 경로를 `prod`로 바꾼다.
-2. Helm 차트마다 `values-prod.yaml`을 추가한다.
-3. `base/`가 있는 곳마다 `overlays/prod/`를 추가한다.
-4. `infra/secrets/prod/`에 시크릿 파일을 만든다.
-5. Ansible prod 인벤토리에 `gitops_env: prod`와 `required_secrets`를 지정한다.
+- 디렉터리 이름(`contentria-*`)이 Argo CD 상의 애플리케이션 이름으로 자동 매핑됩니다.
+- 신규 서비스를 추가할 때는 `03-services/<서비스명>/`에 `base/`와 `overlays/<env>/`를 생성하기만 하면 추가 설정 없이 자동 등록됩니다.
 
-## 시크릿
+## 환경 격리 전략
 
-시크릿은 GitOps 대상에서 제외하고, `infra/secrets/<env>/`에 모아 수동으로 적용한다. 실제 시크릿 파일은 git에 올리지 않고, 키 이름만 적은 `example/`만 git에 남긴다. 자세한 사용 방법은 `infra/secrets/README.md`에 있다.
+### 베이스 및 오버레이 분리
 
-```
-infra/secrets/
-├── README.md                    # 시크릿 목록과 적용 방법 (git 추적)
-├── example/                     # 키 이름만 기록 (git 추적)
-│   └── blog-backend-api.yaml
-└── dev/                         # 실제 값 (git 미추적)
-    └── blog-backend-api.yaml
-```
+동일한 애플리케이션 설정을 환경별로 안전하게 분리하기 위해 Kustomize 오버레이 방식을 사용합니다.
 
-```gitignore
-infra/secrets/*
-!infra/secrets/README.md
-!infra/secrets/example/
-```
+| 영역 | 환경 공통 (`base/`) | 환경별 오버레이 (`overlays/<env>/`) |
+|---|---|---|
+| 매니페스트 | Deployment, Service, ConfigMap 기본값 | 이미지 태그, Replicas 수, Ingress 도메인 패치 |
+| Helm 차트 | 기본 파라미터 (`values.yaml`) | 환경별 오버라이드 (`values-<env>.yaml`) |
+| Application | - | 환경 전용 부트스트랩 매니페스트 (`01-bootstrap/<env>/`) |
 
-- 예시를 `<env>/` 밖에 두는 이유는 `kubectl apply -f infra/secrets/dev/`로 적용할 때 예시 파일이 함께 적용되지 않게 하기 위해서다.
-- 실제 파일은 `example/`의 파일을 복사해 값을 채운다. 키를 추가하거나 빼면 `example/`도 함께 고친다.
-- 시크릿 파일에 `Namespace` 리소스를 함께 둔다. root 앱 적용 전에는 ArgoCD가 namespace를 아직 만들지 않았기 때문이다.
-- 서비스뿐 아니라 platform 컴포넌트의 시크릿(keycloak 관리자 계정, DB 접속 정보, 백업 저장소 접근 키 등)도 포함한다.
-- Ansible은 root 앱을 적용하기 전에 인벤토리 변수 `required_secrets`에 적힌 시크릿이 클러스터에 있는지 확인한다. 하나라도 없으면 누락 목록을 출력하고 중단한다.
-- 원본이 로컬에만 있으므로 비밀번호 관리자 등 별도 위치에 백업한다.
+### 신규 환경 프로비저닝 절차
 
-## 설정 시 주의사항
+`prod` 등 새로운 환경을 추가하는 절차는 다음과 같습니다.
 
-- **Application health check**: ArgoCD 1.8부터 Application 리소스의 기본 health check가 빠졌다. `argocd-cm`에 `resource.customizations.health.argoproj.io_Application`을 추가하지 않으면 wave를 기다리지 않고 모두 동시에 배포된다.
-- **CRD보다 먼저 적용되는 CR**: `cluster-issuer.yaml`, `gateway.yaml`은 같은 Application의 Helm 차트가 설치하는 CRD를 사용한다. 최초 배포 시 CRD가 없어 실패할 수 있으므로 리소스에 `SkipDryRunOnMissingResource=true`와 sync-wave `1`을 달아 차트보다 늦게 적용하고, Application에 `syncPolicy.retry`를 지정한다.
-- **큰 CRD**: envoy-gateway, postgres-operator, cert-manager의 CRD는 client-side apply의 annotation 크기 제한을 넘을 수 있으므로 `ServerSideApply=true`로 동기화한다.
-- **OCI 차트**: envoy-gateway 차트는 OCI 레지스트리(`docker.io/envoyproxy`)에서 받는다. ArgoCD 버전에 따라 레포지토리를 `enableOCI: "true"`로 등록해야 할 수 있다.
-- **root 앱 위치**: root 앱 정의는 이 폴더가 아니라 Ansible role 템플릿에 둔다. `01-bootstrap/` 안에 두면 root 앱이 자기 자신을 관리하게 된다.
+1. `01-bootstrap/dev/`를 복사하여 `01-bootstrap/prod/`를 생성하고, 내부 매니페스트의 경로를 `prod`로 변경합니다.
+2. 각 플랫폼 컴포넌트에 `values-prod.yaml`을 추가합니다.
+3. 모든 서비스 디렉터리에 `overlays/prod/`를 추가하여 대상 환경의 이미지 태그 및 도메인을 정의합니다.
+4. 신규 클러스터의 Root Application이 해당 환경 디렉터리(`01-bootstrap/prod/`)를 감시하도록 지정합니다.
+
+## 민감정보 관리 정책
+
+### 시크릿 배제 원칙
+
+데이터베이스 암호, API 토큰, 개인키 등의 보안 정보는 GitOps 저장소에 커밋하지 않습니다.
+
+- **저장소 분리**: 시크릿 템플릿은 `infra/secrets/example/`에만 보관하며, 실제 시크릿 값은 Git 추적에서 제외된 환경별 디렉터리에서 수동 관리합니다.
+- **클러스터 사전 주입**: 시크릿은 Argo CD가 서비스를 동기화하기 전에 `kubectl apply -f infra/secrets/<env>/` 명령어로 클러스터에 미리 주입되어 있어야 합니다.
+- **네임스페이스 선언**: 서비스 네임스페이스가 생성되기 전 시크릿이 주입될 수 있도록 각 시크릿 매니페스트 상단에 `Namespace` 리소스를 함께 명시합니다.
+
+### 사전 누락 방지
+
+필수 시크릿이 누락된 상태에서 애플리케이션이 배포되면 Pod CrashLoopBackOff 장애가 발생하므로, 클러스터 초기화 단계에서 대상 환경에 필요한 시크릿 목록이 실제로 존재하는지 사전에 검증해야 합니다.
+
+## 동기화 안정성 가이드
+
+### 상태 판별 커스텀 정의
+
+Argo CD 1.8 이상에서는 Application CR에 대한 기본 Health Check가 비활성화되어 있습니다.
+`argocd-cm` ConfigMap에 `resource.customizations.health.argoproj.io_Application` 설정을 등록해야 하위 Application의 상태가 올바르게 전파되어 Sync Wave가 정상 동작합니다.
+
+### 대규모 CRD 동기화
+
+Envoy Gateway, cert-manager, CloudNativePG 등 대형 CRD는 Kubernetes Client-Side Apply의 어노테이션 용량 제한(`256KB`)을 초과할 수 있습니다. 해당 Application의 동기화 옵션에 `ServerSideApply=true`를 활성화하여 동기화 오류를 방지합니다.
+
+### CRD 참조 지연 대응
+
+차트가 설치하는 CRD(`ClusterIssuer`, `Gateway`)를 동일 배포 단위의 커스텀 리소스가 참조할 때, 최초 배포 시 CRD 미등록 에러가 발생할 수 있습니다.
+커스텀 리소스에 `SkipDryRunOnMissingResource=true` 어노테이션과 내부 sync-wave `1`을 지정하고, Application에 재시도 정책(`syncPolicy.retry`)을 명시하여 해결합니다.

@@ -4,6 +4,8 @@
 *.tfplan
 *.tfvars
 *.tfvars.json
+!terraform.example.tfvars
+!*.example.tfvars
 crash.log
 crash.*.log
 inventory.yaml

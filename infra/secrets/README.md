@@ -1,64 +1,63 @@
 # Secrets
 
-수동으로 적용하는 쿠버네티스 시크릿 모음이다. ArgoCD는 이 폴더를 관리하지 않는다.
+수동으로 적용하는 Kubernetes 시크릿 매니페스트 모음입니다. GitOps(Argo CD)는 보안상의 이유로 이 디렉터리를 직접 관리하지 않습니다.
 
-`README.md`와 `example/`만 git에 올라가고, 나머지는 `.gitignore`로 제외된다.
+`README.md`와 `example/` 디렉터리만 Git 버전 관리 대상이며, 실제 보안값이 입력된 환경별 디렉터리는 `.gitignore`에 의해 제외됩니다.
 
-## 구조
+## 디렉터리 구조
 
 ```
 infra/secrets/
 ├── README.md
-├── example/                     # 키 이름만 적은 예시 (git 추적)
+├── example/                     # 키 이름만 기록한 예시 템플릿 (Git 추적)
 │   ├── database.yaml
 │   ├── keycloak.yaml
 │   ├── openfga.yaml
-│   ├── blog-backend-api.yaml
-│   └── blog-backend-batch.yaml
-└── dev/                         # 실제 값 (git 미추적), example/과 같은 파일 구성
+│   ├── contentria-backend-api.yaml
+│   └── contentria-backend-batch.yaml
+└── dev/                         # 실제 값이 입력된 매니페스트 (Git 미추적, example/과 동일 구성)
 ```
 
 ## 시크릿 목록
 
-| 파일 | namespace | Secret 이름 | 사용처 |
+| 매니페스트 파일 | 네임스페이스 | Secret 이름 | 사용처 |
 | --- | --- | --- | --- |
-| `database.yaml` | `database` | `postgres-contentria` | 블로그 서비스 DB 계정 (CloudNativePG가 생성) |
-| `database.yaml` | `database` | `postgres-keycloak` | keycloak DB 계정 (CloudNativePG가 생성) |
-| `database.yaml` | `database` | `postgres-openfga` | openfga DB 계정 (CloudNativePG가 생성) |
-| `keycloak.yaml` | `keycloak` | `keycloak-admin` | keycloak 최초 관리자 계정 |
-| `keycloak.yaml` | `keycloak` | `keycloak-db` | keycloak의 DB 접속 비밀번호 |
-| `openfga.yaml` | `openfga` | `openfga-datastore` | openfga의 DB 접속 URI |
-| `blog-backend-api.yaml` | `blog` | `blog-backend-api` | 백엔드 API |
-| `blog-backend-batch.yaml` | `blog` | `blog-backend-batch` | 배치 CronJob |
+| `database.yaml` | `database` | `postgres-contentria` | 서비스 데이터베이스 계정 (CloudNativePG 자동 생성) |
+| `database.yaml` | `database` | `postgres-keycloak` | Keycloak DB 계정 (CloudNativePG 자동 생성) |
+| `database.yaml` | `database` | `postgres-openfga` | OpenFGA DB 계정 (CloudNativePG 자동 생성) |
+| `keycloak.yaml` | `keycloak` | `keycloak-admin` | Keycloak 최초 관리자 자격 증명 |
+| `keycloak.yaml` | `keycloak` | `keycloak-db` | Keycloak DB 연결 비밀번호 |
+| `openfga.yaml` | `openfga` | `openfga-datastore` | OpenFGA DB 연결 URI |
+| `contentria-backend-api.yaml` | `blog` | `contentria-backend-api` | 백엔드 API 서비스 |
+| `contentria-backend-batch.yaml` | `blog` | `contentria-backend-batch` | 배치 스케줄러 (CronJob) |
 
-DB 비밀번호는 여러 시크릿에 같은 값이 들어간다. `database.yaml`의 비밀번호를 바꾸면 아래 값도 함께 바꾼다.
+데이터베이스 비밀번호는 여러 시크릿 간에 공유됩니다. `database.yaml`의 값을 변경할 경우 아래 참조 위치도 동일하게 갱신해야 합니다.
 
-| 원본 (`database.yaml`) | 같은 값을 넣는 곳 |
+| 원본 (`database.yaml`) | 동일 값을 참조하는 위치 |
 | --- | --- |
-| `postgres-contentria` | `blog-backend-api`, `blog-backend-batch`의 `DATABASE_PASSWORD` |
+| `postgres-contentria` | `contentria-backend-api`, `contentria-backend-batch`의 `DATABASE_PASSWORD` |
 | `postgres-keycloak` | `keycloak-db`의 `password` |
 | `postgres-openfga` | `openfga-datastore`의 `uri` |
 
-postgres 백업용 저장소 접근 키는 백업을 구성할 때 추가한다.
+## 적용 절차
 
-## 사용 방법
-
-1. `example/`의 파일을 `<env>/`로 복사하고 값을 채운다.
+1. `example/` 템플릿을 환경별 디렉터리(`<env>/`)로 복사하고 실제 값을 입력합니다.
 
    ```bash
+   mkdir -p infra/secrets/dev
    cp infra/secrets/example/*.yaml infra/secrets/dev/
    ```
 
-2. 클러스터에 적용한다. 각 파일에 `Namespace`가 함께 있어 root 앱 적용 전에도 적용된다.
+2. 클러스터에 시크릿을 직접 적용합니다. 각 매니페스트 상단에 `Namespace` 리소스가 포함되어 있어 사전에 네임스페이스가 생성됩니다.
 
    ```bash
    kubectl apply -f infra/secrets/dev/
    ```
 
-3. Ansible이 root 앱을 적용하기 전에 인벤토리 변수 `required_secrets`의 시크릿이 있는지 확인한다.
+3. Ansible 또는 GitOps 동기화 전 `required_secrets` 검증을 통해 시크릿 존재 여부를 확인합니다.
 
-## 규칙
+## 운영 규칙
 
-- 키를 추가하거나 빼면 `example/`도 함께 고친다.
-- 시크릿을 추가하면 위 목록과 Ansible `required_secrets`에 함께 추가한다.
-- 원본은 로컬에만 있으므로 비밀번호 관리자 등 별도 위치에 백업한다.
+- 템플릿 키를 추가하거나 제거할 때는 `example/` 매니페스트를 함께 수정합니다.
+- 신규 시크릿을 추가하면 상기 목록 및 Ansible `required_secrets` 변수에 등록합니다.
+- 실제 시크릿 파일은 로컬에만 존재하므로 1Password 등 팀 공용 비밀번호 관리자에 안전하게 백업합니다.

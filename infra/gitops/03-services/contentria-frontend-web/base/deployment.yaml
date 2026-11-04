@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentria-frontend-web
+  labels:
+    app: contentria-frontend-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contentria-frontend-web
+  template:
+    metadata:
+      labels:
+        app: contentria-frontend-web
+    spec:
+      containers:
+        - name: contentria-frontend-web
+          image: contentria/contentria-frontend # 태그는 환경별 overlay에서 지정한다.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: contentria-frontend-web
+          # Next.js 런타임 메모리를 고려한 값
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15

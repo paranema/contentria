@@ -9,5 +9,5 @@ required_secrets:
   - {namespace: keycloak, name: keycloak-admin}
   - {namespace: keycloak, name: keycloak-db}
   - {namespace: openfga, name: openfga-datastore}
-  - {namespace: blog, name: blog-backend-api}
-  - {namespace: blog, name: blog-backend-batch}
+  - {namespace: blog, name: contentria-backend-api}
+  - {namespace: blog, name: contentria-backend-batch}

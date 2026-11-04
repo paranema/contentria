@@ -1,5 +1,5 @@
 # 03-services/*/overlays/dev 폴더마다 Application을 하나씩 만든다.
-# 앱 이름은 서비스 폴더명이다 (예: blog-backend-api).
+# 앱 이름은 서비스 폴더명이다 (예: contentria-backend-api).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:

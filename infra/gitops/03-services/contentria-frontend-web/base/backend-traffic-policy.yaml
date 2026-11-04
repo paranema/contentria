@@ -1,0 +1,19 @@
+# 같은 사용자의 요청을 같은 프론트엔드 Pod로 보낸다 (쿠키 기반 고정 세션).
+# frontend/src/proxy.ts의 프로세스 내부 refresh 중복 방지 로직이 동작하려면 필요하다.
+# Pod 간 중복 refresh는 백엔드의 비관적 락과 grace cache가 막는다.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: contentria-frontend-web
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: contentria-frontend-web
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: Cookie
+      cookie:
+        name: contentria-frontend-route
+        ttl: 1h

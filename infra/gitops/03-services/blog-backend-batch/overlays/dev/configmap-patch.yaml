@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: blog-backend-batch
-data:
-  SPRING_PROFILES_ACTIVE: "dev"

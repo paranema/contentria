@@ -1,0 +1,15 @@
+# 환경과 무관한 값. 환경별 값은 overlays/<env>/configmap-patch.yaml에 둔다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentria-backend-api
+  labels:
+    app: contentria-backend-api
+data:
+  TZ: "Asia/Seoul"
+  COOKIE_SECURE: "true"
+
+  DATABASE_URL: "jdbc:postgresql://postgres-rw.database.svc.cluster.local:5432/contentria?currentSchema=contentria"
+  MAILGUN_HOST: "smtp.mailgun.org"
+  MAILGUN_PORT: "587"
+  MAILGUN_DOMAIN: "contentria.com"

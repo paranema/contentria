@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentria-backend-api
+  labels:
+    app: contentria-backend-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contentria-backend-api
+  template:
+    metadata:
+      labels:
+        app: contentria-backend-api
+    spec:
+      containers:
+        - name: contentria-backend-api
+          image: contentria/contentria-api # 태그는 환경별 overlay에서 지정한다.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: contentria-backend-api
+            - secretRef:
+                name: contentria-backend-api # infra/secrets로 수동 적용
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
