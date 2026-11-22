@@ -28,22 +28,22 @@ flowchart LR
     end
 ```
 
-| 단계 | 도구 | 담당 역할 | 산출물 및 연계 대상 |
-|---|---|---|---|
-| **1. 인프라 프로비저닝** | Terraform | 클라우드 테스트 환경(VPC, 서브넷, 보안 그룹, EC2 노드) 프로비저닝 | Ansible 호스트 인벤토리 (`hosts.yml`) |
-| **2. 클러스터 구축** | Ansible | Kubespray 기반 K8s 클러스터 설치, Argo CD 배포 및 Root App 등록 | 실행 중인 Kubernetes 및 Argo CD |
-| **3. 선언적 배포** | Argo CD | Git 저장소 매니페스트를 감시하여 플랫폼 인프라 및 마이크로서비스 동기화 | 동작 중인 플랫폼 및 컨테이너 서비스 |
+| 단계                     | 도구      | 담당 역할                                                               | 산출물 및 연계 대상                   |
+| ------------------------ | --------- | ----------------------------------------------------------------------- | ------------------------------------- |
+| **1. 인프라 프로비저닝** | Terraform | 클라우드 테스트 환경(VPC, 서브넷, 보안 그룹, EC2 노드) 프로비저닝       | Ansible 호스트 인벤토리 (`hosts.yml`) |
+| **2. 클러스터 구축**     | Ansible   | Kubespray 기반 K8s 클러스터 설치, Argo CD 배포 및 Root App 등록         | 실행 중인 Kubernetes 및 Argo CD       |
+| **3. 선언적 배포**       | Argo CD   | Git 저장소 매니페스트를 감시하여 플랫폼 인프라 및 마이크로서비스 동기화 | 동작 중인 플랫폼 및 컨테이너 서비스   |
 
 ## 디렉터리 구성
 
 인프라 저장소는 각 도구의 책임 경계에 따라 독립된 하위 디렉터리로 분리되어 있습니다.
 
-| 디렉터리 | 담당 영역 | 상세 문서 |
-|---|---|---|
-| [`terraform/`](terraform/) | 클라우드(AWS) 가상 리소스 프로비저닝 | [Terraform 가이드](terraform/README.md) |
-| [`ansible/`](ansible/) | 노드 OS 설정, Kubespray 클러스터 구축 및 Argo CD 설치 | [Ansible 가이드](ansible/README.md) |
-| [`gitops/`](gitops/) | Argo CD 선언적 배포 매니페스트 (플랫폼 및 서비스) | [GitOps 가이드](gitops/README.md) |
-| [`secrets/`](secrets/) | 보안 자격 증명 템플릿 및 수동 배포 매니페스트 | [Secrets 가이드](secrets/README.md) |
+| 디렉터리                   | 담당 영역                                             | 상세 문서                               |
+| -------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| [`terraform/`](terraform/) | 클라우드(AWS) 가상 리소스 프로비저닝                  | [Terraform 가이드](terraform/README.md) |
+| [`ansible/`](ansible/)     | 노드 OS 설정, Kubespray 클러스터 구축 및 Argo CD 설치 | [Ansible 가이드](ansible/README.md)     |
+| [`gitops/`](gitops/)       | Argo CD 선언적 배포 매니페스트 (플랫폼 및 서비스)     | [GitOps 가이드](gitops/README.md)       |
+| [`secrets/`](secrets/)     | 보안 자격 증명 템플릿 및 수동 배포 매니페스트         | [Secrets 가이드](secrets/README.md)     |
 
 ## 인프라 자동화 도구
 

@@ -7,6 +7,8 @@ AWS_PROFILE ?= contentria-test
 TF_AWS_DIR := terraform/aws
 ANSIBLE_DIR := ansible
 SSH_DIR ?= $(HOME)/.ssh/contentria
+# Colima 등 Linux VM 기반 Docker가 macOS 기본 TMPDIR(/var/folders)을 마운트하지 못하므로 $HOME 하위를 사용합니다
+RUNNER_TMP_DIR ?= $(HOME)/.cache/ansible-navigator/tmp
 
 VAR_FILE := terraform.$(ENV).tfvars
 PLAN_FILE := $(ENV).tfplan
@@ -18,7 +20,7 @@ RESET := \033[0m
 
 .PHONY: help \
 	tf-init tf-fmt tf-validate tf-test tf-workspace tf-plan tf-apply tf-destroy tf-inventory \
-	ansible-verify ansible-prepare ansible-cluster ansible-argocd ansible-gitops ansible-all
+	ansible-ee ansible-verify ansible-prepare ansible-cluster ansible-argocd ansible-gitops ansible-all
 
 help: ## 사용 가능한 명령어 목록을 표시합니다
 	@echo -e "$(GREEN)Contentria 인프라 자동화 도구 (Terraform & Ansible)$(RESET)"
@@ -75,6 +77,9 @@ tf-inventory: ## Terraform 배포 결과에서 Ansible hosts.yml 인벤토리를
 # Ansible (Kubespray & Playbooks)
 # ==============================================================================
 
+ansible-ee: ## Ansible Execution Environment 컨테이너 이미지를 빌드합니다
+	cd $(ANSIBLE_DIR)/ee && ansible-builder build --container-runtime docker --tag contentria-ansible:ks2.31.0-1
+
 ansible-verify: ## Ansible 인벤토리 및 플레이북 구문 검증 테스트를 실행합니다
 	docker run --rm \
 		-v "$$(cd .. && pwd):/workspace:ro" \
@@ -83,28 +88,32 @@ ansible-verify: ## Ansible 인벤토리 및 플레이북 구문 검증 테스트
 		/usr/bin/python3.11 tests/verify.py
 
 ansible-prepare: ## 1단계: OS 베이스 설정 및 전제 패키지 준비
-	cd $(ANSIBLE_DIR) && ansible-navigator run playbooks/10-prepare.yml \
+	@mkdir -p "$(RUNNER_TMP_DIR)"
+	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/10-prepare.yml \
 		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 
 ansible-cluster: ## 2단계: Kubespray 기반 Kubernetes 클러스터 구축
-	cd $(ANSIBLE_DIR) && ansible-navigator run playbooks/20-cluster.yml \
+	@mkdir -p "$(RUNNER_TMP_DIR)"
+	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/20-cluster.yml \
 		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 
 ansible-argocd: ## 3단계: Argo CD 설치 및 초기 설정
-	cd $(ANSIBLE_DIR) && ansible-navigator run playbooks/30-argocd.yml \
+	@mkdir -p "$(RUNNER_TMP_DIR)"
+	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/30-argocd.yml \
 		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 
 ansible-gitops: ## 4단계: GitOps Root Application 등록 및 배포
-	cd $(ANSIBLE_DIR) && ansible-navigator run playbooks/40-gitops.yml \
+	@mkdir -p "$(RUNNER_TMP_DIR)"
+	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/40-gitops.yml \
 		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \

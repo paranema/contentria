@@ -9,5 +9,14 @@ infra/secrets/*
 !infra/secrets/README.md
 !infra/secrets/example/
 
+# Ansible
+infra/ansible/**/context/
+infra/ansible/artifacts/
+infra/ansible/inventories/*/hosts.yml
+infra/ansible/inventories/*/host_vars/
+infra/ansible/inventories/*/group_vars/all/local.yml
+infra/ansible/**/ansible-navigator.log
+infra/ansible/*-artifact-*.json
+
 # 개인 작업 메모, 계획 문서
 .notes/
