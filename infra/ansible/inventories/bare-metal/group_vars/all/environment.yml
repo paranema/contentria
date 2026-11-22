@@ -1,5 +1,5 @@
 ---
-cluster_environment: home
+cluster_environment: bare-metal
 # VIP는 DHCP 범위 밖의 미사용 주소로 local.yml에서 설정한다.
 # 이 설정은 control plane용이다. Service LoadBalancer 주소 풀은 별도 구성한다.
 kube_vip_enabled: true

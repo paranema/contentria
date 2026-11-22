@@ -21,22 +21,22 @@ def run(*args, success=True):
 
 with tempfile.TemporaryDirectory() as temporary:
     tmp = Path(temporary)
-    for environment in ("home", "cloud-test"):
+    for environment in ("bare-metal", "aws"):
         fixture = tmp / environment
         fixture.mkdir()
         shutil.copytree(ROOT / "inventories" / environment / "group_vars", fixture / "group_vars")
-        hosts = yaml.safe_load((ROOT / "inventories/home/hosts.yml.example").read_text())
+        hosts = yaml.safe_load((ROOT / "inventories/bare-metal/hosts.yml.example").read_text())
         hosts["all"]["vars"]["kube_vip_address"] = "192.168.1.10"
         path = fixture / "hosts.yml"
         path.write_text(yaml.safe_dump(hosts))
         inventory_args = ("-i", "inventories/common.yml", "-i", str(path))
         data = json.loads(run("ansible-inventory", *inventory_args, "--list"))
-        variables = data["_meta"]["hostvars"]["home-01"]
-        assert variables["kube_vip_enabled"] == (environment == "home")
+        variables = data["_meta"]["hostvars"]["node-01"]
+        assert variables["kube_vip_enabled"] == (environment == "bare-metal")
         assert variables["kube_version"] == "1.35.4"
         assert variables["calico_network_backend"] == "vxlan"
         assert variables["helm_enabled"] and not variables["argocd_enabled"]
-        assert data["etcd"]["hosts"] == ["home-01"]
+        assert data["etcd"]["hosts"] == ["node-01"]
         assert data["kube_control_plane"]["hosts"] == data["kube_node"]["hosts"]
         for playbook in sorted((ROOT / "playbooks").glob("*.yml")):
             run("ansible-playbook", *inventory_args, str(playbook), "--syntax-check")
@@ -44,13 +44,13 @@ with tempfile.TemporaryDirectory() as temporary:
         preflight = tmp / "preflight.yml"
         preflight.write_text(yaml.safe_dump([yaml.safe_load((ROOT / "playbooks/20-cluster.yml").read_text())[0]]))
         run("ansible-playbook", *inventory_args, str(preflight), "--check", "-c", "local")
-        if environment == "home":
+        if environment == "bare-metal":
             run("ansible-playbook", *inventory_args, str(preflight), "--check", "-c", "local",
                 "-e", '{"kube_vip_address": ""}', success=False)
         else:
             run("ansible-playbook", *inventory_args, str(preflight), "--check", "-c", "local",
                 "-e", '{"kube_vip_enabled": true}', success=False)
-        hosts["all"]["children"]["etcd"]["hosts"]["home-02"] = {}
+        hosts["all"]["children"]["etcd"]["hosts"]["node-02"] = {}
         path.write_text(yaml.safe_dump(hosts))
         run("ansible-playbook", *inventory_args, str(preflight), "--check", "-c", "local", success=False)
         print(f"{environment}: inventory, 4 syntax checks, valid and invalid preflight passed")

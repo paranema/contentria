@@ -71,7 +71,8 @@ flowchart LR
 | `make tf-workspace` | `ENV`에 해당하는 Workspace 선택 (없으면 생성)                      |
 | `make tf-plan`      | `terraform.<ENV>.tfvars` 기준 실행 계획 파일(`<ENV>.tfplan`) 생성  |
 | `make tf-apply`     | 생성된 실행 계획 파일을 적용해 AWS 리소스 배포                     |
-| `make tf-inventory` | Terraform 출력에서 `ansible/inventories/cloud-test/hosts.yml` 생성 |
+| `make tf-output`    | 배포된 노드의 공인·사설 IP 및 접속 정보 조회                       |
+| `make tf-inventory` | Terraform 출력에서 `ansible/inventories/aws/hosts.yml` 생성        |
 | `make tf-destroy`   | 지정된 `ENV` 환경의 AWS 리소스 삭제                                |
 
 ### Ansible 명령어
