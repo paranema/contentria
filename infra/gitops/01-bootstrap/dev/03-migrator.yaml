@@ -1,0 +1,29 @@
+# 컨텍스트별 Flyway 스키마 마이그레이션. DB 준비 완료(wave 2) 후, 서비스 기동(wave 4) 전에 실행된다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: contentria-backend-migrator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/paranema/contentria.git
+    targetRevision: main
+    path: infra/gitops/03-services/contentria-backend-migrator/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: contentria
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 1m

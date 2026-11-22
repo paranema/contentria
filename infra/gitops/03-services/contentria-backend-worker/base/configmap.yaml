@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentria-backend-worker
+  labels:
+    app: contentria-backend-worker
+data:
+  TZ: "Asia/Seoul"
+  DATABASE_URL: "jdbc:postgresql://postgres-rw.database.svc.cluster.local:5432/contentria"
+  DATABASE_USERNAME: "worker_app"
+  WORKER_POLL_INTERVAL: "5s"

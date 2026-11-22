@@ -1,9 +1,0 @@
-datastore:
-  engine: postgres
-  # 접속 URI를 담은 시크릿 (키 이름: uri). infra/secrets로 수동 적용
-  uriSecret: openfga-datastore
-  applyMigrations: true
-
-# 차트에 포함된 Postgres는 쓰지 않는다.
-postgresql:
-  enabled: false

@@ -4,4 +4,4 @@ metadata:
   name: contentria-frontend-web
 data:
   NEXT_PUBLIC_EXTERNAL_API_BASE_URL: "https://dev.contentria.com/api"
-  NEXT_PUBLIC_GOOGLE_REDIRECT_URI: "https://dev.contentria.com/api/auth/google/callback"
+  NEXT_PUBLIC_CDN_BASE_URL: "https://images-dev.contentria.com"

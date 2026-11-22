@@ -83,7 +83,7 @@ flowchart LR
 | 데이터 및 메시징   | PostgreSQL, Kafka                                                                                   |
 | 미디어 및 스토리지 | Cloudflare R2 (S3 API), Cloudflare Queues, FFmpeg                                                   |
 | 테스트             | JUnit 5, AssertJ, Testcontainers, ArchUnit                                                          |
-| 인프라             | Kubernetes, ArgoCD, Envoy Gateway, cert-manager, CloudNativePG                                      |
+| 인프라             | Kubernetes, ArgoCD, Envoy Gateway, cert-manager, CloudNativePG, Strimzi Kafka                       |
 
 ## 저장소 구조
 

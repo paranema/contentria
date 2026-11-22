@@ -7,7 +7,7 @@ spring:
 
   # batch_app has DML on the schemas of the contexts whose jobs run here, and no DDL.
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria}
     username: ${DATABASE_USERNAME:batch_app}
     password: ${DATABASE_PASSWORD}
 

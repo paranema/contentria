@@ -14,9 +14,13 @@ spec:
       labels:
         app: contentria-frontend-web
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
       containers:
         - name: contentria-frontend-web
-          image: contentria/contentria-frontend # 태그는 환경별 overlay에서 지정한다.
+          image: ghcr.io/paranema/contentria-frontend
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -24,7 +28,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: contentria-frontend-web
-          # Next.js 런타임 메모리를 고려한 값
           resources:
             requests:
               cpu: "250m"
@@ -44,3 +47,9 @@ spec:
               port: http
             initialDelaySeconds: 20
             periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault

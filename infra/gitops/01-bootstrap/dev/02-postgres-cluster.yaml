@@ -9,7 +9,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/seung7642/contentria.git
+    repoURL: https://github.com/paranema/contentria.git
     targetRevision: main
     path: infra/gitops/02-platform/postgres/cluster/overlays/dev
   destination:

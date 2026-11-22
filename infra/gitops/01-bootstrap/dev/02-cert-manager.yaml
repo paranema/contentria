@@ -17,10 +17,10 @@ spec:
         valueFiles:
           - $values/infra/gitops/02-platform/cert-manager/values.yaml
           - $values/infra/gitops/02-platform/cert-manager/values-dev.yaml
-    - repoURL: https://github.com/seung7642/contentria.git
+    - repoURL: https://github.com/paranema/contentria.git
       targetRevision: main
       ref: values
-    - repoURL: https://github.com/seung7642/contentria.git
+    - repoURL: https://github.com/paranema/contentria.git
       targetRevision: main
       path: infra/gitops/02-platform/cert-manager/overlays/dev
   destination:

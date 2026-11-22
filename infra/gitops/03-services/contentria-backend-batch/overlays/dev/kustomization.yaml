@@ -4,11 +4,11 @@ kind: Kustomization
 resources:
   - ../../base
 
-namespace: blog
+namespace: contentria
 
 patches:
   - path: configmap-patch.yaml
 
 images:
-  - name: contentria/contentria-batch
-    newTag: "1.1"
+  - name: ghcr.io/paranema/contentria-batch
+    newTag: latest

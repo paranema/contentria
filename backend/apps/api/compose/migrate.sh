@@ -12,7 +12,7 @@ rm -f /tmp/done
 for dir in /migrations/*/; do
     context=$(basename "$dir")
     flyway \
-        -url=jdbc:postgresql://postgres:5432/contentria_v2 \
+        -url=jdbc:postgresql://postgres:5432/contentria \
         -user="${context}_migrator" \
         -password=local \
         -schemas="$context" \

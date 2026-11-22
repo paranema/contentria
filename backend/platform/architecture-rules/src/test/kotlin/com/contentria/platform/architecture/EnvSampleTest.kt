@@ -20,7 +20,7 @@ class EnvSampleTest {
                 """
                 # [필수][비밀] 설명. KEY=처럼 비워 두면 빈 문자열이 된다
                 DATABASE_PASSWORD=
-                # DATABASE_URL=jdbc:postgresql://localhost:5432/contentria_v2
+                # DATABASE_URL=jdbc:postgresql://localhost:5432/contentria
                 #   Docker: docker run --env-file .env
                 MEMBER_COOKIE_SECURE=false
                 """.trimIndent(),
@@ -37,7 +37,7 @@ class EnvSampleTest {
         val config = dir.resolve("application.yml").apply {
             writeText(
                 """
-                url: ${'$'}{DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+                url: ${'$'}{DATABASE_URL:jdbc:postgresql://localhost:5432/contentria}
                 password: ${'$'}{DATABASE_PASSWORD}
                 redirect-uri: ${'$'}{GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
                 interval: ${'$'}{contentria.media.worker.poll-interval:5s}

@@ -23,8 +23,8 @@ flowchart LR
 
     subgraph 3. 선언적 배포
         argo -->|App of Apps 동기화| gitops["GitOps (01-bootstrap)"]
-        gitops -->|플랫폼 컴포넌트| plat["02-platform (DB, Gateway, IAM)"]
-        gitops -->|비즈니스 서비스| svc["03-services (API, Batch, Web)"]
+        gitops -->|플랫폼 컴포넌트| plat["02-platform (DB, Kafka, Gateway)"]
+        gitops -->|비즈니스 서비스| svc["03-services (Migrator, API, Worker, Batch, Web)"]
     end
 ```
 

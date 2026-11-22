@@ -1,13 +1,18 @@
 ---
 gitops_env: dev
-gitops_repo_url: https://github.com/seung7642/contentria.git
+gitops_repo_url: https://github.com/paranema/contentria.git
 gitops_revision: main
 required_secrets:
-  - {namespace: database, name: postgres-contentria}
-  - {namespace: database, name: postgres-keycloak}
-  - {namespace: database, name: postgres-openfga}
-  - {namespace: keycloak, name: keycloak-admin}
-  - {namespace: keycloak, name: keycloak-db}
-  - {namespace: openfga, name: openfga-datastore}
-  - {namespace: blog, name: contentria-backend-api}
-  - {namespace: blog, name: contentria-backend-batch}
+  - {namespace: database, name: postgres-member-migrator}
+  - {namespace: database, name: postgres-publishing-migrator}
+  - {namespace: database, name: postgres-interaction-migrator}
+  - {namespace: database, name: postgres-notification-migrator}
+  - {namespace: database, name: postgres-media-migrator}
+  - {namespace: database, name: postgres-analytics-migrator}
+  - {namespace: database, name: postgres-api-app}
+  - {namespace: database, name: postgres-batch-app}
+  - {namespace: database, name: postgres-worker-app}
+  - {namespace: contentria, name: contentria-backend-migrator}
+  - {namespace: contentria, name: contentria-backend-api}
+  - {namespace: contentria, name: contentria-backend-batch}
+  - {namespace: contentria, name: contentria-backend-worker}

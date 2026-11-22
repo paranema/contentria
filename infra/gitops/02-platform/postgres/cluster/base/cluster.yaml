@@ -13,31 +13,95 @@ spec:
     # pg_stat_statements, auto_explain 파라미터를 지정하면 operator가 shared_preload_libraries에 자동으로 추가한다.
     parameters:
       pg_stat_statements.track: top
-      auto_explain.log_min_duration: "1000" # ms 이상 걸린 쿼리의 실행계획을 로그로 남긴다.
+      auto_explain.log_min_duration: "1000"
       auto_explain.log_analyze: "on"
 
-  # 블로그 서비스용 DB와 계정은 클러스터 생성 시 함께 만든다.
+  # infra/database/ 스크립트와 동일한 컨텍스트별 독립 스키마·최소 권한 구조를 생성한다.
+  # managed.roles는 initdb 완료 직후 반영되므로, 스키마 소유권과 기본 권한 부여를 위해 역할 이름을 먼저 만들고
+  # 비밀번호와 LOGIN 활성화는 managed.roles가 database.yaml 시크릿으로 관리한다.
   bootstrap:
     initdb:
       database: contentria
-      owner: contentria
-      secret:
-        name: postgres-contentria # infra/secrets로 수동 적용
       postInitApplicationSQL:
-        - CREATE SCHEMA contentria AUTHORIZATION contentria
-        - ALTER ROLE contentria SET search_path TO contentria, public
+        - CREATE ROLE member_migrator
+        - CREATE ROLE publishing_migrator
+        - CREATE ROLE interaction_migrator
+        - CREATE ROLE notification_migrator
+        - CREATE ROLE media_migrator
+        - CREATE ROLE analytics_migrator
+        - CREATE ROLE api_app
+        - CREATE ROLE batch_app
+        - CREATE ROLE worker_app
+        - REVOKE ALL ON DATABASE contentria FROM PUBLIC
+        - REVOKE ALL ON SCHEMA public FROM PUBLIC
+        - GRANT CONNECT ON DATABASE contentria TO member_migrator, publishing_migrator, interaction_migrator, notification_migrator, media_migrator, analytics_migrator, api_app, batch_app, worker_app
         - CREATE EXTENSION IF NOT EXISTS pg_stat_statements
+        - CREATE SCHEMA member AUTHORIZATION member_migrator
+        - GRANT USAGE ON SCHEMA member TO api_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE member_migrator IN SCHEMA member GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app
+        - CREATE SCHEMA publishing AUTHORIZATION publishing_migrator
+        - GRANT USAGE ON SCHEMA publishing TO api_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE publishing_migrator IN SCHEMA publishing GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app
+        - CREATE SCHEMA interaction AUTHORIZATION interaction_migrator
+        - GRANT USAGE ON SCHEMA interaction TO api_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE interaction_migrator IN SCHEMA interaction GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app
+        - CREATE SCHEMA notification AUTHORIZATION notification_migrator
+        - GRANT USAGE ON SCHEMA notification TO api_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE notification_migrator IN SCHEMA notification GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app
+        - CREATE SCHEMA media AUTHORIZATION media_migrator
+        - GRANT USAGE ON SCHEMA media TO api_app, batch_app, worker_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE media_migrator IN SCHEMA media GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE media_migrator IN SCHEMA media GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO batch_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE media_migrator IN SCHEMA media GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO worker_app
+        - CREATE SCHEMA analytics AUTHORIZATION analytics_migrator
+        - GRANT USAGE ON SCHEMA analytics TO api_app, batch_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE analytics_migrator IN SCHEMA analytics GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO api_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE analytics_migrator IN SCHEMA analytics GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO batch_app
 
-  # keycloak, openfga 계정. DB는 databases.yaml에서 만든다.
   managed:
     roles:
-      - name: keycloak
+      - name: member_migrator
         ensure: present
         login: true
         passwordSecret:
-          name: postgres-keycloak # infra/secrets로 수동 적용
-      - name: openfga
+          name: postgres-member-migrator
+      - name: publishing_migrator
         ensure: present
         login: true
         passwordSecret:
-          name: postgres-openfga # infra/secrets로 수동 적용
+          name: postgres-publishing-migrator
+      - name: interaction_migrator
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-interaction-migrator
+      - name: notification_migrator
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-notification-migrator
+      - name: media_migrator
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-media-migrator
+      - name: analytics_migrator
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-analytics-migrator
+      - name: api_app
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-api-app
+      - name: batch_app
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-batch-app
+      - name: worker_app
+        ensure: present
+        login: true
+        passwordSecret:
+          name: postgres-worker-app

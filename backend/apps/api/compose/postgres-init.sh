@@ -15,7 +15,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
     -v api_app_password="$password" \
     -v batch_app_password="$password" \
     -v worker_app_password="$password" \
-    -f /contentria-v2/01-database-and-roles.sql
+    -f /database-init/01-database-and-roles.sql
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname contentria_v2 \
-    -f /contentria-v2/02-schemas-and-grants.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname contentria \
+    -f /database-init/02-schemas-and-grants.sql
