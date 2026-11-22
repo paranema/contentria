@@ -1,71 +1,79 @@
 # Ansible
 
-홈 서버와 AWS Rocky Linux 10 노드에 같은 플레이북을 실행한다. Ansible은 로컬에 설치하지 않고 `ansible-navigator`가 실행하는 EE에 넣는다. EE는 `ansible-builder`로 만든다.
+Rocky Linux 10 노드에 Kubernetes 클러스터와 Argo CD를 설치하고 GitOps 진입점을 등록하는 Ansible 구성입니다.
 
-## 맡는 일
+## 개요
 
-| 단계 | 플레이북 | 작업 |
-|---|---|---|
-| OS 준비 | `10-prepare.yml` | Python 실행 기반, 공통 패키지, 현재 커널의 추가 모듈, UTC 시간대, firewalld 정리 |
-| 클러스터 | `20-cluster.yml` | 인벤토리 검사, Kubespray 실행, control plane·worker 겸용 노드의 NoSchedule taint 제거 |
-| Argo CD | `30-argocd.yml` | Helm으로 설치, Application health check와 Envoy OCI 저장소 설정 |
-| GitOps | `40-gitops.yml` | 필요한 시크릿 존재 확인 후 root Application 적용 |
+### 담당 범위
 
-Kubespray가 containerd, Kubernetes, Calico, swap, sysctl, SELinux, 시간 동기화를 관리한다. 별도 OS role에서 같은 설정을 다시 관리하지 않는다. Terraform은 VM·네트워크·SSH까지 담당한다.
+홈 서버와 AWS 테스트 노드에 동일한 플레이북을 실행합니다. 컨테이너 런타임(containerd), Kubernetes(`1.35.4`), CNI(Calico VXLAN), swap, sysctl, SELinux(permissive), 시간 동기화는 Kubespray(`v2.31.0`)가 관리하며 별도 역할에서 중복 설정하지 않습니다.
 
-모든 플레이북은 전용 Kubernetes 노드를 대상으로 한다. OS 준비는 firewalld를 중지하므로 홈 네트워크의 라우터·방화벽과 AWS 보안 그룹에서 접근을 제한해야 한다. SELinux는 Kubespray의 permissive 설정을 사용한다. 패키지 전체 업그레이드, 커널 업그레이드, 자동 재부팅은 수행하지 않는다.
+모든 플레이북은 전용 Kubernetes 노드를 전제로 합니다. OS 준비 단계에서 `firewalld`를 중지하므로 접근 제어는 홈 라우터 방화벽이나 AWS 보안 그룹에서 처리합니다. 패키지 전체 업그레이드, 커널 업그레이드, 자동 재부팅은 수행하지 않습니다.
 
-## 버전과 두 노드 구성
+### 디렉터리 구성
 
-- Kubespray `v2.31.0`, commit `1c9add48975060f45396b34d8e022c30d7f80dab`을 EE 빌드에서 검증한다
-- Ansible `11.13.0`, ansible-core `2.18.12`. Python 의존성은 해당 Kubespray 릴리스와 맞춘다
-- Kubernetes `1.35.4`, containerd와 Calico 세부 버전은 고정한 Kubespray 릴리스의 기본값을 따른다
-- Argo CD Helm chart `10.10.5`
+| 경로                  | 역할                                                             |
+| --------------------- | ---------------------------------------------------------------- |
+| [`ee/`](ee/README.md) | `ansible-navigator`용 Execution Environment 컨테이너 이미지 정의 |
+| `inventories/`        | 공통 변수(`common.yml`)와 환경별 인벤토리(`home`, `cloud-test`)  |
+| `playbooks/`          | 단계별 실행 플레이북 (`10` ~ `40`)                               |
+| `roles/`              | OS 사전 준비, Argo CD 설치(`10.10.5`), GitOps Root 앱 배포 역할  |
+| `tests/`              | 서버 접속 없이 수행하는 정적 검증 스크립트                       |
 
-EE의 Rocky 9/Python 3.11은 실행 컨트롤러 환경이다. 대상 노드의 Rocky 10과 같은 버전일 필요는 없다. 베이스 OS 패키지까지 완전히 고정한 이미지는 아니므로 검증한 EE를 레지스트리에 보관하고 digest로 실행하면 환경을 유지하기 쉽다.
+### 노드 토폴로지
 
-두 서버 모두 control plane·worker로 사용한다. **Kubespray는 짝수 etcd 멤버 수를 거부하므로 etcd는 첫 서버 한 대에 둔다.** 첫 서버 장애 시 기존 Pod가 일부 살아 있어도 클러스터 관리·재스케줄링은 중단된다. 서버 3대 이상에서 etcd 3멤버로 확장한다. 검사를 끄는 `ignore_assert_errors`는 사용하지 않는다.
+모든 노드는 Control Plane과 Worker 역할을 겸합니다. Kubespray는 짝수 `etcd` 멤버 구성을 거부하므로 노드 3대 미만에서는 첫 번째 노드 1대에만 `etcd`를 배치합니다. 단일 `etcd` 노드가 중단되면 클러스터 관리와 재스케줄링이 멈추며, 노드를 3대 이상으로 구성할 때 `etcd`를 3멤버로 확장합니다.
 
-## EE 빌드
+## 사전 준비
 
-이하 명령은 `infra/ansible`에서 실행한다. Docker가 실행 중이어야 한다.
+### 실행 환경
 
-```bash
-ansible-builder build --container-runtime docker --tag contentria-ansible:ks2.31.0-1
-```
-
-플레이북이나 인벤토리만 바뀌면 다시 빌드하지 않아도 된다. EE 의존성이나 Kubespray를 바꾸면 태그도 올리고 재검증한다. 런타임은 이미지를 자동 pull하지 않는다. Podman을 쓰면 builder와 navigator 양쪽의 container engine을 변경한다.
-
-Colima/Docker에서 runner 산출물 경로를 쓸 수 있도록 EE 내부 사용자는 root로 실행한다. 원격 노드 접속 계정은 별도의 `ansible_user`이며 sudo는 `become`으로 처리한다. SSH 키나 실제 인벤토리는 이미지에 넣지 않는다. SSH 개인키와 검증한 known_hosts를 별도의 로컬 폴더에 준비하고 읽기 전용으로 마운트한다. 예를 들어 `$HOME/.ssh/contentria`에 `id_ed25519`, `known_hosts`를 둔다. 키 경로는 인벤토리에 넣지 않고 실행 옵션으로 전달한다. 암호화된 키는 interactive 실행이나 SSH agent 연동이 필요할 수 있다.
-
-SSH 호스트 키 검증은 켜져 있다. 처음에는 콘솔 등 신뢰 가능한 경로로 fingerprint를 확인해 known_hosts에 등록한다. VM 재생성 후에는 키가 바뀌므로 새 fingerprint를 확인한 뒤 해당 항목을 갱신한다.
-
-## 인벤토리
-
-공통 설정 파일을 먼저, 환경별 hosts 파일을 뒤에 지정한다. 환경의 `group_vars/all/`이 공통 값을 덮어쓴다.
-
-홈 서버:
+로컬에 Ansible을 직접 설치하지 않고 Docker와 `ansible-navigator`로 Execution Environment(`contentria-ansible:ks2.31.0-1`) 컨테이너를 실행합니다. 최초 실행 전 이미지 빌드가 필요하며, 상세 절차는 [Execution Environment 가이드](ee/README.md)를 참고합니다.
 
 ```bash
-cp inventories/home/hosts.yml.example inventories/home/hosts.yml
-cp inventories/home/local.yml.example inventories/home/group_vars/all/local.yml
+make -C infra ansible-ee
 ```
 
-`hosts.yml`의 SSH 계정·주소·실제 NIC 이름과 `local.yml`의 VIP를 수정한다. VIP는 노드와 같은 L2 대역의 미사용 주소이며 DHCP 할당 범위에서 제외해야 한다. 홈에서는 control plane에 kube-vip ARP를 사용한다. 기본 kube-vip는 Service의 LoadBalancer 주소를 할당하지 않는다.
+### SSH 설정
 
-AWS 테스트:
+호스트 키 검증(`host_key_checking = True`)이 활성화되어 있습니다. 로컬의 별도 디렉터리(기본 `~/.ssh/contentria`)에 개인키(`id_ed25519`)와 지문을 확인한 `known_hosts` 파일을 준비하여 컨테이너에 읽기 전용으로 마운트합니다. 노드를 재생성해 호스트 키가 바뀌면 새 지문을 확인한 뒤 `known_hosts`를 갱신합니다.
+
+### 인벤토리 구성
+
+실행 시 공통 설정(`inventories/common.yml`)을 먼저 지정하고 환경별 `hosts.yml`을 뒤에 지정하여 환경 변수(`group_vars/all/`)가 공통 값을 덮어쓰도록 합니다. 홈 네트워크, VPC, Pod, Service CIDR 대역은 서로 겹치지 않아야 하며, 실제 `hosts.yml`과 `local.yml`은 Git 추적에서 제외합니다.
+
+- **홈 서버 (`inventories/home/`)**: 예시 파일을 복사한 뒤 실제 노드 주소, SSH 계정, NIC 이름과 미사용 VIP(DHCP 제외 대역)를 입력합니다. Control Plane 엔드포인트에는 `kube-vip` ARP 모드를 사용합니다.
+  ```bash
+  cp inventories/home/hosts.yml.example inventories/home/hosts.yml
+  cp inventories/home/local.yml.example inventories/home/group_vars/all/local.yml
+  ```
+- **AWS 테스트 (`inventories/cloud-test/`)**: Terraform 배포 결과에서 인벤토리를 추출합니다. `kube-vip` 대신 노드 로컬 API 프록시를 사용하며, EC2 공인 IP를 API 인증서 SAN에 포함합니다. 공인 IP가 변경되면 인벤토리와 인증서를 함께 갱신해야 합니다.
+  ```bash
+  make -C infra tf-inventory
+  ```
+
+## 실행 절차
+
+### 플레이북 구성
+
+| 단계        | 플레이북         | 작업 내용                                                                                           |
+| ----------- | ---------------- | --------------------------------------------------------------------------------------------------- |
+| 1. OS 준비  | `10-prepare.yml` | Python 실행 기반, 필수 패키지, 현재 커널의 `kernel-modules-extra`, UTC 시간대, `firewalld` 비활성화 |
+| 2. 클러스터 | `20-cluster.yml` | 인벤토리 사전 검증, Kubespray 클러스터 설치, 겸용 노드의 `NoSchedule` taint 제거                    |
+| 3. Argo CD  | `30-argocd.yml`  | Helm 기반 Argo CD 설치, Application health check, Envoy OCI 저장소 설정                             |
+| 4. GitOps   | `40-gitops.yml`  | 필수 시크릿 존재 여부 확인 후 Root Application 등록                                                 |
+
+### 클러스터 구축
+
+AWS 테스트 환경은 `infra/Makefile` 단축 명령어로 1~2단계를 순서대로 실행합니다.
 
 ```bash
-terraform -chdir=../terraform/aws output -raw ansible_inventory > inventories/cloud-test/hosts.yml
+cd infra
+make ansible-prepare
+make ansible-cluster
 ```
 
-Terraform을 apply한 상태에서 실행한다. 이번 구성부터 두 노드의 Terraform 인벤토리도 etcd를 첫 노드에만 둔다. 이전에 생성한 인벤토리는 다시 출력하고 etcd 그룹을 확인한다. AWS에서는 kube-vip를 끄고 Kubespray의 노드 로컬 API 프록시를 사용한다. EC2 공인 IP는 API 인증서 SAN에 포함한다. IP가 바뀌면 인벤토리와 인증서도 갱신해야 한다.
-
-`hosts.yml`, `local.yml`, 실제 host_vars, 실행 산출물은 Git에서 제외한다. 홈·VPC·Pod·Service CIDR이 서로 겹치지 않게 설정한다. 공통 CNI는 두 환경에서 사용할 수 있는 Calico VXLAN이다.
-
-## 실행
-
-홈 서버 예시다. AWS는 `inventories/home/hosts.yml`을 `inventories/cloud-test/hosts.yml`로 바꾼다. `--private-key`와 known_hosts 경로는 **EE 안의 경로**다.
+홈 서버 또는 `ansible-navigator`를 직접 실행할 때는 `infra/ansible` 디렉터리에서 대상 인벤토리를 지정합니다. `--private-key`와 `known_hosts`는 컨테이너 내부 마운트 경로 기준이며, `sudo` 비밀번호가 필요한 환경에서는 `--ask-become-pass`를 추가합니다.
 
 ```bash
 ansible-navigator run playbooks/10-prepare.yml \
@@ -75,36 +83,41 @@ ansible-navigator run playbooks/10-prepare.yml \
   --ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 ```
 
-같은 옵션으로 `20-cluster.yml`, `30-argocd.yml` 순서로 실행한다. sudo에 비밀번호가 필요한 홈 서버는 `--ask-become-pass`를 추가한다. Ansible EE가 먼저 SSH로 접근할 수 있어야 하므로 베어메탈의 OS·네트워크·SSH 계정·sudo 준비까지는 설치 단계에서 한다.
+Rocky 10 클라우드 이미지에서 실행 중인 커널과 일치하는 `kernel-modules-extra` 패키지가 저장소에 없으면 1단계가 실패합니다. 이 경우 노드의 커널과 모듈을 함께 업데이트하고 재부팅한 뒤 다시 실행합니다.
 
-Rocky 10 공식 클라우드 이미지에는 추가 커널 모듈이 없을 수 있다. `10-prepare.yml`은 실행 중인 커널과 정확히 일치하는 `kernel-modules-extra`를 설치한다. 해당 버전이 저장소에 없다면 커널과 모듈을 함께 갱신하고 재부팅한 뒤 다시 실행한다. 이를 플레이북이 자동으로 처리하지는 않는다. [Kubespray Rocky 10 주의사항](https://github.com/kubernetes-sigs/kubespray/blob/v2.31.0/docs/operating_systems/rhel.md#rocky-linux-10)을 따른다.
+### Argo CD 설치
 
-Argo CD는 첫 control plane에서 `/etc/kubernetes/admin.conf`를 이용해 설치한다. 관리자 kubeconfig를 EE나 로컬에 복사하지 않는다. 서버는 ClusterIP이며, SSH 터널이나 kubectl port-forward로 접근한다. 초기 관리자 비밀번호를 플레이북 출력에 남기지 않는다.
+클러스터 구축이 완료되면 첫 번째 Control Plane 노드의 `/etc/kubernetes/admin.conf`를 이용해 Argo CD를 설치합니다. 관리자 kubeconfig를 로컬이나 컨테이너로 복사하지 않으며, 서비스 타입은 `ClusterIP`이므로 SSH 터널이나 `kubectl port-forward`로 접근합니다.
 
-## root 앱 적용 전
+```bash
+make -C infra ansible-argocd
+```
 
-`40-gitops.yml`은 실행 즉시 기존 `dev` GitOps의 자동 동기화를 시작한다. 현재 GitOps는 레거시 blog 서비스 이미지와 dev 도메인을 사용한다. 테스트 AWS 클러스터에 그대로 배포하면 홈 운영 설정을 재현하는 것이므로, 먼저 사용할 경로·도메인·데이터 설정을 확인한다.
+### GitOps 부트스트랩
 
-1. [시크릿 문서](../secrets/README.md)에 따라 실제 값을 만들어 대상 클러스터에 적용한다. 플레이북은 값 대신 시크릿 이름의 존재만 조회한다.
-2. 현재 PostgreSQL PVC가 사용할 default StorageClass 또는 명시적 StorageClass를 준비한다. 이 플레이북은 스토리지 드라이버를 설치하지 않는다.
-3. Envoy Gateway의 LoadBalancer Service에 IP를 제공할 구성을 준비한다. 홈의 Service용 VIP/주소 풀이나 AWS 클라우드 LB 연동은 control plane용 kube-vip와 별개다.
-4. 도메인·라우터 포트 전달·인증서 발급 조건을 준비한다.
-5. 같은 navigator 옵션으로 `playbooks/40-gitops.yml`을 실행한다.
+`40-gitops.yml`은 실행 즉시 `dev` 환경 매니페스트의 자동 동기화를 시작합니다. 실행 전 아래 항목을 먼저 준비합니다.
 
-시크릿이 누락되면 목록을 보여주고 root 앱 적용 전에 중단한다. root 앱 생성은 하위 애플리케이션 전체의 Healthy를 보장하지 않는다. 이후 진행은 Argo CD에서 확인한다. root 앱 삭제가 모든 자식을 연쇄 삭제하지 않도록 cascade finalizer는 넣지 않았다.
+1. [Secrets 가이드](../secrets/README.md)에 따라 필수 시크릿을 클러스터에 적용합니다. 플레이북은 시크릿 값은 읽지 않고 이름 존재 여부만 확인하며, 누락 시 적용 전에 중단합니다.
+2. PostgreSQL PVC가 사용할 기본 StorageClass(또는 명시적 StorageClass)를 준비합니다. 본 플레이북은 스토리지 드라이버를 설치하지 않습니다.
+3. Envoy Gateway의 `LoadBalancer` Service에 외부 IP를 할당할 구성을 준비합니다.
+4. 사용할 도메인, 포트 전달, 인증서 발급 경로를 확인합니다.
+
+사전 조건이 충족되면 4단계를 실행하고 Argo CD에서 하위 Application 동기화 상태를 확인합니다.
+
+```bash
+make -C infra ansible-gitops
+```
 
 ## 검증
 
-아래 검증은 서버에 접속하지 않는다. 저장소 루트를 마운트해야 시크릿 예제와의 일치도 확인한다.
+### 정적 검증
+
+원격 노드에 접속하지 않고 EE 컨테이너 내부에서 인벤토리 변수 우선순위, 환경별 VIP 및 `etcd` 규칙, 4개 플레이북과 Kubespray 구문, preflight 어설션, 시크릿 예제 일치 여부를 검사합니다.
 
 ```bash
-docker run --rm \
-  -v "$(cd ../.. && pwd):/workspace:ro" \
-  -w /workspace/infra/ansible \
-  contentria-ansible:ks2.31.0-1 \
-  /usr/bin/python3.11 tests/verify.py
+make -C infra ansible-verify
 ```
 
-홈·AWS 인벤토리 변수 우선순위, 환경별 VIP, etcd 역할, 네 플레이북과 Kubespray의 syntax check, 정상·잘못된 인벤토리 preflight, 시크릿 예제 목록을 확인한다. 로컬 파일에 실제 주소를 입력하지 않아도 된다.
+### 동작 검증
 
-실제 서버에서는 새 노드 설치 후 재실행의 변경 내역, 재부팅 후 노드 Ready, DNS·Pod 간 통신, API VIP 이동, Argo CD 상태를 추가 검증해야 한다. `--check`는 기존 클러스터 조회를 수행할 수 있고, 처음 설치를 완전히 모사하지 못한다. Kubespray의 업그레이드·노드 추가·삭제는 별도 운영 절차이며 이 설치 플레이북의 재실행으로 대신하지 않는다.
+실제 노드 설치 후에는 플레이북 재실행 시 변경 유무, 재부팅 후 노드 `Ready` 복구, CoreDNS 및 Pod 간 통신, 홈 환경의 API VIP 이동, Argo CD 상태를 추가로 확인합니다. `--check` 모드는 초기 클러스터 미설치 상태를 온전히 모사하지 못하며, 클러스터 업그레이드나 노드 추가·제거는 설치 플레이북 재실행이 아닌 별도 Kubespray 운영 절차를 따릅니다.
