@@ -3,6 +3,5 @@ kind: Kustomization
 
 resources:
   - cluster.yaml
-  - databases.yaml
 
 # scheduled-backup.yaml은 백업 저장소 구성 후 추가한다. 파일 상단 주석 참고.

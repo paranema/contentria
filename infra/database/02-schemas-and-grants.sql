@@ -1,11 +1,11 @@
--- 컨텍스트별 스키마와 권한. 01을 실행한 뒤, 슈퍼유저로 contentria_v2 데이터베이스에 접속해 실행한다.
---   psql -d contentria_v2 -f 02-schemas-and-grants.sql
+-- 컨텍스트별 스키마와 권한. 01을 실행한 뒤, 슈퍼유저로 contentria 데이터베이스에 접속해 실행한다.
+--   psql -d contentria -f 02-schemas-and-grants.sql
 --
 -- 컨텍스트를 추가하면 그 컨텍스트의 블록을 이 파일에 더한다.
 
-REVOKE ALL ON DATABASE contentria_v2 FROM PUBLIC;
+REVOKE ALL ON DATABASE contentria FROM PUBLIC;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-GRANT CONNECT ON DATABASE contentria_v2 TO member_migrator, publishing_migrator, interaction_migrator, notification_migrator, media_migrator, analytics_migrator, api_app, batch_app, worker_app;
+GRANT CONNECT ON DATABASE contentria TO member_migrator, publishing_migrator, interaction_migrator, notification_migrator, media_migrator, analytics_migrator, api_app, batch_app, worker_app;
 
 -- ------------------------------------------------------------------ member
 -- member_migrator가 스키마를 소유하므로 그 안에서만 DDL을 실행할 수 있다.

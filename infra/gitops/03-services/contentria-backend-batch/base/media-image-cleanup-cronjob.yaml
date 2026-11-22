@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: contentria-backend-batch-image-cleanup
+  labels:
+    app: contentria-backend-batch
+    job-type: media-image-cleanup
+spec:
+  schedule: "0 3 * * *"
+  timeZone: "Asia/Seoul"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app: contentria-backend-batch
+            job-type: media-image-cleanup
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          containers:
+            - name: contentria-backend-batch
+              image: ghcr.io/paranema/contentria-batch
+              imagePullPolicy: IfNotPresent
+              args:
+                - "--spring.batch.job.name=mediaImageCleanup"
+              envFrom:
+                - configMapRef:
+                    name: contentria-backend-batch
+                - secretRef:
+                    name: contentria-backend-batch
+              resources:
+                requests:
+                  cpu: "200m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "1000m"
+                  memory: "1Gi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+                seccompProfile:
+                  type: RuntimeDefault
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

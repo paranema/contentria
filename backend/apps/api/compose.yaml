@@ -1,7 +1,7 @@
 name: contentria-api
 
 services:
-  # 운영과 같은 롤과 스키마로 만든다(infra/database/contentria-v2). 앱은 슈퍼유저가 아니라 api_app으로 붙는다.
+  # 운영과 같은 롤과 스키마로 만든다(infra/database). 앱은 슈퍼유저가 아니라 api_app으로 붙는다.
   # Boot가 슈퍼유저로 연결을 바꿔 끼우지 않도록 이 서비스는 연결 대상에서 뺀다.
   # 비밀번호 없이 받는다(trust). 롤의 권한은 그대로라 api_app은 DML만 한다. 이 머신에서만 붙도록 루프백에만 연다.
   postgres:
@@ -12,13 +12,13 @@ services:
       - "127.0.0.1:15432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../../../infra/database/contentria-v2:/contentria-v2:ro
+      - ../../../infra/database:/database-init:ro
       - ./compose/postgres-init.sh:/docker-entrypoint-initdb.d/postgres-init.sh:ro
     labels:
       org.springframework.boot.ignore: "true"
     healthcheck:
       # 초기화 중의 임시 서버는 소켓으로만 받으므로, TCP로 확인해야 초기화가 끝난 뒤에 통과한다.
-      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-d", "contentria_v2"]
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-d", "contentria"]
       interval: 2s
       retries: 30
 

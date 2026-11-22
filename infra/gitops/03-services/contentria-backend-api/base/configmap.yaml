@@ -1,4 +1,4 @@
-# 환경과 무관한 값. 환경별 값은 overlays/<env>/configmap-patch.yaml에 둔다.
+# 환경과 무관한 기본 설정. 환경별 주소·버킷은 overlays/<env>/configmap-patch.yaml에 둔다.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,9 +7,15 @@ metadata:
     app: contentria-backend-api
 data:
   TZ: "Asia/Seoul"
-  COOKIE_SECURE: "true"
-
-  DATABASE_URL: "jdbc:postgresql://postgres-rw.database.svc.cluster.local:5432/contentria?currentSchema=contentria"
-  MAILGUN_HOST: "smtp.mailgun.org"
-  MAILGUN_PORT: "587"
-  MAILGUN_DOMAIN: "contentria.com"
+  DATABASE_URL: "jdbc:postgresql://postgres-rw.database.svc.cluster.local:5432/contentria"
+  DATABASE_USERNAME: "api_app"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  MEMBER_COOKIE_SECURE: "true"
+  MEMBER_RECAPTCHA_MODE: "google"
+  MEMBER_RECAPTCHA_MINIMUM_SCORE: "0.5"
+  MEMBER_MAIL_MODE: "smtp"
+  MEMBER_MAIL_FROM: "no-reply@contentria.com"
+  SPRING_MAIL_HOST: "smtp.mailgun.org"
+  SPRING_MAIL_PORT: "587"
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+  SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"

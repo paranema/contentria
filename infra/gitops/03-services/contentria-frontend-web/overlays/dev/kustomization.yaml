@@ -4,15 +4,15 @@ kind: Kustomization
 resources:
   - ../../base
 
-namespace: blog
+namespace: contentria
 
 patches:
   - path: configmap-patch.yaml
   - path: httproute-patch.yaml
 
 images:
-  - name: contentria/contentria-frontend
-    newTag: "1.0"
+  - name: ghcr.io/paranema/contentria-frontend
+    newTag: latest
 
 replicas:
   - name: contentria-frontend-web

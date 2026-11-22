@@ -1,4 +1,4 @@
-# 03-services/*/overlays/dev 폴더마다 Application을 하나씩 만든다.
+# 03-services/*/overlays/dev 폴더마다(선행 실행된 migrator 제외) Application을 하나씩 만든다.
 # 앱 이름은 서비스 폴더명이다 (예: contentria-backend-api).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -12,22 +12,24 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: https://github.com/seung7642/contentria.git
+        repoURL: https://github.com/paranema/contentria.git
         revision: main
         directories:
           - path: infra/gitops/03-services/*/overlays/dev
+          - path: infra/gitops/03-services/contentria-backend-migrator/overlays/dev
+            exclude: true
   template:
     metadata:
       name: '{{ index .path.segments 3 }}'
     spec:
       project: default
       source:
-        repoURL: https://github.com/seung7642/contentria.git
+        repoURL: https://github.com/paranema/contentria.git
         targetRevision: main
         path: '{{ .path.path }}'
       destination:
         server: https://kubernetes.default.svc
-        namespace: blog
+        namespace: contentria
       syncPolicy:
         automated:
           prune: true

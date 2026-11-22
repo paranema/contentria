@@ -12,10 +12,9 @@ spring:
   application:
     name: contentria-api
 
-  # The new structure's database, not the legacy `contentria` one (docs/architecture/04-database-structure.md).
-  # api_app has DML on the context schemas and no DDL; apps/migrator applies the schema.
+  # api_app has DML on the context schemas and no DDL; apps/migrator applies the schema (docs/architecture/04-database-structure.md).
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria}
     username: ${DATABASE_USERNAME:api_app}
     password: ${DATABASE_PASSWORD}
 

@@ -3,4 +3,5 @@ kind: ConfigMap
 metadata:
   name: contentria-backend-batch
 data:
-  SPRING_PROFILES_ACTIVE: "dev"
+  MEDIA_PUBLIC_BASE_URL: "https://images-dev.contentria.com"
+  R2_BUCKET_NAME: "contentria-media-dev"

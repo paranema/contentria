@@ -7,7 +7,7 @@ spring:
 
   # worker_app has DML on the media schema only, and no DDL.
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria_v2}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/contentria}
     username: ${DATABASE_USERNAME:worker_app}
     password: ${DATABASE_PASSWORD}
     # One job at a time: the pool only needs a couple of connections.

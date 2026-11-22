@@ -39,7 +39,7 @@ class Migrator(
             .dataSource(databaseUrl, credentials.username, credentials.password)
             .schemas(context.schema)
             .defaultSchema(context.schema)
-            // 스키마와 그 소유자는 미리 만들어 둔다(infra/database/contentria-v2).
+            // 스키마와 그 소유자는 미리 만들어 둔다(infra/database).
             // 스키마를 만들 수 있는 마이그레이션 롤이라면 다른 컨텍스트의 스키마도 만들 수 있다.
             .createSchemas(false)
             .locations(context.location)

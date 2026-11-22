@@ -1,0 +1,52 @@
+# 컨텍스트별 Flyway 마이그레이션 일회성 Job.
+# 이미지 태그 변경 시 기존 완료 Job은 템플릿 불변 제약이 있으므로 교체(Force, Replace) 옵션을 지정한다.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: contentria-backend-migrator
+  labels:
+    app: contentria-backend-migrator
+  annotations:
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app: contentria-backend-migrator
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: contentria-backend-migrator
+          image: ghcr.io/paranema/contentria-migrator
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: contentria-backend-migrator
+            - secretRef:
+                name: contentria-backend-migrator
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

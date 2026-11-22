@@ -1,0 +1,54 @@
+# Cloudflare Queues에서 영상 업로드 알림을 가져와 FFmpeg로 HLS 변환 후 R2에 올리는 상주 워커
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentria-backend-worker
+  labels:
+    app: contentria-backend-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contentria-backend-worker
+  template:
+    metadata:
+      labels:
+        app: contentria-backend-worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: contentria-backend-worker
+          image: ghcr.io/paranema/contentria-worker
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: contentria-backend-worker
+            - secretRef:
+                name: contentria-backend-worker
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+              ephemeral-storage: "2Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+              ephemeral-storage: "10Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      # 원본 영상 다운로드 및 HLS 세그먼트 변환 결과물을 임시 디렉터리에 기록한다.
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: "10Gi"

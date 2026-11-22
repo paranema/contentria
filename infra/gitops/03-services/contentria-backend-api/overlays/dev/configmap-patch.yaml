@@ -3,7 +3,10 @@ kind: ConfigMap
 metadata:
   name: contentria-backend-api
 data:
-  SPRING_PROFILES_ACTIVE: "dev"
-  APP_CORS_ALLOWED_ORIGINS: "https://dev.contentria.com"
-  APP_AUTH_OIDC_SUCCESS_REDIRECT_URL: "https://dev.contentria.com/login/callback"
-  APP_AUTH_RECAPTCHA_EXPECTED_HOSTNAME: "dev.contentria.com"
+  GOOGLE_REDIRECT_URI: "https://dev.contentria.com/api/login/oauth2/code/{registrationId}"
+  MEMBER_PASSWORD_LINK_URL: "https://dev.contentria.com/password"
+  MEMBER_SOCIAL_LOGIN_SUCCESS_URL: "https://dev.contentria.com/login/callback"
+  MEMBER_SOCIAL_LOGIN_FAILURE_URL: "https://dev.contentria.com/login"
+  MEMBER_SOCIAL_LINK_RESULT_URL: "https://dev.contentria.com/dashboard/settings"
+  MEDIA_PUBLIC_BASE_URL: "https://images-dev.contentria.com"
+  R2_BUCKET_NAME: "contentria-media-dev"

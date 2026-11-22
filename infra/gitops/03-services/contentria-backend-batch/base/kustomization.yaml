@@ -3,5 +3,6 @@ kind: Kustomization
 
 resources:
   - configmap.yaml
-  - daily-statistics-cronjob.yaml
-  - refresh-token-cleanup-cronjob.yaml
+  - analytics-daily-statistics-cronjob.yaml
+  - media-image-cleanup-cronjob.yaml
+  - media-video-cleanup-cronjob.yaml

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentria-backend-migrator
+  labels:
+    app: contentria-backend-migrator
+data:
+  TZ: "Asia/Seoul"
+  MIGRATION_DATABASE_URL: "jdbc:postgresql://postgres-rw.database.svc.cluster.local:5432/contentria"
+  MEMBER_MIGRATOR_USERNAME: "member_migrator"
+  PUBLISHING_MIGRATOR_USERNAME: "publishing_migrator"
+  INTERACTION_MIGRATOR_USERNAME: "interaction_migrator"
+  NOTIFICATION_MIGRATOR_USERNAME: "notification_migrator"
+  MEDIA_MIGRATOR_USERNAME: "media_migrator"
+  ANALYTICS_MIGRATOR_USERNAME: "analytics_migrator"

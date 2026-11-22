@@ -14,9 +14,13 @@ spec:
       labels:
         app: contentria-backend-api
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
       containers:
         - name: contentria-backend-api
-          image: contentria/contentria-api # 태그는 환경별 overlay에서 지정한다.
+          image: ghcr.io/paranema/contentria-api
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -25,7 +29,7 @@ spec:
             - configMapRef:
                 name: contentria-backend-api
             - secretRef:
-                name: contentria-backend-api # infra/secrets로 수동 적용
+                name: contentria-backend-api
           resources:
             requests:
               cpu: "500m"
@@ -33,15 +37,27 @@ spec:
             limits:
               cpu: "1000m"
               memory: "1Gi"
+          # 현재 백엔드에는 별도 HTTP 헬스 엔드포인트가 없으므로 소켓 바인딩으로 기동 상태를 확인한다.
           readinessProbe:
-            httpGet:
-              path: /actuator/health/readiness
+            tcpSocket:
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10
           livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
+            tcpSocket:
               port: http
             initialDelaySeconds: 30
             periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
