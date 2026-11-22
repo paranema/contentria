@@ -3,6 +3,7 @@ SHELL := /bin/bash
 
 # --- 기본 변수 정의 ---
 ENV ?= dev
+PLATFORM ?= aws
 AWS_PROFILE ?= contentria
 TF_AWS_DIR := terraform/aws
 ANSIBLE_DIR := ansible
@@ -20,11 +21,11 @@ RESET := \033[0m
 
 .PHONY: help \
 	tf-init tf-fmt tf-validate tf-test tf-workspace tf-plan tf-apply tf-destroy tf-output tf-inventory \
-	ansible-ee ansible-verify ansible-prepare ansible-cluster ansible-argocd ansible-gitops ansible-all
+	_check-ansible-inventory ansible-ee ansible-verify ansible-prepare ansible-cluster ansible-argocd ansible-gitops ansible-all
 
 help: ## 사용 가능한 명령어 목록을 표시합니다
 	@echo -e "$(GREEN)Contentria 인프라 자동화 도구 (Terraform & Ansible)$(RESET)"
-	@echo -e "기본 환경(ENV): $(CYAN)$(ENV)$(RESET) (변경 시: make <명령어> ENV=dev)\n"
+	@echo -e "기본 환경(ENV): $(CYAN)$(ENV)$(RESET), 대상 플랫폼(PLATFORM): $(CYAN)$(PLATFORM)$(RESET) (aws | bare-metal)\n"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-20s$(RESET) %s\n", $$1, $$2}'
 
 # ==============================================================================
@@ -90,34 +91,48 @@ ansible-verify: ## Ansible 인벤토리 및 플레이북 구문 검증 테스트
 		contentria-ansible:ks2.31.0-1 \
 		/usr/bin/python3.11 tests/verify.py
 
-ansible-prepare: ## 1단계: OS 베이스 설정 및 전제 패키지 준비
+_check-ansible-inventory:
+	@if [ "$(PLATFORM)" != "aws" ] && [ "$(PLATFORM)" != "bare-metal" ]; then \
+		echo -e "오류: PLATFORM은 'aws' 또는 'bare-metal'이어야 합니다. (입력값: '$(PLATFORM)')"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(ANSIBLE_DIR)/inventories/$(PLATFORM)/hosts.yml" ]; then \
+		echo -e "오류: 인벤토리 파일 '$(ANSIBLE_DIR)/inventories/$(PLATFORM)/hosts.yml'이 존재하지 않습니다."; \
+		exit 1; \
+	fi
+	@if [ "$(PLATFORM)" = "bare-metal" ] && [ ! -f "$(ANSIBLE_DIR)/inventories/bare-metal/group_vars/all/local.yml" ]; then \
+		echo -e "오류: 베어메탈 VIP 설정 파일 '$(ANSIBLE_DIR)/inventories/bare-metal/group_vars/all/local.yml'이 존재하지 않습니다."; \
+		exit 1; \
+	fi
+
+ansible-prepare: _check-ansible-inventory ## 1단계: OS 베이스 설정 및 전제 패키지 준비 (예: PLATFORM=bare-metal)
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/10-prepare.yml \
-		-i inventories/common.yml -i inventories/aws/hosts.yml \
+		-i inventories/common.yml -i inventories/$(PLATFORM)/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 
-ansible-cluster: ## 2단계: Kubespray 기반 Kubernetes 클러스터 구축
+ansible-cluster: _check-ansible-inventory ## 2단계: Kubespray 기반 Kubernetes 클러스터 구축
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/20-cluster.yml \
-		-i inventories/common.yml -i inventories/aws/hosts.yml \
+		-i inventories/common.yml -i inventories/$(PLATFORM)/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 
-ansible-argocd: ## 3단계: Argo CD 설치 및 초기 설정
+ansible-argocd: _check-ansible-inventory ## 3단계: Argo CD 설치 및 초기 설정
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/30-argocd.yml \
-		-i inventories/common.yml -i inventories/aws/hosts.yml \
+		-i inventories/common.yml -i inventories/$(PLATFORM)/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
 
-ansible-gitops: ## 4단계: GitOps Root Application 등록 및 배포
+ansible-gitops: _check-ansible-inventory ## 4단계: GitOps Root Application 등록 및 배포
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/40-gitops.yml \
-		-i inventories/common.yml -i inventories/aws/hosts.yml \
+		-i inventories/common.yml -i inventories/$(PLATFORM)/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
