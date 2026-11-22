@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 # --- 기본 변수 정의 ---
 ENV ?= dev
-AWS_PROFILE ?= contentria-test
+AWS_PROFILE ?= contentria
 TF_AWS_DIR := terraform/aws
 ANSIBLE_DIR := ansible
 SSH_DIR ?= $(HOME)/.ssh/contentria

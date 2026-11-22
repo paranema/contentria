@@ -1,0 +1,6 @@
+[tools]
+terraform = "1.17"
+awscli = "2"
+
+[env]
+AWS_PROFILE = "contentria"

@@ -57,3 +57,26 @@
         - item.metadata.name in groups['kube_node']
         - item.spec.taints | default([]) | selectattr('key', 'equalto', 'node-role.kubernetes.io/control-plane') | selectattr('effect', 'equalto', 'NoSchedule') | list | length > 0
       changed_when: true
+
+- name: 접속 계정에서 바로 kubectl을 사용할 수 있게 구성한다
+  hosts: kube_control_plane
+  become: true
+  gather_facts: false
+  tasks:
+    - name: 접속 계정의 kubeconfig 디렉터리를 준비한다
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+      when: ansible_user != 'root'
+    - name: 접속 계정에 관리자 kubeconfig를 배치한다
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+      when: ansible_user != 'root'

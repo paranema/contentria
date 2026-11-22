@@ -31,8 +31,8 @@ Terraform을 사용하여 AWS 상에 Rocky Linux 10 기반의 Kubernetes 테스�
 
 ```bash
 # 1. AWS CLI 로컬 프로필 구성
-aws configure --profile contentria-test
-export AWS_PROFILE=contentria-test
+aws configure --profile contentria
+export AWS_PROFILE=contentria
 
 # 2. 인증 및 권한 확인
 aws sts get-caller-identity

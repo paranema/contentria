@@ -58,8 +58,8 @@ make -C infra ansible-ee
 
 | 단계        | 플레이북         | 작업 내용                                                                                           |
 | ----------- | ---------------- | --------------------------------------------------------------------------------------------------- |
-| 1. OS 준비  | `10-prepare.yml` | Python 실행 기반, 필수 패키지, 현재 커널의 `kernel-modules-extra`, UTC 시간대, `firewalld` 비활성화 |
-| 2. 클러스터 | `20-cluster.yml` | 인벤토리 사전 검증, Kubespray 클러스터 설치, 겸용 노드의 `NoSchedule` taint 제거                    |
+| 1. OS 준비  | `10-prepare.yml` | Python 실행 기반, 필수 패키지 및 `bash-completion`, 현재 커널의 `kernel-modules-extra`, UTC 시간대, `firewalld` 비활성화 |
+| 2. 클러스터 | `20-cluster.yml` | 인벤토리 사전 검증, Kubespray 클러스터 설치(`k` 별칭 포함), 겸용 노드의 `NoSchedule` taint 제거, 접속 계정 kubeconfig 배치 |
 | 3. Argo CD  | `30-argocd.yml`  | Helm 기반 Argo CD 설치, Application health check, Envoy OCI 저장소 설정                             |
 | 4. GitOps   | `40-gitops.yml`  | 필수 시크릿 존재 여부 확인 후 Root Application 등록                                                 |
 
