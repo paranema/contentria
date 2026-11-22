@@ -56,7 +56,7 @@ flowchart LR
 | 변수             | 기본값                           | 설명                                                                       |
 | ---------------- | -------------------------------- | -------------------------------------------------------------------------- |
 | `ENV`            | `dev`                            | 대상 Terraform Workspace 및 변수 파일(`terraform.<ENV>.tfvars`) 환경       |
-| `AWS_PROFILE`    | `contentria-test`                | Terraform 실행에 사용할 로컬 AWS CLI 프로필                                |
+| `AWS_PROFILE`    | `contentria`                     | Terraform 실행에 사용할 로컬 AWS CLI 프로필                                |
 | `SSH_DIR`        | `~/.ssh/contentria`              | Ansible 컨테이너에 마운트할 SSH 개인키(`id_ed25519`) 및 `known_hosts` 경로 |
 | `RUNNER_TMP_DIR` | `~/.cache/ansible-navigator/tmp` | `ansible-navigator` 실행 시 호스트와 컨테이너가 공유할 임시 디렉터리       |
 

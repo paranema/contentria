@@ -21,6 +21,7 @@ all:
     loadbalancer_apiserver_localhost: true
     kubeconfig_localhost: false
     kubectl_localhost: false
+    kubectl_alias: k
     # 워크로드가 노드 자원을 모두 사용하지 않도록 kubelet에서 예약한다.
     kube_reserved: true
     kube_memory_reserved: 256Mi
