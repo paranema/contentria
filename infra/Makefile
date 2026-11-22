@@ -19,7 +19,7 @@ GREEN := \033[32m
 RESET := \033[0m
 
 .PHONY: help \
-	tf-init tf-fmt tf-validate tf-test tf-workspace tf-plan tf-apply tf-destroy tf-inventory \
+	tf-init tf-fmt tf-validate tf-test tf-workspace tf-plan tf-apply tf-destroy tf-output tf-inventory \
 	ansible-ee ansible-verify ansible-prepare ansible-cluster ansible-argocd ansible-gitops ansible-all
 
 help: ## 사용 가능한 명령어 목록을 표시합니다
@@ -69,9 +69,12 @@ tf-destroy: tf-workspace ## 지정된 환경의 인프라 리소스를 삭제합
 	fi
 	AWS_PROFILE=$(AWS_PROFILE) terraform -chdir=$(TF_AWS_DIR) destroy -var-file=$(VAR_FILE)
 
-tf-inventory: ## Terraform 배포 결과에서 Ansible hosts.yml 인벤토리를 생성합니다
-	@echo -e "인벤토리 추출: $(CYAN)$(ANSIBLE_DIR)/inventories/cloud-test/hosts.yml$(RESET)"
-	@terraform -chdir=$(TF_AWS_DIR) output -raw ansible_inventory > $(ANSIBLE_DIR)/inventories/cloud-test/hosts.yml
+tf-output: tf-workspace ## 배포된 노드 접속 정보(공인/사설 IP 등)를 출력합니다
+	terraform -chdir=$(TF_AWS_DIR) output nodes
+
+tf-inventory: tf-workspace ## Terraform 배포 결과에서 Ansible hosts.yml 인벤토리를 생성합니다
+	@echo -e "인벤토리 추출: $(CYAN)$(ANSIBLE_DIR)/inventories/aws/hosts.yml$(RESET)"
+	@terraform -chdir=$(TF_AWS_DIR) output -raw ansible_inventory > $(ANSIBLE_DIR)/inventories/aws/hosts.yml
 
 # ==============================================================================
 # Ansible (Kubespray & Playbooks)
@@ -90,7 +93,7 @@ ansible-verify: ## Ansible 인벤토리 및 플레이북 구문 검증 테스트
 ansible-prepare: ## 1단계: OS 베이스 설정 및 전제 패키지 준비
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/10-prepare.yml \
-		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
+		-i inventories/common.yml -i inventories/aws/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
@@ -98,7 +101,7 @@ ansible-prepare: ## 1단계: OS 베이스 설정 및 전제 패키지 준비
 ansible-cluster: ## 2단계: Kubespray 기반 Kubernetes 클러스터 구축
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/20-cluster.yml \
-		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
+		-i inventories/common.yml -i inventories/aws/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
@@ -106,7 +109,7 @@ ansible-cluster: ## 2단계: Kubespray 기반 Kubernetes 클러스터 구축
 ansible-argocd: ## 3단계: Argo CD 설치 및 초기 설정
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/30-argocd.yml \
-		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
+		-i inventories/common.yml -i inventories/aws/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'
@@ -114,7 +117,7 @@ ansible-argocd: ## 3단계: Argo CD 설치 및 초기 설정
 ansible-gitops: ## 4단계: GitOps Root Application 등록 및 배포
 	@mkdir -p "$(RUNNER_TMP_DIR)"
 	cd $(ANSIBLE_DIR) && TMPDIR="$(RUNNER_TMP_DIR)" ansible-navigator run playbooks/40-gitops.yml \
-		-i inventories/common.yml -i inventories/cloud-test/hosts.yml \
+		-i inventories/common.yml -i inventories/aws/hosts.yml \
 		--eev "$(SSH_DIR):/run/contentria-ssh:ro" \
 		--private-key /run/contentria-ssh/id_ed25519 \
 		--ssh-common-args='-o UserKnownHostsFile=/run/contentria-ssh/known_hosts'

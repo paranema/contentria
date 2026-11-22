@@ -7,13 +7,13 @@
     - name: 환경과 노드 역할을 확인한다
       ansible.builtin.assert:
         that:
-          - cluster_environment in ['home', 'cloud-test']
+          - cluster_environment in ['bare-metal', 'aws']
           - groups.get('kube_control_plane', []) | length > 0
           - groups.get('etcd', []) | length in [1, 3, 5]
           - groups['etcd'] | difference(groups['kube_control_plane']) | length == 0
           - groups['kube_control_plane'] | difference(groups['kube_node']) | length == 0
-          - cluster_environment != 'cloud-test' or not (kube_vip_enabled | bool)
-    - name: 홈 네트워크의 VIP 설정을 확인한다
+          - cluster_environment != 'aws' or not (kube_vip_enabled | bool)
+    - name: 베어메탈 네트워크의 VIP 설정을 확인한다
       ansible.builtin.assert:
         that:
           - kube_vip_address | default('') | length > 0
