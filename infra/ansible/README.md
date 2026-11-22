@@ -65,15 +65,21 @@ make -C infra ansible-ee
 
 ### 클러스터 구축
 
-AWS 테스트 환경은 `infra/Makefile` 단축 명령어로 1~2단계를 순서대로 실행합니다.
+`infra/Makefile` 단축 명령어로 1~2단계를 순서대로 실행합니다. 기본 대상은 `PLATFORM=aws`이며, 베어메탈 환경은 `PLATFORM=bare-metal`을 지정합니다.
 
 ```bash
 cd infra
+
+# AWS 환경 (기본값 PLATFORM=aws)
 make ansible-prepare
 make ansible-cluster
+
+# 베어메탈 환경
+make ansible-prepare PLATFORM=bare-metal
+make ansible-cluster PLATFORM=bare-metal
 ```
 
-베어메탈 환경 또는 `ansible-navigator`를 직접 실행할 때는 `infra/ansible` 디렉터리에서 대상 인벤토리를 지정합니다. `--private-key`와 `known_hosts`는 컨테이너 내부 마운트 경로 기준이며, `sudo` 비밀번호가 필요한 환경에서는 `--ask-become-pass`를 추가합니다.
+`ansible-navigator`를 직접 실행할 때는 `infra/ansible` 디렉터리에서 대상 인벤토리를 지정합니다. `--private-key`와 `known_hosts`는 컨테이너 내부 마운트 경로 기준이며, `sudo` 비밀번호가 필요한 환경에서는 `--ask-become-pass`를 추가합니다.
 
 ```bash
 ansible-navigator run playbooks/10-prepare.yml \
@@ -90,7 +96,11 @@ Rocky 10 클라우드 이미지에서 실행 중인 커널과 일치하는 `kern
 클러스터 구축이 완료되면 첫 번째 Control Plane 노드의 `/etc/kubernetes/admin.conf`를 이용해 Argo CD를 설치합니다. 관리자 kubeconfig를 로컬이나 컨테이너로 복사하지 않으며, 서비스 타입은 `ClusterIP`이므로 SSH 터널이나 `kubectl port-forward`로 접근합니다.
 
 ```bash
+# AWS 환경
 make -C infra ansible-argocd
+
+# 베어메탈 환경
+make -C infra ansible-argocd PLATFORM=bare-metal
 ```
 
 ### GitOps 부트스트랩
@@ -105,7 +115,7 @@ make -C infra ansible-argocd
 사전 조건이 충족되면 4단계를 실행하고 Argo CD에서 하위 Application 동기화 상태를 확인합니다.
 
 ```bash
-make -C infra ansible-gitops
+make -C infra ansible-gitops PLATFORM=bare-metal # AWS는 PLATFORM 생략 가능
 ```
 
 ## 검증
