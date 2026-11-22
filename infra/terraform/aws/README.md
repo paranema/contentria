@@ -17,20 +17,6 @@ Terraform을 사용하여 AWS 상에 Rocky Linux 10 기반의 Kubernetes 테스�
 > [!NOTE]
 > NAT Gateway, EIP 및 로드밸런서는 프로비저닝하지 않습니다. 외부 접근은 보안 그룹에 등록된 관리자 IP로만 제한되며, 노드 간 통신은 사설 IP 대역을 통해 이루어집니다.
 
-### 파이프라인 워크플로
-
-인프라 구축 파이프라인에서 Terraform의 책임 범위는 **가상 인프라(VM 및 네트워크) 프로비저닝과 인벤토리 파일 생성**까지입니다.
-
-```mermaid
-flowchart LR
-    tf["Terraform"] -->|1. VM 및 네트워크 프로비저닝| aws["AWS EC2 / VPC"]
-    tf -->|2. inventory.yaml 추출| inv["Ansible 인벤토리"]
-    inv -->|3. 클러스터 설치 실행| ans["Ansible / Kubespray"]
-    ans -->|4. Kubernetes 구성 완료| k8s["K8s 클러스터"]
-```
-
-Terraform 배포가 완료되면 노드 IP 정보를 담은 `inventory.yaml`을 추출하여 후속 도구인 Ansible(Kubespray)로 전달합니다. 이후 OS 설정, Kubernetes 클러스터 설치, CNI 구성 및 Argo CD 배포는 Ansible이 담당합니다.
-
 ## 사전 준비
 
 ### 도구 요구사항
