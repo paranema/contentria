@@ -1,0 +1,9 @@
+# 현재 단일 노드 홈 서버(node-01) 구성에 맞춰 인스턴스를 1개로 두고, 영구 스토리지(20Gi)를 유지한다.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+spec:
+  instances: 1
+  storage:
+    size: 20Gi

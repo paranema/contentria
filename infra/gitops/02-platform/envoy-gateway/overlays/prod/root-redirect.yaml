@@ -1,0 +1,23 @@
+# 루트 도메인(https://contentria.com) 접속을 대표 도메인(https://www.contentria.com)으로 301 리다이렉트한다.
+# http://contentria.com 요청은 base의 https-redirect를 거쳐 https://contentria.com으로 이동한 뒤 처리되며,
+# HTTP-01 인증서 챌린지 경로(/.well-known/acme-challenge/...)는 cert-manager 규칙이 우선 매칭된다.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: root-redirect
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  parentRefs:
+    - name: public
+      sectionName: https-root
+  hostnames:
+    - contentria.com
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: www.contentria.com
+            statusCode: 301

@@ -1,0 +1,19 @@
+# 기본 https 리스너(listeners[1])에 대표 도메인(www)을 지정하고,
+# 루트 도메인(contentria.com) 리스너를 추가해 리다이렉트 전에도 유효한 TLS 인증서를 제공한다.
+- op: add
+  path: /spec/listeners/1/hostname
+  value: www.contentria.com
+- op: add
+  path: /spec/listeners/-
+  value:
+    name: https-root
+    hostname: contentria.com
+    protocol: HTTPS
+    port: 443
+    tls:
+      mode: Terminate
+      certificateRefs:
+        - name: contentria-root-tls
+    allowedRoutes:
+      namespaces:
+        from: Same

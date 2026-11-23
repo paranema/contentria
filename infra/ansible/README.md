@@ -105,10 +105,10 @@ make -C infra ansible-argocd PLATFORM=bare-metal
 
 ### GitOps 부트스트랩
 
-`40-gitops.yml`은 실행 즉시 `dev` 환경 매니페스트의 자동 동기화를 시작합니다. 실행 전 아래 항목을 먼저 준비합니다.
+`40-gitops.yml`은 플랫폼에 매핑된 환경(`aws` → `dev`, `bare-metal` → `prod`)의 매니페스트 자동 동기화를 즉시 시작합니다. 실행 전 아래 항목을 먼저 준비합니다.
 
 1. [Secrets 가이드](../secrets/README.md)에 따라 필수 시크릿을 클러스터에 적용합니다. 플레이북은 시크릿 값은 읽지 않고 이름 존재 여부만 확인하며, 누락 시 적용 전에 중단합니다.
-2. PostgreSQL PVC가 사용할 기본 StorageClass(또는 명시적 StorageClass)를 준비합니다. 본 플레이북은 스토리지 드라이버를 설치하지 않습니다.
+2. PostgreSQL 및 Kafka PVC가 사용할 기본 StorageClass(또는 명시적 StorageClass)를 준비합니다. 본 플레이북은 스토리지 드라이버를 설치하지 않습니다.
 3. Envoy Gateway의 `LoadBalancer` Service에 외부 IP를 할당할 구성을 준비합니다.
 4. 사용할 도메인, 포트 전달, 인증서 발급 경로를 확인합니다.
 

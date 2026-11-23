@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentria-backend-worker
+data:
+  MEDIA_PUBLIC_BASE_URL: "https://images.contentria.com"
+  R2_BUCKET_NAME: "contentria-media"

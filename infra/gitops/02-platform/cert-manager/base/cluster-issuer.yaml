@@ -8,8 +8,8 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   acme:
-    # 인증서 만료 안내를 받을 주소. 실제 주소로 바꾼다.
-    email: "your-email@contentria.com"
+    # 인증서 및 계정 관련 안내를 받을 주소
+    email: "help@contentria.com"
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: letsencrypt-account-key

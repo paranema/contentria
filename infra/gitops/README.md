@@ -79,11 +79,18 @@ flowchart TD
 | Helm        | `values.yaml` | `values-<env>.yaml`                         |
 | Application | -             | `01-bootstrap/<env>/`                       |
 
-### 환경 추가
+### 환경 구성
 
-`prod` 등 신규 환경을 추가할 때는 아래 순서를 따릅니다.
+저장소에는 테스트용 `dev` 환경과 실서비스용 `prod` 환경이 구성되어 있습니다.
 
-1. `01-bootstrap/dev/`를 복사해 `01-bootstrap/prod/`를 만들고 내부 참조 경로를 `prod`로 변경합니다.
-2. 각 플랫폼 컴포넌트에 `values-prod.yaml`과 필요한 `overlays/prod/`를 추가합니다.
-3. 각 서비스 디렉터리에 `overlays/prod/`를 추가해 이미지 태그와 도메인을 지정합니다.
-4. 대상 클러스터의 Root Application 경로를 `01-bootstrap/prod`로 지정합니다.
+| 환경   | 진입점               | 대상 플랫폼          | 웹 도메인                                              | 미디어 도메인 / 버킷                              |
+| ------ | -------------------- | -------------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| `dev`  | `01-bootstrap/dev/`  | AWS (`aws`)          | `dev.contentria.com`                                   | `images-dev.contentria.com` (`contentria-media-dev`) |
+| `prod` | `01-bootstrap/prod/` | 홈 서버 (`bare-metal`) | `www.contentria.com` (`contentria.com` → `www` 301 이동) | `images.contentria.com` (`contentria-media`)      |
+
+신규 환경을 추가로 구성할 때는 아래 순서를 따릅니다.
+
+1. `01-bootstrap/dev/`를 복사해 `01-bootstrap/<env>/`를 만들고 내부 참조 경로를 `<env>`로 변경합니다.
+2. 각 플랫폼 컴포넌트에 `values-<env>.yaml`과 필요한 `overlays/<env>/`를 추가합니다.
+3. 각 서비스 디렉터리에 `overlays/<env>/`를 추가해 이미지 태그와 도메인을 지정합니다.
+4. 대상 인벤토리의 `gitops_env` 변수와 `roles/gitops_root/tasks/main.yml`의 허용 목록에 `<env>`를 반영합니다.

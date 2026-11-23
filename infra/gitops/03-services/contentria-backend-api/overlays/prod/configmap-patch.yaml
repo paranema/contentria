@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentria-backend-api
+data:
+  GOOGLE_REDIRECT_URI: "https://www.contentria.com/api/login/oauth2/code/{registrationId}"
+  MEMBER_PASSWORD_LINK_URL: "https://www.contentria.com/password"
+  MEMBER_SOCIAL_LOGIN_SUCCESS_URL: "https://www.contentria.com/login/callback"
+  MEMBER_SOCIAL_LOGIN_FAILURE_URL: "https://www.contentria.com/login"
+  MEMBER_SOCIAL_LINK_RESULT_URL: "https://www.contentria.com/dashboard/settings"
+  MEDIA_PUBLIC_BASE_URL: "https://images.contentria.com"
+  R2_BUCKET_NAME: "contentria-media"
