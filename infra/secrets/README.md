@@ -4,7 +4,7 @@
 
 ## 개요
 
-`README.md`와 `example/` 디렉터리만 Git 추적 대상이며, 실제 보안값이 입력된 환경별 디렉터리(`dev/` 등)는 루트 `.gitignore`로 제외합니다.
+`README.md`와 `example/` 디렉터리만 Git 추적 대상이며, 실제 보안값이 입력된 환경별 디렉터리(`dev/`, `prod/` 등)는 루트 `.gitignore`로 제외합니다.
 
 ```text
 infra/secrets/
@@ -15,7 +15,8 @@ infra/secrets/
 │   ├── contentria-backend-api.yaml
 │   ├── contentria-backend-batch.yaml
 │   └── contentria-backend-worker.yaml
-└── dev/                                      # 실제 값이 입력된 매니페스트 (Git 제외)
+├── dev/                                      # 개발·테스트 환경 시크릿 (Git 제외)
+└── prod/                                     # 운영 환경 시크릿 (Git 제외)
 ```
 
 ## 시크릿 구성
@@ -44,14 +45,14 @@ infra/secrets/
 
 ## 적용 절차
 
-1. `example/` 템플릿을 대상 환경 디렉터리로 복사하고 실제 값을 채웁니다. 각 애플리케이션 환경 변수의 상세 의미는 `backend/apps/<앱>/.env.sample`을 참고합니다.
+1. `example/` 템플릿을 대상 환경 디렉터리(`dev` 또는 `prod`)로 복사하고 실제 값을 채웁니다. 각 애플리케이션 환경 변수의 상세 의미는 `backend/apps/<앱>/.env.sample`을 참고합니다.
    ```bash
-   mkdir -p infra/secrets/dev
-   cp infra/secrets/example/*.yaml infra/secrets/dev/
+   mkdir -p infra/secrets/prod
+   cp infra/secrets/example/*.yaml infra/secrets/prod/
    ```
 2. GitOps 부트스트랩 전에 클러스터에 시크릿을 적용합니다. 각 파일 상단에 `Namespace` 리소스가 포함되어 있어 네임스페이스가 함께 생성됩니다.
    ```bash
-   kubectl apply -f infra/secrets/dev/
+   kubectl apply -f infra/secrets/prod/
    ```
 3. `make -C infra ansible-gitops` 실행 시 Ansible이 `required_secrets` 목록 전체의 존재 여부를 검증한 뒤 Root Application을 등록합니다.
 

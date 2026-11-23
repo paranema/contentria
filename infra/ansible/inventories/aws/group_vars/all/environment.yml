@@ -1,5 +1,6 @@
 ---
 cluster_environment: aws
+gitops_env: dev
 # AWS VPC에서는 LAN의 ARP VIP를 사용하지 않는다.
 kube_vip_enabled: false
 loadbalancer_apiserver_localhost: true

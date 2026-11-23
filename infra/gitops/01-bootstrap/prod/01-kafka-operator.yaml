@@ -1,0 +1,38 @@
+# Strimzi Kafka operator
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://strimzi.io/charts/
+      chart: strimzi-kafka-operator
+      targetRevision: 1.0.1
+      helm:
+        releaseName: strimzi
+        valueFiles:
+          - $values/infra/gitops/02-platform/kafka/operator/values.yaml
+          - $values/infra/gitops/02-platform/kafka/operator/values-prod.yaml
+    - repoURL: https://github.com/paranema/contentria.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

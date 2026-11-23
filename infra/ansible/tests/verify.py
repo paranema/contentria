@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory() as temporary:
         data = json.loads(run("ansible-inventory", *inventory_args, "--list"))
         variables = data["_meta"]["hostvars"]["node-01"]
         assert variables["kube_vip_enabled"] == (environment == "bare-metal")
+        assert variables["gitops_env"] == ("prod" if environment == "bare-metal" else "dev")
         assert variables["kube_version"] == "1.35.4"
         assert variables["calico_network_backend"] == "vxlan"
         assert variables["helm_enabled"] and not variables["argocd_enabled"]
