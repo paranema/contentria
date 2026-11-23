@@ -1,6 +1,7 @@
 'use client';
 
 import BackButton from '@/shared/components/BackButton';
+import { usePublicConfig } from '@/shared/providers/PublicConfigProvider';
 import { useEffect, useRef, useState } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { Loader2, ShieldCheck } from 'lucide-react';
@@ -21,7 +22,7 @@ export default function RecaptchaV2Step({
   onError,
 }: RecaptchaV2StepProps) {
   const recaptchaV2Ref = useRef<ReCAPTCHA>(null);
-  const siteKeyV2 = process.env.NEXT_PUBLIC_RECAPTCHA_V2_CHECKBOX_SITE_KEY;
+  const { recaptchaV2CheckboxSiteKey: siteKeyV2 } = usePublicConfig();
 
   const [isResetting, setIsResetting] = useState(false);
 

@@ -1,10 +1,9 @@
 'use client';
 
+import { usePublicConfig } from '@/shared/providers/PublicConfigProvider';
 import { useCallback } from 'react';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { RecaptchaAction } from '../recaptcha';
-
-const SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY;
 
 /**
  * A v3 token for [action], or undefined when there is none to give: no site key (local
@@ -12,11 +11,12 @@ const SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY;
  * API asks for the checkbox, so the flow still goes on.
  */
 export function useInvisibleRecaptcha() {
+  const { recaptchaV3SiteKey } = usePublicConfig();
   const { executeRecaptcha } = useGoogleReCaptcha();
   return useCallback(
     async (action: RecaptchaAction): Promise<string | undefined> => {
       // Without a site key RecaptchaWrapper sets up no provider, and the hook's stand-in throws.
-      if (!SITE_KEY || !executeRecaptcha) return undefined;
+      if (!recaptchaV3SiteKey || !executeRecaptcha) return undefined;
       try {
         return await executeRecaptcha(action);
       } catch (error) {
@@ -24,6 +24,6 @@ export function useInvisibleRecaptcha() {
         return undefined;
       }
     },
-    [executeRecaptcha]
+    [recaptchaV3SiteKey, executeRecaptcha]
   );
 }

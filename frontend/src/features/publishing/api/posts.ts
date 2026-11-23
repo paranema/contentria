@@ -1,7 +1,7 @@
 'use server';
 
 import { ActionResult, toActionError } from '@/shared/api/actionResult';
-import { API_BASE_URL } from '@/shared/api/apiBase';
+import { getApiBaseUrl } from '@/shared/api/apiBase';
 import { ApiError } from '@/shared/api/apiError';
 import apiServer from '@/shared/api/apiServer';
 import { revalidatePath } from 'next/cache';
@@ -37,7 +37,9 @@ export const getPublishedPosts = cache(
  */
 export async function getRecentPosts(): Promise<PostPage> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/posts?page=0`, { next: { revalidate: 300 } });
+    const response = await fetch(`${getApiBaseUrl()}/api/posts?page=0`, {
+      next: { revalidate: 300 },
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return (await response.json()) as PostPage;
   } catch (error) {
@@ -67,7 +69,7 @@ export type PublishedPostLookup = { post: PublishedPostView } | { moved: MovedPo
 export const getPublishedPost = cache(
   async (blogSlug: string, postSlug: string): Promise<PublishedPostLookup> => {
     const response = await fetch(
-      `${API_BASE_URL}/api/blogs/${enc(blogSlug)}/posts/${enc(postSlug)}`,
+      `${getApiBaseUrl()}/api/blogs/${enc(blogSlug)}/posts/${enc(postSlug)}`,
       {
         redirect: 'manual',
         cache: 'no-store',

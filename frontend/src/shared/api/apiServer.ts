@@ -1,5 +1,5 @@
 import { PATHS } from '@/shared/constants/paths';
-import { API_BASE_URL } from '@/shared/api/apiBase';
+import { getApiBaseUrl } from '@/shared/api/apiBase';
 import { ApiError } from '@/shared/api/apiError';
 import { relaySessionCookies } from '@/shared/api/sessionCookies';
 import { cookies } from 'next/headers';
@@ -59,7 +59,7 @@ async function fetchExtended<T>(url: string, options: FetchOptions = {}): Promis
     if (sendRefreshToken && refreshToken) headers.set('Cookie', `refreshToken=${refreshToken}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${url}`, { ...rest, headers });
+  const response = await fetch(`${getApiBaseUrl()}${url}`, { ...rest, headers });
 
   // Before anything else: a failed login still clears cookies, a logout answers 204 with them expired.
   if (relay) await relaySessionCookies(response);

@@ -105,22 +105,22 @@ TypeScript 7.0(`@typescript/native`)은 네이티브 컴파일러로 전환되�
 
 ### 환경 변수
 
-로컬 실행 시 `.env.sample`을 `.env.local`로 복사한 뒤 값을 채워 사용합니다.
+모든 설정은 빌드 시점 인라이닝(`NEXT_PUBLIC_*`) 대신 컨테이너 기동 시 주입하는 런타임 환경 변수로 읽습니다. 브라우저에서 필요한 공개 설정(`EXTERNAL_API_BASE_URL`, reCAPTCHA 사이트 키)은 `RootLayout`이 요청 시점에 서버에서 읽어 `PublicConfigProvider`로 전달하므로, 단일 이미지를 환경별 `ConfigMap`만으로 실행할 수 있습니다. 로컬 실행 시에는 `.env.sample`을 `.env.local`로 복사해 값을 채워 사용합니다.
 
-| 환경 변수                                    | 설명                                                                                                                                                                   |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_BASE_URL`                   | Next.js 서버가 호출하는 백엔드 주소입니다. 쿠버네티스 배포 환경에서는 클러스터 내부 서비스 주소를 사용하며, 비워 두면 `http://localhost:8080`이 기본값으로 적용됩니다. |
-| `NEXT_PUBLIC_EXTERNAL_API_BASE_URL`          | 브라우저에서 직접 이동하는 백엔드 공개 주소로, `/api` 경로까지 포함합니다(로컬 예: `http://localhost:8080/api`). Google OAuth 로그인 및 계정 연동 시작 시 사용됩니다.  |
-| `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY`          | Google reCAPTCHA v3 사이트 키입니다.                                                                                                                                   |
-| `NEXT_PUBLIC_RECAPTCHA_V2_CHECKBOX_SITE_KEY` | Google reCAPTCHA v2 체크박스 사이트 키입니다. 로그인 등 인증 과정에서 추가 검증(`403`)이 요구될 때 사용됩니다.                                                         |
-| `NEXT_PUBLIC_CDN_BASE_URL`                   | 이미지·영상을 제공하는 Cloudflare R2 공개 도메인 주소입니다. `next/image`의 허용 호스트 설정에도 사용됩니다.                                                           |
+| 환경 변수                       | 설명                                                                                                                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_BASE_URL`                  | Next.js 서버가 호출하는 백엔드 주소입니다. 쿠버네티스 배포 환경에서는 클러스터 내부 서비스 주소를 사용하며, 비워 두면 `http://localhost:8080`이 기본값으로 적용됩니다. |
+| `EXTERNAL_API_BASE_URL`         | 브라우저에서 직접 이동하는 백엔드 공개 주소로, `/api` 경로까지 포함합니다(로컬 예: `http://localhost:8080/api`). Google OAuth 로그인 및 계정 연동 시작 시 사용됩니다.  |
+| `RECAPTCHA_V3_SITE_KEY`         | Google reCAPTCHA v3 사이트 키입니다.                                                                                                                                   |
+| `RECAPTCHA_V2_CHECKBOX_SITE_KEY` | Google reCAPTCHA v2 체크박스 사이트 키입니다. 로그인 등 인증 과정에서 추가 검증(`403`)이 요구될 때 사용됩니다.                                                         |
+| `CDN_BASE_URL`                  | 선택 항목입니다. 기본 허용 패턴(`**.contentria.com`, `**.r2.dev`) 외에 별도 CDN 도메인을 `next/image` 허용 호스트로 추가할 때 지정합니다.                              |
 
-## 컨테이너 이미지 및 배포
+## 컨테이너 배포
 
-`Dockerfile`은 의존성 설치, 빌드, 런타임 실행 단계를 분리한 멀티 스테이지 빌드로 구성되어 있습니다. Next.js의 `standalone` 빌드 결과물만 이미지에 포함하며, 보안을 위해 non-root 사용자로 `node server.js`(포트 `3000`)를 실행합니다.
+`Dockerfile`은 의존성 설치, 빌드, 런타임 실행 단계를 분리한 멀티 스테이지 빌드로 구성되어 있습니다. 환경과 무관한 Next.js `standalone` 결과물만 이미지에 포함하며, 보안을 위해 non-root 사용자(`1001:1001`)로 `node server.js`(포트 `3000`)를 실행합니다.
 
 ```bash
-docker build -t contentria/contentria-frontend:<태그> .
+docker build -t ghcr.io/paranema/contentria-frontend:<태그> .
 ```
 
-운영 환경 배포는 `infra/gitops/03-services/contentria-frontend-web` 매니페스트를 통해 ArgoCD가 동기화합니다.
+`main` 브랜치에 프론트엔드 변경이 반영되면 `.github/workflows/frontend-images.yml` 워크플로가 정적 검사와 단위 테스트를 수행한 뒤 멀티 아키텍처(`linux/amd64`, `linux/arm64`) 이미지를 `ghcr.io/paranema/contentria-frontend`로 게시합니다. 클러스터 배포는 `infra/gitops/03-services/contentria-frontend-web` 매니페스트를 통해 Argo CD가 동기화합니다.

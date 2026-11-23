@@ -3,6 +3,8 @@ import localFont from 'next/font/local';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import ReactQueryProvider from '@/shared/providers/ReactQueryProvider';
+import { PublicConfigProvider } from '@/shared/providers/PublicConfigProvider';
+import { readPublicConfig } from '@/shared/config/runtimeConfig';
 import { getMyProfileOrNull } from '@/features/member/api/profile';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { memberKeys } from '@/features/member/hooks/keys';
@@ -31,6 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   });
 
   const dehydratedState = dehydrate(queryClient);
+  const publicConfig = readPublicConfig();
 
   return (
     <html lang="ko">
@@ -38,9 +41,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* 페이지 전환 피드백: 이전 화면을 유지한 채 상단 진행 바만 표시 (GitHub 방식).
             느린 전환에서만 체감되고 빠른 전환에서는 거의 보이지 않는다. */}
         <NextTopLoader color="#4f46e5" height={3} showSpinner={false} shadow={false} />
-        <ReactQueryProvider>
-          <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
-        </ReactQueryProvider>
+        <PublicConfigProvider config={publicConfig}>
+          <ReactQueryProvider>
+            <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
+          </ReactQueryProvider>
+        </PublicConfigProvider>
       </body>
     </html>
   );

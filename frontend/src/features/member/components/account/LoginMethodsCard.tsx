@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { unlinkProviderAction } from '../../api/account';
 import { accountErrorMessage } from '../../errors';
-import { startGoogleLink } from '../../oauth';
+import { useGoogleOAuth } from '../../oauth';
 
 /**
  * How the account signs in (01-rules 흐름 3). Google is linked through a browser navigation and
@@ -15,6 +15,7 @@ import { startGoogleLink } from '../../oauth';
  */
 export default function LoginMethodsCard({ providers }: { providers: string[] }) {
   const router = useRouter();
+  const { startGoogleLink } = useGoogleOAuth();
   const [isPending, startTransition] = useTransition();
   const [failure, setFailure] = useState<string | null>(null);
   const hasPassword = providers.includes('EMAIL');
