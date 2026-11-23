@@ -13,9 +13,23 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: new URL(process.env.NEXT_PUBLIC_CDN_BASE_URL || 'https://images.contentria.com').hostname,
-        pathname: '/media/**',
+        hostname: '**.contentria.com',
+        pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '**.r2.dev',
+        pathname: '/**',
+      },
+      ...(process.env.CDN_BASE_URL
+        ? [
+            {
+              protocol: 'https' as const,
+              hostname: new URL(process.env.CDN_BASE_URL).hostname,
+              pathname: '/**',
+            },
+          ]
+        : []),
     ],
     // 주로 사용할 이미지 크기 설정
     imageSizes: [16, 32, 48, 96, 128, 256, 384],

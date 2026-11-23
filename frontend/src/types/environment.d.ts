@@ -1,7 +1,9 @@
 namespace NodeJS {
   interface ProcessEnv {
-    NEXT_PUBLIC_API_BASE_URL: string;
-    NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY: string;
-    NEXT_PUBLIC_RECAPTCHA_V2_CHECKBOX_SITE_KEY: string;
+    API_BASE_URL?: string;
+    EXTERNAL_API_BASE_URL?: string;
+    RECAPTCHA_V3_SITE_KEY?: string;
+    RECAPTCHA_V2_CHECKBOX_SITE_KEY?: string;
+    CDN_BASE_URL?: string;
   }
 }

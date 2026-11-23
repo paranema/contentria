@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getApiBaseUrl } from './shared/api/apiBase';
 import { ParsedCookie, parseSetCookie } from './shared/api/setCookie';
 import { PATHS } from './shared/constants/paths';
 
 /** The cookies the API carries a session in (backend: `SessionCookieNames`). */
 const SESSION_COOKIES: string[] = ['accessToken', 'refreshToken'];
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 /** The session cookies the API sets on a refresh, ready to set on the browser's response. */
 type RefreshedSession = ParsedCookie[];
@@ -25,7 +24,7 @@ async function fetchRefreshedSession(refreshToken: string): Promise<RefreshedSes
   if (existing) return existing;
 
   const promise = (async (): Promise<RefreshedSession> => {
-    const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    const refreshResponse = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
       method: 'POST',
       headers: { Cookie: `refreshToken=${refreshToken}` },
     });

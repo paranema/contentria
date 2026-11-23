@@ -8,7 +8,7 @@ import {
   startCodeLoginAction,
 } from '../api/auth';
 import { isAttemptOver, MEMBER_ERRORS } from '../errors';
-import { startGoogleLogin } from '../oauth';
+import { useGoogleOAuth } from '../oauth';
 import { RECAPTCHA_ACTIONS } from '../recaptcha';
 import { HumanProof } from '../types';
 import { useInvisibleRecaptcha } from './useInvisibleRecaptcha';
@@ -29,6 +29,7 @@ function useLoginFlowLogic() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<SerializedError | null>(null);
   const invisibleToken = useInvisibleRecaptcha();
+  const { startGoogleLogin } = useGoogleOAuth();
   const signedIn = useSignedIn();
 
   /** Shared by the first try and the one after the checkbox. */

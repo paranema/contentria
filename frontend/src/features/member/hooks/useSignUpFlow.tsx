@@ -4,7 +4,7 @@ import { SerializedError } from '@/shared/api/actionResult';
 import { createContext, ReactNode, useContext, useState } from 'react';
 import { completeSignUpAction, startSignUpAction } from '../api/auth';
 import { isAttemptOver, MEMBER_ERRORS } from '../errors';
-import { startGoogleLogin } from '../oauth';
+import { useGoogleOAuth } from '../oauth';
 import { RECAPTCHA_ACTIONS } from '../recaptcha';
 import { HumanProof } from '../types';
 import { useInvisibleRecaptcha } from './useInvisibleRecaptcha';
@@ -24,6 +24,7 @@ function useSignUpFlowLogic() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<SerializedError | null>(null);
   const invisibleToken = useInvisibleRecaptcha();
+  const { startGoogleLogin } = useGoogleOAuth();
   const signedIn = useSignedIn();
 
   async function sendCode(to: string, proof: HumanProof) {

@@ -70,7 +70,7 @@ lint 규칙은 `eslint.config.js`에 있다. `src/features` 아래 폴더를 읽
 
 | 항목 | 내용 |
 |---|---|
-| 주소 | `NEXT_PUBLIC_API_BASE_URL` + `/api/...`. 백엔드의 context path가 `/api`다 |
+| 주소 | `API_BASE_URL` + `/api/...`. 백엔드의 context path가 `/api`다 |
 | 인증 | 브라우저의 `accessToken` 쿠키를 읽어 `Authorization: Bearer`로 보낸다. 백엔드는 헤더와 쿠키를 둘 다 읽는다 |
 | 오류 | 백엔드의 모든 컨텍스트가 `{code, message}`로 답한다. `ApiError.from(status, body)`가 이것을 `ApiError`로 바꾼다. 코드는 `INVALID_REQUEST`, `POST_NOT_FOUND` 같은 이름이다. 모양이 다른 본문(게이트웨이 오류 등)은 `UNKNOWN_ERROR`다 |
 | Server Action의 결과 | 예외를 브라우저로 넘길 수 없어 `ActionResult<T>`로 돌려준다. 실패는 `toActionError(error)`로 만든다 |

@@ -1,4 +1,8 @@
 node_modules
 .next
-.env.local
+out
+coverage
 .git
+.vscode
+.env*
+!.env.sample
