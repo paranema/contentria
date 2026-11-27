@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-# 환경과 무관한 단일 실행 이미지를 빌드한다. 런타임 환경 변수는 컨테이너 기동 시(ConfigMap 등) 주입한다.
 FROM node:22-slim AS base
 ENV NEXT_TELEMETRY_DISABLED=1
 

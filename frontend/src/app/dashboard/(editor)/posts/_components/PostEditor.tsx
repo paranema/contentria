@@ -13,8 +13,9 @@ interface PostEditorProps {
 
 /**
  * The post editor with media's uploads put in: publishing's editor and media's image upload and
- * video field meet here, so neither feature knows the other (docs/architecture.md, 조합). A client
- * component, since what is handed over are functions.
+ * video field meet here, so neither feature knows the other
+ * (docs/architecture/01-module-structure.md, 화면 조합). A client component, since what is handed
+ * over are functions.
  */
 export default function PostEditor(props: PostEditorProps) {
   return (

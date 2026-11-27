@@ -4,8 +4,8 @@ import type { PluginAPI } from 'tailwindcss/types/config';
 
 const config: Config = {
   darkMode: ['class'],
-  // Every folder with markup (docs/architecture.md). A class used only in a folder left out here
-  // is never generated.
+  // Every folder with markup (docs/architecture/01-module-structure.md). A class used only in a
+  // folder left out here is never generated.
   content: [
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/features/**/*.{js,ts,jsx,tsx,mdx}',
