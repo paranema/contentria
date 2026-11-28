@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import SocialLoginButton from '@/shared/components/SocialLoginButton';
 
 const GoogleLogo = () => (
