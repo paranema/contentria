@@ -1,6 +1,5 @@
 import { PopularPost } from '../types';
 import Link from 'next/link';
-import React from 'react';
 
 interface PopularPostListProps {
   posts: PopularPost[];
