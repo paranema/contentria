@@ -11,17 +11,13 @@ import {
   KEY_ENTER_COMMAND,
 } from 'lexical';
 
-/** ```lang 패턴 (언어는 선택) — markdownShortcutPlugin의 스페이스 트리거와 동일한 문법. */
+/** 언어 지정이 선택적인 코드 펜스(```lang) 패턴입니다. */
 const CODE_FENCE = /^```([\w-]*)$/;
 
 /**
- * "```" 문단에서 Enter를 누르면 코드 블록으로 변환하는 커스텀 플러그인.
- *
- * lexical의 마크다운 변환 러너는 "스페이스 입력"만 트리거하지만(Notion/Obsidian은
- * Enter도 받아준다), 이 플러그인이 KEY_ENTER_COMMAND를 가로채 같은 변환을 수행한다.
- * 치환 로직은 @mdxeditor/editor markdown-shortcut 플러그인 내부 구현과 동일하게 맞췄다.
- *
- * 루트 에디터에만 등록한다 — 테이블 셀 같은 중첩 에디터는 코드 블록을 담을 수 없다.
+ * 코드 펜스(```) 문단에서 Enter 키를 누르면 코드 블록으로 변환하는 플러그인입니다.
+ * 기본 마크다운 단축키는 공백 입력만 감지하므로 KEY_ENTER_COMMAND를 가로채 동일하게 변환하며,
+ * 코드 블록을 포함할 수 없는 중첩 에디터를 제외하고 루트 에디터에만 등록합니다.
  */
 export const codeFenceOnEnterPlugin = realmPlugin({
   init(realm) {
@@ -30,7 +26,8 @@ export const codeFenceOnEnterPlugin = realmPlugin({
         KEY_ENTER_COMMAND,
         (event) => {
           if (event?.shiftKey) {
-            return false; // soft break는 그대로 둔다
+            // Shift+Enter 줄바꿈은 기본 동작을 유지합니다.
+            return false;
           }
 
           const selection = $getSelection();
@@ -55,7 +52,7 @@ export const codeFenceOnEnterPlugin = realmPlugin({
             meta: '',
           });
           paragraph.replace(codeBlockNode);
-          // markdown-shortcut 플러그인과 동일: CodeMirror 마운트 후 포커스를 옮긴다.
+          // CodeMirror 인스턴스가 마운트된 뒤 코드 블록 내부로 포커스를 이동합니다.
           setTimeout(() => codeBlockNode.select(), 80);
           return true;
         },

@@ -8,10 +8,10 @@ import { cache } from 'react';
 import { profileSchema } from '../schemas';
 import { MyProfile, PublicProfile, RenameProfileRequest } from '../types';
 
-/** The signed-in member's profile; a 401 sends the browser to the login page. */
+/** 로그인한 회원의 프로필을 조회하며, 401 응답 시 로그인 페이지로 리다이렉트합니다. */
 export const getMyProfile = cache(async () => apiServer.get<MyProfile>('/api/me/profile'));
 
-/** The same, or null for someone not signed in: for screens anyone may see. */
+/** 로그인한 회원의 프로필을 조회하며, 비로그인 상태(401)이면 공개 화면을 위해 null을 반환합니다. */
 export const getMyProfileOrNull = cache(async (): Promise<MyProfile | null> => {
   try {
     return await apiServer.get<MyProfile>('/api/me/profile', { shouldRedirectOn401: false });
@@ -22,8 +22,8 @@ export const getMyProfileOrNull = cache(async (): Promise<MyProfile | null> => {
 });
 
 /**
- * Anyone's public profile, by account id: who wrote a post or owns a blog. Profiles that do not
- * exist are simply missing from the answer. Asked once for every member on a screen.
+ * 게시글 작성자나 블로그 소유자의 공개 프로필을 계정 ID 목록으로 일괄 조회합니다.
+ * 존재하지 않는 계정은 결과에서 제외됩니다.
  */
 export async function getPublicProfiles(accountIds: readonly string[]): Promise<PublicProfile[]> {
   const ids = [...new Set(accountIds)];
@@ -36,7 +36,7 @@ export async function getPublicProfiles(accountIds: readonly string[]): Promise<
   );
 }
 
-/** 흐름 5: a new display name. Fails with DISPLAY_NAME_TAKEN when another member has it. */
+/** 표시 이름을 변경합니다. 다른 회원이 사용 중인 이름이면 DISPLAY_NAME_TAKEN 에러가 발생합니다. (흐름 5) */
 export async function renameProfileAction(
   request: RenameProfileRequest
 ): Promise<ActionResult<MyProfile>> {

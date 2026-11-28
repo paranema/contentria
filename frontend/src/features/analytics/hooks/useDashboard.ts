@@ -5,7 +5,7 @@ import { getDashboard } from '../api/dashboard';
 import { analyticsKeys } from '../queryKeys';
 import { DashboardRange } from '../types';
 
-/** One call for the whole dashboard; the page prefetches it on the server. */
+/** 서버에서 프리페치된 대시보드 전체 데이터를 조회합니다. */
 export const useDashboard = (blogSlug: string, range: DashboardRange) =>
   useQuery({
     queryKey: analyticsKeys.dashboard(blogSlug, range),

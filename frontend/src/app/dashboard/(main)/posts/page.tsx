@@ -14,7 +14,7 @@ interface PostPageProps {
 export default async function PostsPage({ searchParams }: PostPageProps) {
   const { page } = await searchParams;
 
-  // ?page= counts from 1 on screen; the API counts from 0.
+  // URL 쿼리의 페이지 번호(1부터 시작)를 API 페이지 인덱스(0부터 시작)로 변환합니다.
   const currentPage = page ? Math.max(0, parseInt(page, 10) - 1) : 0;
   if (page && (isNaN(currentPage) || parseInt(page, 10) < 1)) {
     notFound();
@@ -32,7 +32,7 @@ export default async function PostsPage({ searchParams }: PostPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* 헤더 영역 — 글쓰기 CTA는 페이지가 아니라 상단 헤더에 일원화돼 있다 */}
+      {/* 새 글 작성 버튼은 상단 대시보드 헤더에 일원화되어 있습니다. */}
       <h1 className="text-2xl font-bold text-gray-800">글 관리</h1>
 
       <DataTable columns={postColumns} data={postsPage.items} />

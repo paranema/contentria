@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-/** A post on the home page, with its author's name as the page put it together. */
+/** 홈 화면에 표시할 최신 발행 글과 작성자 이름 정보입니다. */
 export interface RecentPostCard {
   postId: string;
   title: string;
@@ -11,7 +11,7 @@ export interface RecentPostCard {
   authorName: string | null;
 }
 
-/** 빈 피드는 "죽은 플랫폼" 신호라, 이 개수 미만이면 섹션 자체를 렌더링하지 않는다 */
+/** 노출할 글이 기준 개수 미만이면 빈 피드로 보이지 않도록 섹션을 숨깁니다. */
 const MIN_POSTS_TO_SHOW = 3;
 
 const formatDate = (iso: string | null) => {
@@ -21,8 +21,7 @@ const formatDate = (iso: string | null) => {
 };
 
 /**
- * 홈 "최근 발행된 글" — 전체 블로그의 최신 공개 글.
- * 콘텐츠가 1명 → N명으로 늘어도 자연스럽게 확장되는 발견(discovery) 창구의 시작점.
+ * 전체 블로그의 최신 발행 글을 모아 홈 화면에 표시하는 섹션입니다.
  */
 export default function RecentPostsSection({ posts }: { posts: RecentPostCard[] }) {
   if (posts.length < MIN_POSTS_TO_SHOW) {

@@ -10,7 +10,7 @@ function deriveAltText(fileName: string): string {
   return fileName.replace(/\.[^/.]+$/, '');
 }
 
-/** Uploads an image and returns its public address. Media's, handed in by the page. */
+/** 이미지를 업로드하고 공개 URL을 반환하는 함수 타입입니다. */
 export type ImageUploader = (file: File) => Promise<string>;
 
 export default function CustomInsertImage({ upload }: { upload: ImageUploader }) {

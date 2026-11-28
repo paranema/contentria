@@ -9,8 +9,7 @@ export const metadata: Metadata = {
 
 export default function PolicyPage() {
   return (
-    // Suspense는 useSearchParams를 사용하는 클라이언트 컴포넌트를 감쌀 때 필수이다.
-    // (빌드 타임 에러 방지)
+    // useSearchParams를 사용하는 클라이언트 컴포넌트의 빌드 시점 오류를 방지하기 위해 Suspense로 감쌉니다.
     <React.Suspense fallback={<div className="min-h-screen" />}>
       <PolicyClient />
     </React.Suspense>

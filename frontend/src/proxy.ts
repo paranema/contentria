@@ -3,21 +3,20 @@ import { getApiBaseUrl } from './shared/api/apiBase';
 import { ParsedCookie, parseSetCookie } from './shared/api/setCookie';
 import { PATHS } from './shared/constants/paths';
 
-/** The cookies the API carries a session in (backend: `SessionCookieNames`). */
+/** 백엔드가 세션을 전달할 때 사용하는 쿠키 이름 목록입니다(백엔드 `SessionCookieNames` 대응). */
 const SESSION_COOKIES: string[] = ['accessToken', 'refreshToken'];
 
-/** The session cookies the API sets on a refresh, ready to set on the browser's response. */
+/** 토큰 갱신 응답에서 추출해 브라우저 응답에 설정할 세션 쿠키 목록입니다. */
 type RefreshedSession = ParsedCookie[];
 
-// Coalesces concurrent refresh attempts for the same refresh token into a single
-// backend call. Scope is the Node.js process (one entry per pod). Cross-pod
-// dedup relies on ingress sticky sessions; the backend's pessimistic lock +
-// grace cache is the ultimate safety net.
+// 동일한 리프레시 토큰으로 동시에 들어온 갱신 요청을 단일 백엔드 호출로 병합합니다.
+// 병합 범위는 단일 Node.js 프로세스(파드 단위)이며, 파드 간 중복 방지는 인그레스 세션 고정(sticky session)과
+// 백엔드의 비관적 락 및 유예 캐시(grace cache)에 위임합니다.
 const inflightRefresh = new Map<string, Promise<RefreshedSession>>();
 
 /**
- * The API rotates the refresh token and answers with both session cookies in `Set-Cookie`,
- * not in the body (backend AuthController.refresh).
+ * 백엔드는 리프레시 토큰을 회전(rotation)한 뒤 응답 본문이 아닌 `Set-Cookie` 헤더로
+ * 두 세션 쿠키를 내려줍니다(백엔드 `AuthController.refresh` 참조).
  */
 async function fetchRefreshedSession(refreshToken: string): Promise<RefreshedSession> {
   const existing = inflightRefresh.get(refreshToken);
@@ -130,13 +129,8 @@ function redirectToLogin(request: NextRequest, fromPath: string) {
 
 export const config = {
   /**
-   * Match all request paths except for the ones starting with:
-   *   1. api
-   *   2. _next/static
-   *   3. _next/image
-   *   4. favicon.ico
-   *   5. icons
-   *   6. any file with an extension (e.g., .css, .js, .png, etc.)
+   * 정적 자산(`_next/static`, `_next/image`, `favicon.ico`, `icons`, 확장자가 있는 파일)과
+   * 라우터 프리페치 요청을 제외한 모든 경로에 프록시를 적용합니다.
    */
   matcher: [
     {

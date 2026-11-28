@@ -10,7 +10,6 @@ const ProfileDropdown = ({ user, isOpen, onClose, onLogout }: ProfileDropdownPro
 
   return (
     <div className="absolute right-0 z-10 mt-2 w-64 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-      {/* 프로필 정보 */}
       <div className="border-b border-gray-100 px-4 py-3">
         <div className="flex items-center">
           <UserAvatar user={user} size="sm" />
@@ -21,7 +20,6 @@ const ProfileDropdown = ({ user, isOpen, onClose, onLogout }: ProfileDropdownPro
         </div>
       </div>
 
-      {/* 메뉴 항목 */}
       <div className="border-b border-gray-100">
         <Link
           href="/"
@@ -42,7 +40,6 @@ const ProfileDropdown = ({ user, isOpen, onClose, onLogout }: ProfileDropdownPro
         </Link>
       </div>
 
-      {/* 로그아웃 */}
       <div>
         <button
           onClick={onLogout}

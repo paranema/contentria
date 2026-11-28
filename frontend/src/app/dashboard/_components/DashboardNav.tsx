@@ -6,14 +6,14 @@ import SidebarMenuItem from './DashboardSidebarMenuItem';
 
 interface DashboardNavProps {
   blogSlug: string | null;
-  /** 모바일 Sheet에서 메뉴 클릭 시 드로어를 닫기 위한 콜백 */
+  /** 모바일 드로어에서 메뉴 클릭 시 시트를 닫기 위한 콜백입니다. */
   onNavigate?: () => void;
 }
 
 const navItems = [
   {
     path: '/dashboard',
-    // "대시보드 안의 대시보드 메뉴"라는 자기 지칭이 어색해 티스토리식 명칭을 따른다
+    // 대시보드 내부에서 자기 자신을 중복 지칭하지 않도록 '블로그관리 홈' 명칭을 사용합니다.
     label: '블로그관리 홈',
     icon: <Home size={20} />,
     requiresBlog: false,
@@ -50,8 +50,10 @@ const navItems = [
   },
 ];
 
-/** 데스크톱 사이드바와 모바일 Sheet가 공유하는 대시보드 내비게이션.
- *  (블로그로 가는 링크는 상단 프로필 카드의 블로그 주소가 담당한다) */
+/**
+ * 데스크톱 사이드바와 모바일 드로어가 공유하는 대시보드 내비게이션입니다.
+ * 내 블로그 이동 링크는 상단 프로필 카드의 블로그 주소가 담당합니다.
+ */
 export default function DashboardNav({ blogSlug, onNavigate }: DashboardNavProps) {
   const pathname = usePathname();
 

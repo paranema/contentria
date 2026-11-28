@@ -14,10 +14,10 @@ import { HumanProof } from '../types';
 import { useInvisibleRecaptcha } from './useInvisibleRecaptcha';
 import { useSignedIn } from './useSignedIn';
 
-/** Email first, then a password or a code mailed to it (01-rules, 흐름 6). */
+/** 이메일 입력 후 비밀번호 또는 이메일 인증 코드로 이어지는 로그인 단계입니다. (01-rules, 흐름 6) */
 export type LoginStep = 'email' | 'password' | 'recaptcha_v2_challenge' | 'verify_code';
 
-/** What the checkbox, once ticked, should send again. */
+/** reCAPTCHA v2 체크박스 통과 후 재시도할 로그인 요청 정보입니다. */
 type Attempt = { kind: 'password'; password: string } | { kind: 'code' };
 
 function useLoginFlowLogic() {
@@ -32,7 +32,7 @@ function useLoginFlowLogic() {
   const { startGoogleLogin } = useGoogleOAuth();
   const signedIn = useSignedIn();
 
-  /** Shared by the first try and the one after the checkbox. */
+  /** 최초 시도와 reCAPTCHA v2 체크박스 통과 후 재시도에서 공통으로 로그인 요청을 실행합니다. */
   async function run(attempt: Attempt, proof: HumanProof) {
     setPending(attempt);
     setIsLoading(true);

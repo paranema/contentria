@@ -30,48 +30,41 @@ body {
   }
 }
 
-/* reCAPTCHA v3 우하단 플로팅 배지: 모바일에서 인증 화면 하단 약관 문구를 가린다.
-   구글 FAQ에 따라 보호 문구("This site is protected by reCAPTCHA...")를 화면에
-   표기하는 조건으로 배지 숨김이 허용됨 — (auth) 레이아웃 푸터에 문구 표기 중. */
+/* 모바일 인증 화면 하단의 약관 문구를 가리지 않도록 reCAPTCHA 플로팅 배지를 숨깁니다.
+   Google 정책에 따른 필수 보호 문구는 (auth) 레이아웃 하단에 표기합니다. */
 .grecaptcha-badge {
   visibility: hidden;
 }
 
-/* 웨이브 애니메이션 Keyframes: 점프 후 복귀 및 색상 변경 */
+/* 히어로 섹션 문구가 순차적으로 뛰어오르며 브랜드 색상(indigo-600)으로 변하는 애니메이션입니다. */
 @keyframes wave-jump-return {
   0% {
-    transform: translateY(0); /* 시작: 제자리 */
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-0.6em); /* 중간: 점프 최고점 */
-    /* 최고점에서는 아직 색상 변경 전 또는 중간 단계일 수 있음 */
-    /* color: #3730a3; */ /* 예: indigo-800 (선택 사항) */
+    transform: translateY(-0.6em);
   }
   80% {
     color: #4f46e5;
   }
   100% {
-    transform: translateY(0); /* 종료: 제자리 복귀 */
-    color: #4f46e5; /* 종료 색상 (text-indigo-600) */
+    transform: translateY(0);
+    color: #4f46e5;
   }
 }
 
-/* 개별 문자 기본 스타일 */
 .wave-char {
-  display: inline-block; /* transform 적용 */
-  /* 초기 색상 설정 (애니메이션 지연 동안 보일 색상) */
+  display: inline-block;
   color: #1f2937;
 }
 
-/* 부모 요소에 .animate-wave 클래스가 추가되었을 때 애니메이션 적용 */
+/* 문자 인덱스(--i)에 비례한 지연 시간을 두어 물결 효과를 연출합니다. */
 .animate-wave .wave-char {
-  animation-name: wave-jump-return; /* 정의된 keyframes 이름 */
-  animation-duration: 0.6s; /* 애니메이션 총 지속 시간 (점프+복귀) */
-  animation-timing-function: ease-in-out; /* 부드러운 시작과 종료 */
-  animation-fill-mode: forwards; /* 애니메이션 종료 후 100% 상태 유지 */
-  animation-delay: calc(
-    var(--i) * 0.08s
-  ); /* 각 문자별 애니메이션 시작 지연 (더 부드러운 웨이브를 위해 0.08s로 조정) */
+  animation-name: wave-jump-return;
+  animation-duration: 0.6s;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+  animation-delay: calc(var(--i) * 0.08s);
 }
 
 @layer base {
@@ -82,7 +75,7 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    /* Brand color: indigo-600 (#4f46e5). All shadcn components follow --primary. */
+    /* 브랜드 기본 색상인 indigo-600(#4f46e5)을 shadcn 컴포넌트의 --primary에 연결합니다. */
     --primary: 243 75% 59%;
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
@@ -110,7 +103,7 @@ body {
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    /* Brand color, dark mode: indigo-500 (#6366f1) for contrast on dark surfaces. */
+    /* 다크 모드에서는 어두운 배경 대비를 위해 indigo-500(#6366f1)을 사용합니다. */
     --primary: 239 84% 67%;
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 14.9%;
@@ -141,51 +134,17 @@ body {
   }
 }
 
-/* ----------------------------------------------------- */
-/* MDXEditor */
-/* ----------------------------------------------------- */
-
-/* .prose {
-  font-family: var(--font-pretendard);
-  max-width: 100%;
-}
-.prose .cm-content {
-  font-family: var(--font-ibm-plex-mono);
-  font-size: 0.75rem;
-  line-height: 1rem;
-}
-.prose [data-lexical-decorator] > table [data-tool-cell] {
-  padding: 1px;
-  border: 0;
-  line-height: 1rem;
-  vertical-align: middle;
-}
-.prose [data-lexical-decorator] > table {
-  table-layout: fixed;
-}
-
-.prose [data-lexical-decorator] > table td {
-  vertical-align: middle;
-}
-.prose [data-lexical-decorator] > table > tbody > tr,
-.prose [data-lexical-decorator] > table > tfoot,
-.prose [data-lexical-decorator] > table > thead {
-  border: 0;
-} */
-
-/* 인디고-50 상당은 흰 배경과 구분이 약해 한 단계 진하게 (≈ indigo-100) */
+/* 흰색 배경과의 구분감을 높이기 위해 에디터 툴바 배경을 indigo-100 수준으로 진하게 지정합니다. */
 .mdxeditor-toolbar._toolbarRoot_1e2ox_162 {
   background-color: oklch(93% 0.034 272.314);
 }
 
-/* CodeMirror 라인 넘버: 기본값이 작고 연해 잘 안 보인다 */
+/* 기본 색상이 연해 가독성이 떨어지는 CodeMirror 줄 번호를 진하게(gray-600) 보정합니다. */
 .mdxeditor .cm-gutters {
-  color: #4b5563; /* gray-600 */
+  color: #4b5563;
 }
 
-/* prose 행간(1.5, tailwind.config) 기준 첫 줄 라인박스는 1.5em인데 체크박스(1rem)가
-   absolute top:0이라 위로 떠 보인다. bullet/number는 ::marker라 자동 정렬되지만
-   체크리스트는 수동 보정이 필요하다. ::after(✓ 표시)도 같은 양만큼 내린다. */
+/* prose 줄 간격(1.5em) 내에서 absolute(top: 0)로 배치된 체크박스(1rem)와 체크 표시(::after)의 수직 중앙을 맞춥니다. */
 .mdxeditor.prose :is([class*='_listItemChecked_'], [class*='_listItemUnchecked_'])::before {
   top: calc((1.5em - 1rem) / 2);
 }
@@ -194,18 +153,13 @@ body {
   top: calc((1.5em - 1rem) / 2 + 0.125rem);
 }
 
-/* 코드 블록 문자는 본문보다 작게 — 리더(prose pre 0.875em)와 동일한 위계.
-   CodeMirror 자체 행간(1.4)과 결합되어 본문(1.5)보다 좁은 행간이 된다. */
+/* 에디터 코드 블록 글자 크기를 게시글 뷰어(prose pre, 0.875em)와 동일하게 맞춥니다. */
 .mdxeditor .cm-content {
   font-size: 0.875em;
 }
 
-/* MDXEditor 테이블 편집 컨트롤(열/행 ··· 메뉴, 행/열 추가 + 버튼)은 라이브러리
-   기본값이 평상시 opacity 0.15라 표 주변에 항상 비쳐 보인다. Notion처럼 표에
-   hover했을 때만 드러나도록 조정한다.
-   - 클래스 해시(_1e2ox 등)는 버전마다 바뀌므로 접두사 매칭([class*=])으로 대응.
-   - .mdxeditor.prose 앵커로 라이브러리 규칙보다 명시도를 높여 CSS 로드 순서와
-     무관하게 결정적으로 적용된다. */
+/* 평상시 비쳐 보이는 테이블 편집 컨트롤을 숨기고 표에 마우스를 올렸을 때만 표시합니다.
+   버전마다 바뀌는 해시 클래스는 부분 일치([class*=])로 선택하고, .mdxeditor.prose로 명시도를 확보합니다. */
 .mdxeditor.prose
   [class*='_tableEditor_']
   :is(
@@ -231,8 +185,7 @@ body {
   opacity: 0.4;
 }
 
-/* 컨트롤 자체에 hover/키보드 포커스 중이거나 메뉴(popover)가 열려 있으면 완전 표시.
-   (마지막에 선언해 같은 명시도의 위 hover 규칙을 이긴다) */
+/* 컨트롤에 마우스를 올리거나 포커스되거나 팝오버 메뉴가 열린 상태에서는 불투명하게 표시합니다. */
 .mdxeditor.prose
   [class*='_tableEditor_']
   :is(
@@ -245,35 +198,26 @@ body {
   opacity: 1;
 }
 
-/* prose(tailwind typography)는 thead/tbody tr/tfoot에 행 전체 폭의 가로 구분선을
-   긋는데, 이 선이 도구 컬럼(왼쪽 행 ···, 오른쪽 열 추가 +) 아래까지 이어져
-   도구 영역이 테이블의 빈 컬럼처럼 보인다. 콘텐츠 셀은 라이브러리가 셀 단위
-   보더(td/th:not(tool-cell))를 그리므로 행 단위 선은 제거해도 표는 유지된다. */
+/* prose의 행 단위 테두리가 좌우 도구 컬럼까지 이어지지 않도록 제거합니다. 콘텐츠 셀 테두리는 라이브러리가 개별 셀에 그립니다. */
 .mdxeditor.prose [class*='_tableEditor_'] > thead,
 .mdxeditor.prose [class*='_tableEditor_'] > tbody > tr,
 .mdxeditor.prose [class*='_tableEditor_'] > tfoot {
   border: 0;
 }
 
-/* 도구 셀 자체도 보더 없이 컨트롤 폭만 차지하게 한다 (prose의 th/td 패딩 무효화) */
+/* 도구 셀에 적용된 prose의 기본 테두리와 패딩을 제거해 컨트롤 크기만 차지하도록 합니다. */
 .mdxeditor.prose [class*='_tableEditor_'] [data-tool-cell] {
   border: 0;
   padding: 1px;
 }
 
-/* 테이블 도구 컬럼(왼쪽 행 ··· / 오른쪽 열 추가 +, 각 2rem)이 표 "안"에 있어서
-   표만 본문보다 들여써 보인다. 본문에 도구 컬럼 폭만큼 좌우 거터를 확보하고
-   테이블을 정확히 그만큼 당겨서, 콘텐츠 셀은 본문 텍스트와 정렬되고 컨트롤은
-   여백에 떠 있게 한다(Notion 방식). 루트 _contentEditable_ 클래스는 중첩(셀)
-   에디터에서는 쓰이지 않으므로 셀 내부 패딩에는 영향이 없다. */
+/* 테이블 내부의 좌우 도구 컬럼(2rem) 때문에 표가 들여써 보이지 않도록 루트 본문에 여백을 확보합니다. */
 .mdxeditor.prose [class*='_contentEditable_'] {
   padding-left: 2rem;
   padding-right: 2rem;
 }
 
-/* 표 폭은 셀 내용 기준(auto)으로 잡는다 — 라이브러리 기본(table-layout: fixed +
-   width: 100%)은 내용과 무관하게 전체 폭을 균등 분할해 버린다. 왼쪽은 도구 컬럼
-   폭만큼 당겨 본문과 정렬을 유지하고, 오른쪽은 내용이 끝나는 곳까지만. */
+/* 라이브러리 기본 전체 폭 균등 분할을 해제해 내용 기준으로 열 너비를 잡고, 좌측 도구 컬럼 폭(-2rem)만큼 당겨 본문 시작선과 맞춥니다. */
 .mdxeditor.prose [class*='_tableEditor_'] {
   table-layout: auto;
   width: auto;
@@ -282,10 +226,7 @@ body {
   margin-right: 0;
 }
 
-/* rehypeAutolinkHeadings(behavior: 'wrap') wraps heading text in <a>.
-   prose-indigo would render that as purple, underlined, weight 500 — making
-   headings look like links. Strip link styling inside headings; keep hover
-   underline as a subtle "this is clickable" affordance. */
+/* rehypeAutolinkHeadings가 감싼 제목 내부 <a> 태그에 prose-indigo 링크 스타일이 적용되지 않도록 초기화하고, 호버 시에만 밑줄을 표시합니다. */
 .prose :is(h1, h2, h3, h4, h5, h6) a,
 .prose :is(h1, h2, h3, h4, h5, h6) a:visited {
   color: inherit;
@@ -299,16 +240,12 @@ body {
   text-underline-offset: 0.2em;
 }
 
-/* Reader prose: tighter spacing for headings, lists, and code blocks. */
-
-/* Paragraph margins — overall tighter flow (also reduces gap to lists below). */
+/* 게시글 뷰어(.prose)의 문단, 제목, 목록 여백을 기본값보다 조밀하게 조정합니다. */
 .prose p {
   margin-top: 0.7em;
   margin-bottom: 0.7em;
 }
 
-/* Heading margins — reduce gap to surrounding text.
-   Heading-to-paragraph gap = max(heading.margin-bottom, p.margin-top). */
 .prose h1 {
   margin-top: 0;
   margin-bottom: 0.4em;
@@ -326,7 +263,6 @@ body {
   margin-bottom: 0.3em;
 }
 
-/* Lists — closer to surrounding text and between items. */
 .prose :is(ul, ol) {
   margin-top: 0.4em;
   margin-bottom: 0.4em;
@@ -336,9 +272,7 @@ body {
   margin-bottom: 0.15em;
 }
 
-/* Code block — tighter padding and line-height. SyntaxHighlighter wraps
-   the highlighted code in an inner <div> with its own background/padding;
-   neutralize the outer <pre> and let the inner div carry block styling. */
+/* SyntaxHighlighter가 내부 div에 배경과 패딩을 부여하므로 바깥 pre의 스타일을 비우고 내부 div로 일원화합니다. */
 .prose pre {
   margin-top: 0.6em;
   margin-bottom: 0.6em;
@@ -363,8 +297,7 @@ body {
   flex-direction: column;
 }
 
-/* Editor body typography tuned for Korean (Pretendard), Obsidian-like density.
-   Scoped to the editable area so reader-side .prose is unaffected. */
+/* 뷰어(.prose)에 영향을 주지 않도록 에디터 편집 영역([contenteditable='true'])에만 한국어 조판 간격과 여백을 적용합니다. */
 .mdxeditor [contenteditable='true'] {
   letter-spacing: -0.01em;
 }
@@ -400,10 +333,7 @@ body {
   line-height: 1.3;
 }
 
-/* Table density — gap to surrounding lines + cell height.
-   MDXEditor wraps tables in [data-lexical-decorator]; its margin drives
-   the visual gap above/below the table. Cell padding + inner element
-   margins together control row height. */
+/* MDXEditor 테이블 래퍼([data-lexical-decorator])의 상하 여백과 셀 높이를 조밀하게 조정합니다. */
 .mdxeditor [data-lexical-decorator] {
   margin-top: 0.4em;
   margin-bottom: 0.4em;
@@ -413,13 +343,13 @@ body {
   margin-top: 0;
   margin-bottom: 0;
   border-collapse: collapse;
-  /* Override MDXEditor's forced full-width table: size columns by content. */
+  /* MDXEditor의 전체 폭 강제 설정을 해제하고 셀 내용에 맞춰 크기를 결정합니다. */
   table-layout: auto;
   width: auto;
   height: auto;
 }
 
-/* Cell box itself — small padding, tight line-height, vertical centering. */
+/* 도구 셀을 제외한 일반 셀의 패딩과 줄 간격을 줄이고 수직 중앙 정렬합니다. */
 .mdxeditor [data-lexical-decorator] > table > tbody > tr > td:not([data-tool-cell='true']),
 .mdxeditor [data-lexical-decorator] > table > tbody > tr > th:not([data-tool-cell='true']),
 .mdxeditor [data-lexical-decorator] > table > thead > tr > th:not([data-tool-cell='true']) {
@@ -428,9 +358,7 @@ body {
   vertical-align: middle;
 }
 
-/* Kill ALL inherited margins/padding on direct cell children and their <p>.
-   Lexical wraps cell content in a <div>, then a <p>; both can carry
-   inherited prose spacing that visually doubles the row height. */
+/* Lexical이 셀 내부에 중첩 생성하는 div와 p의 상속 여백으로 행 높이가 두 배가 되는 현상을 막기 위해 여백을 초기화합니다. */
 .mdxeditor [data-lexical-decorator] > table td > *,
 .mdxeditor [data-lexical-decorator] > table th > * {
   margin: 0;
@@ -446,10 +374,7 @@ body {
   line-height: 1.4;
 }
 
-/* CodeMirror — keep gutter (line numbers) and code content on the same
-   line-height grid so numbers center vertically with their code line.
-   Prose's <pre> line-height (~1.71) was leaking into .cm-line while the
-   gutter kept its own ~1.4, leaving numbers stuck to the top. */
+/* prose의 pre 줄 간격이 .cm-line으로 전파되어 줄 번호와 어긋나는 문제를 막기 위해 코드 영역과 거터의 줄 간격을 통일합니다. */
 .mdxeditor .cm-editor,
 .mdxeditor .cm-scroller,
 .mdxeditor .cm-content,
@@ -459,24 +384,20 @@ body {
   line-height: 1.6;
 }
 
-/* CodeMirror gutter element is display:block with text-align:right by
-   default. When the row's box is taller than the number's line, the
-   number sticks to the top. Use flex to center it vertically. */
+/* 코드 줄 높이가 커질 때 줄 번호가 상단에 치우치지 않도록 flex로 수직 중앙 정렬합니다. */
 .mdxeditor .cm-gutterElement {
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
 
-/* app/globals.css */
-
-/* 1. Edge/IE의 기본 비밀번호 보기(눈알) 및 지우기(X) 아이콘 숨기기 */
+/* Edge·IE의 기본 비밀번호 표시 및 지우기 아이콘을 숨깁니다. */
 input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
 
-/* 2. Chrome/Webkit 기반 브라우저의 자동완성 아이콘 숨기기 */
+/* Chrome·WebKit 계열 브라우저의 자동완성 아이콘을 숨깁니다. */
 input::-webkit-contacts-auto-fill-button,
 input::-webkit-credentials-auto-fill-button {
   visibility: hidden;
@@ -484,7 +405,7 @@ input::-webkit-credentials-auto-fill-button {
   pointer-events: none;
 }
 
-/* 3. (참고) 브라우저 자동완성 시 입력창 배경색이 노랗게/파랗게 변하는 현상 방지 */
+/* 브라우저 자동완성 적용 시 입력창 배경색과 글자색이 변하는 현상을 방지합니다. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,

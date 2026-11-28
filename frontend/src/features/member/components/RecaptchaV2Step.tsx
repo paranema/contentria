@@ -10,7 +10,7 @@ interface RecaptchaV2StepProps {
   isLoading: boolean;
   error: string | null;
   goToPreviousStep: () => void;
-  onVerify: (token: string) => Promise<void> | void; // 비동기 함수도 받을 수 있도록 Promise 추가
+  onVerify: (token: string) => Promise<void> | void;
   onError: (errorMessage: string) => void;
 }
 
@@ -22,7 +22,7 @@ export default function RecaptchaV2Step({
   onError,
 }: RecaptchaV2StepProps) {
   const recaptchaV2Ref = useRef<ReCAPTCHA>(null);
-  const { recaptchaV2CheckboxSiteKey: siteKeyV2 } = usePublicConfig();
+  const { recaptchaV2SiteKey: siteKeyV2 } = usePublicConfig();
 
   const [isResetting, setIsResetting] = useState(false);
 
@@ -91,7 +91,6 @@ export default function RecaptchaV2Step({
       </div>
 
       <div className="relative mt-4 h-6 w-full">
-        {/* 로딩 인디케이터 */}
         <div
           className={`absolute inset-0 flex items-center justify-center space-x-2 text-indigo-600 transition-all duration-300 ${isLoading ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'} `}
         >
@@ -99,7 +98,6 @@ export default function RecaptchaV2Step({
           <span className="text-sm font-medium">인증 처리 중...</span>
         </div>
 
-        {/* 에러 메시지 */}
         <div
           className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${error && !isResetting && !isLoading ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'} `}
         >

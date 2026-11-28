@@ -6,7 +6,7 @@ import { getBlogLayoutData } from '../../_composition/blog';
 
 interface BlogLayoutProps {
   children: React.ReactNode;
-  sidebar: React.ReactNode; // @sidebar 슬롯이 props로 돌아온다.
+  sidebar: React.ReactNode;
   params: Promise<{ blogSlug: string }>;
 }
 
@@ -25,8 +25,7 @@ export async function generateMetadata({ params }: BlogLayoutProps): Promise<Met
 }
 
 /**
- * props로 sidebar slots가 전달된다. 참고로, children도 slots이다.
- * - https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes#slots
+ * 공개 블로그 공통 레이아웃입니다. 병렬 라우트(`@sidebar`) 슬롯을 `sidebar` prop으로 전달받아 함께 렌더링합니다.
  */
 export default async function BlogLayout({ children, sidebar, params }: BlogLayoutProps) {
   const { blogSlug } = await params;

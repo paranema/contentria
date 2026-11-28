@@ -13,14 +13,14 @@ flowchart LR
     ApiServer -- "HTTP (/api/*)" --> Backend["백엔드 API 서버"]
 ```
 
-| 실행 주체           | 호출 경로                                       | 설명                                                                         |
-| ------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| 서버 컴포넌트       | `features/*/api` → `apiServer`                  | 렌더링 중 서버 내부 네트워크(`API_BASE_URL`)로 백엔드를 직접 호출합니다.     |
-| 클라이언트 컴포넌트 | TanStack Query 훅 → Server Action → `apiServer` | 조회(`useQuery`)와 변경(`useMutation`) 모두 Server Action을 통해 실행합니다. |
+| 실행 주체           | 호출 경로                                       | 설명                                                                              |
+| ------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| 서버 컴포넌트       | `features/*/api` → `apiServer`                  | 렌더링 중 서버 내부 네트워크(`INTERNAL_API_BASE_URL`)로 백엔드를 직접 호출합니다. |
+| 클라이언트 컴포넌트 | TanStack Query 훅 → Server Action → `apiServer` | 조회(`useQuery`)와 변경(`useMutation`) 모두 Server Action을 통해 실행합니다.      |
 
 `shared/api/apiServer.ts`는 모든 백엔드 호출에 대해 다음 공통 작업을 수행합니다.
 
-- `API_BASE_URL` 뒤에 요청 경로(`/api/...`)를 붙여 호출합니다.
+- `INTERNAL_API_BASE_URL` 뒤에 요청 경로(`/api/...`)를 붙여 호출합니다.
 - `requireAuth`(기본값 `true`)가 켜져 있으면 요청 쿠키에서 `accessToken`을 읽어 `Authorization: Bearer <토큰>` 헤더를 설정합니다.
 - 백엔드가 `401`을 반환하면 `shouldRedirectOn401`(기본값 `true`)에 따라 `/login?alert=session_expired`로 리다이렉트합니다.
 
@@ -40,5 +40,5 @@ flowchart LR
 
 Next.js의 `NEXT_PUBLIC_*` 환경 변수는 빌드 시점에 번들에 인라이닝되므로, 환경(dev, prod)마다 이미지를 새로 빌드해야 하는 제약이 생깁니다. 단일 컨테이너 이미지를 Kubernetes `ConfigMap` 교체만으로 모든 환경에서 실행하기 위해 모든 설정을 서버 런타임에 읽습니다.
 
-- **서버 내부 통신 주소 (`API_BASE_URL`)**: `getApiBaseUrl()`이 요청 시점에 `process.env.API_BASE_URL`을 조회합니다. 클러스터 내부에서는 서비스 DNS 주소를 사용합니다.
-- **브라우저 공개 설정 (`PublicConfig`)**: 루트 레이아웃(`RootLayout`)이 요청 시점에 `readPublicConfig()`로 공개 환경 변수(`EXTERNAL_API_BASE_URL`, reCAPTCHA 사이트 키)를 읽어 `PublicConfigProvider`를 통해 클라이언트 컴포넌트에 전달합니다.
+- **서버 내부 통신 주소 (`INTERNAL_API_BASE_URL`)**: `getApiBaseUrl()`이 요청 시점에 `process.env.INTERNAL_API_BASE_URL`을 조회합니다. 클러스터 내부에서는 서비스 DNS 주소를 사용합니다.
+- **브라우저 공개 설정 (`PublicConfig`)**: 루트 레이아웃(`RootLayout`)이 요청 시점에 `readPublicConfig()`로 공개 환경 변수(`PUBLIC_API_BASE_URL`, reCAPTCHA 사이트 키)를 읽어 `PublicConfigProvider`를 통해 클라이언트 컴포넌트에 전달합니다.

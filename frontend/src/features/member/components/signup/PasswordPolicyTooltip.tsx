@@ -15,17 +15,16 @@ interface PasswordPolicyTooltipProps {
 const PasswordPolicyTooltip = ({
   policies,
   currentPasswordValue,
-  isVisible, // isVisible prop을 받아서 조건부 렌더링은 부모에서 처리
+  isVisible,
 }: PasswordPolicyTooltipProps) => {
   if (!isVisible) {
-    return null; // isVisible이 false면 아무것도 렌더링하지 않음
+    return null;
   }
 
   return (
     <div
       role="tooltip"
       className="absolute bottom-full right-0 z-20 mb-2 w-60 rounded-lg border border-gray-200 bg-white p-4 shadow-xl md:bottom-auto md:left-1/2 md:top-full md:mt-2 md:-translate-x-1/2"
-      // 스타일 변경: 흰색 배경, 그림자 강화, 패딩 및 테두리 조정
     >
       <p className="mb-2 text-sm font-semibold text-indigo-700">
         비밀번호는 다음을 충족해야 합니다:

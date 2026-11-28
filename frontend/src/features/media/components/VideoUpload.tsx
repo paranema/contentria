@@ -11,7 +11,7 @@ import { uploadVideoToR2 } from '../upload/uploadVideo';
 const ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-matroska';
 
 interface VideoUploadProps {
-  /** Current attached videoId (e.g. when editing an existing post). */
+  /** 기존 게시글 수정 시 현재 첨부되어 있는 동영상 ID입니다. */
   value?: string | null;
   onChange: (videoId: string | null) => void;
 }
@@ -23,8 +23,8 @@ type UploadState =
   | { phase: 'error'; message: string };
 
 /**
- * Out-of-band video slot shown above the markdown editor. One video per post: uploads the
- * source directly to R2 with a % progress bar and hands the `videoId` back to the editor.
+ * 마크다운 에디터 상단에 배치되는 단일 동영상 첨부 슬롯입니다.
+ * 원본 동영상을 진행률 표시와 함께 R2에 직접 업로드하고 생성된 videoId를 에디터로 전달합니다.
  */
 export default function VideoUpload({ value, onChange }: VideoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +36,8 @@ export default function VideoUpload({ value, onChange }: VideoUploadProps) {
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    event.target.value = ''; // allow re-selecting the same file
+    // 동일한 파일을 다시 선택할 수 있도록 input 값을 초기화합니다.
+    event.target.value = '';
     if (!file) return;
 
     setState({ phase: 'uploading', percent: 0, fileName: file.name });

@@ -11,15 +11,16 @@ interface QualityLevel {
 }
 
 /**
- * Plays the post's attached HLS video. Chrome/Firefox/Edge can't play HLS natively, so
- * hls.js feeds the playlist/segments to the <video> via MSE; Safari plays it natively.
- * Quality defaults to Auto (ABR) with an optional manual selector (hls.js path only).
+ * 게시글에 첨부된 HLS 동영상을 재생합니다.
+ * Safari(iOS 포함)는 네이티브 HLS로 재생하고, 그 외 브라우저(Chrome·Firefox·Edge)는
+ * hls.js와 MSE를 통해 재생하며 수동 화질 선택(기본값 자동 ABR)을 지원합니다.
  */
 export default function VideoPlayer({ video }: { video: PostVideo }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [levels, setLevels] = useState<QualityLevel[]>([]);
-  const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto (ABR)
+  // -1은 자동 화질(ABR)을 의미합니다.
+  const [currentLevel, setCurrentLevel] = useState(-1);
 
   const isPlayable = video.state === 'COMPLETED' && !!video.masterUrl;
 
@@ -27,7 +28,7 @@ export default function VideoPlayer({ video }: { video: PostVideo }) {
     const el = videoRef.current;
     if (!el || !isPlayable || !video.masterUrl) return;
 
-    // Safari (and iOS) play HLS natively — no hls.js needed.
+    // Safari와 iOS 환경은 네이티브 HLS 재생을 지원하므로 hls.js 없이 바로 연결합니다.
     if (el.canPlayType('application/vnd.apple.mpegurl')) {
       el.src = video.masterUrl;
       return;
@@ -53,7 +54,7 @@ export default function VideoPlayer({ video }: { video: PostVideo }) {
   const handleQualityChange = (index: number) => {
     setCurrentLevel(index);
     if (hlsRef.current) {
-      hlsRef.current.currentLevel = index; // -1 → Auto
+      hlsRef.current.currentLevel = index;
     }
   };
 

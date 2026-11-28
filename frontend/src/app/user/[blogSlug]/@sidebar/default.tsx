@@ -17,7 +17,7 @@ export default async function SidebarSlot({ params }: SidebarSlotProps) {
     return null;
   }
 
-  // Interaction's subscribe button under the owner (04-context-map, 조회 조합: 블로그 레이아웃).
+  // 소유자 프로필 하단에 interaction의 구독 버튼을 조합합니다. (04-context-map, 조회 조합: 블로그 레이아웃)
   const { blog } = layout;
   const [{ viewer }, counts] = await Promise.all([
     viewerOf(blog.ownerId),

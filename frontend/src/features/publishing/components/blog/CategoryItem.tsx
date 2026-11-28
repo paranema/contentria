@@ -34,7 +34,6 @@ export default function CategoryItem({ category, blogSlug }: CategoryItemProps) 
           </span>
         </Link>
 
-        {/* 확장/축소 버튼 */}
         {hasChildren && (
           <button
             onClick={(e) => {
@@ -49,7 +48,6 @@ export default function CategoryItem({ category, blogSlug }: CategoryItemProps) 
         )}
       </div>
 
-      {/* 하위 카테고리 (재귀적 렌더링) */}
       {hasChildren && isExpanded && (
         <ul className="ml-4 border-l border-gray-200 pl-3 pt-1">
           {category.children.map((childCategory) => (

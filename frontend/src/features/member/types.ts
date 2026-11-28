@@ -1,6 +1,6 @@
-// The member context's API, as backend/contexts/member answers it (docs/contexts/member/02-implementation.md).
+// backend/contexts/member API와 주고받는 요청·응답 타입입니다. (docs/contexts/member/02-implementation.md)
 
-/** The tokens the human check sends with the requests that need it (01-rules, 사람 확인). */
+/** 사람 확인이 필요한 요청에 함께 전달하는 reCAPTCHA 토큰입니다. (01-rules, 사람 확인) */
 export interface HumanProof {
   recaptchaV3Token?: string;
   recaptchaV2Token?: string;
@@ -30,12 +30,12 @@ export interface CompleteCodeLoginRequest {
   code: string;
 }
 
-/** Every request that mails a code answers with the attempt to present the code with. */
+/** 인증 코드 발송 요청의 응답으로, 이후 코드 검증 시 함께 제출할 시도 식별자입니다. */
 export interface CodeSentResponse {
   attemptId: string;
 }
 
-/** The session itself travels in cookies; the body only says whose and until when. */
+/** 세션 자체는 쿠키로 전달되며, 응답 본문에는 계정 식별자와 액세스 토큰 만료 시각만 담깁니다. */
 export interface SessionResponse {
   accountId: string;
   accessTokenExpiresAt: string;
@@ -52,7 +52,7 @@ export interface RenameProfileRequest {
   displayName: string;
 }
 
-/** What anyone sees of a member (01-rules 흐름 5, 공개 범위): no email address or status. */
+/** 이메일이나 계정 상태를 제외한 회원의 공개 프로필 정보입니다. (01-rules 흐름 5, 공개 범위) */
 export interface PublicProfile {
   accountId: string;
   displayName: string;

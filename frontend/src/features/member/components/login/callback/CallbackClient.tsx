@@ -8,12 +8,12 @@ import { useEffect } from 'react';
 
 export default function CallbackClient() {
   const router = useRouter();
-  // The API set the session cookies before sending the browser here; the profile proves it.
+  // API가 브라우저를 이곳으로 보내기 전에 설정한 세션 쿠키가 유효한지 프로필 조회로 확인합니다.
   const { data: profile, isSuccess, isError } = useMyProfile();
 
   useEffect(() => {
     if (isSuccess && profile) {
-      // A full load, so that every server component renders signed in.
+      // 모든 서버 컴포넌트가 로그인 상태로 다시 렌더링되도록 전체 페이지를 새로 로드합니다.
       window.location.href = PATHS.HOME;
     } else if (isError || (isSuccess && !profile)) {
       router.replace(PATHS.LOGIN);

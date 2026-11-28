@@ -9,7 +9,7 @@ import { deleteCommentAction, editCommentAction, writeCommentAction } from '../a
 import { interactionErrorMessage } from '../errors';
 import { CommentAuthor, CommentPage, CommentView } from '../types';
 
-/** A further page of comments with the authors on it, put together by the page (member's profiles). */
+/** 댓글 페이지 데이터와 작성자 프로필(member 컨텍스트)을 함께 묶은 구조입니다. */
 export interface CommentsWithAuthors {
   page: CommentPage;
   authors: Record<string, CommentAuthor>;
@@ -18,14 +18,14 @@ export interface CommentsWithAuthors {
 interface CommentSectionProps {
   postId: string;
   initial: CommentsWithAuthors;
-  /** The signed-in member, or null for a reader who is not. */
+  /** 현재 로그인한 회원 정보이며, 비로그인 독자인 경우 null입니다. */
   viewer: { accountId: string; author: CommentAuthor } | null;
-  /** The page's server action for the next page. */
+  /** 다음 댓글 페이지를 불러오는 서버 액션입니다. */
   loadMore: (postId: string, cursor: string) => Promise<CommentsWithAuthors>;
   loginRedirect: string;
 }
 
-/** Interaction 01-rules 흐름 3: comments and one level of replies under a published post. */
+/** 발행된 게시글 하단에 댓글과 1단계 답글 목록을 렌더링합니다. (interaction 01-rules 흐름 3) */
 export default function CommentSection({
   postId,
   initial,
@@ -70,7 +70,7 @@ export default function CommentSection({
       done();
     });
 
-  /** A comment with replies keeps its place; a removed one goes with its last reply (01-rules 흐름 3). */
+  /** 답글이 달린 댓글은 삭제 시 자리를 유지하며, 마지막 답글까지 삭제되면 함께 제거합니다. (01-rules 흐름 3) */
   const remove = (comment: CommentView) =>
     run(async () => {
       if (!confirm('댓글을 지울까요?')) return;
@@ -266,7 +266,7 @@ function ReplyForm({
   );
 }
 
-/** 1 to 1000 characters after trimming (01-rules, 댓글 본문). */
+/** 앞뒤 공백 제거 후 1~1000자 범위의 댓글·답글 입력 폼을 렌더링합니다. (01-rules 댓글 본문) */
 function CommentForm({
   initial = '',
   placeholder,

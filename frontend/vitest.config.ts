@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-// Unit tests for code without React or Next.js runtime (src/**/*.test.ts).
+// React나 Next.js 런타임에 의존하지 않는 순수 로직의 단위 테스트 설정입니다.
 export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

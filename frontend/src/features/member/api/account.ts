@@ -4,8 +4,7 @@ import { ActionResult, toActionError } from '@/shared/api/actionResult';
 import apiServer from '@/shared/api/apiServer';
 import { CodeSentResponse, HumanProof, SessionResponse } from '../types';
 
-// docs/contexts/member/01-rules.md, 흐름 3, 4. Changes that end the account's other sessions
-// answer with a new session for this browser, which is passed on (relaySessionCookies).
+// 다른 기기의 세션을 종료하는 변경 요청은 현재 브라우저용 새 세션을 응답하며 이를 쿠키로 전달합니다. (docs/contexts/member/01-rules.md, 흐름 3, 4)
 const NEW_SESSION = { relaySessionCookies: true } as const;
 
 async function attempt<T>(call: () => Promise<T>): Promise<ActionResult<T>> {
@@ -16,7 +15,7 @@ async function attempt<T>(call: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
-/** The ways the account signs in: `EMAIL` (a password) and linked providers such as `GOOGLE`. */
+/** 계정에 등록된 로그인 수단(`EMAIL` 비밀번호 및 `GOOGLE` 등 연동 제공자) 목록을 조회합니다. */
 export async function getMyCredentials(): Promise<string[]> {
   return (await apiServer.get<{ providers: string[] }>('/api/me/credentials')).providers;
 }
@@ -45,12 +44,12 @@ export async function changePasswordAction(
   );
 }
 
-/** A social-only account's first password, set through a link mailed to it. */
+/** 소셜 전용 계정의 첫 비밀번호를 설정할 수 있도록 이메일로 링크를 발송합니다. */
 export async function requestPasswordSetupLinkAction(): Promise<ActionResult<void>> {
   return attempt(() => apiServer.post<void>('/api/me/password/setup-link', {}));
 }
 
-/** A forgotten password: always answers alike, whether or not an account uses the address. */
+/** 비밀번호 재설정 링크를 발송합니다. 계정 존재 여부와 무관하게 동일하게 응답합니다. */
 export async function requestPasswordResetLinkAction(
   request: { email: string } & HumanProof
 ): Promise<ActionResult<void>> {
@@ -59,7 +58,7 @@ export async function requestPasswordResetLinkAction(
   );
 }
 
-/** Spends a setup or reset link; the account's other sessions end and this one starts. */
+/** 설정 또는 재설정 링크 토큰으로 새 비밀번호를 지정하고, 기존 세션을 종료한 뒤 현재 세션을 시작합니다. */
 export async function resetPasswordAction(
   token: string,
   newPassword: string
@@ -73,7 +72,7 @@ export async function resetPasswordAction(
   );
 }
 
-/** Codes go to the current address and to the new one; both must come back (01-rules 흐름 4). */
+/** 현재 이메일과 새 이메일 모두로 확인 코드를 발송하며, 두 코드를 모두 제출해야 변경이 완료됩니다. (01-rules 흐름 4) */
 export async function startEmailChangeAction(
   newEmail: string
 ): Promise<ActionResult<CodeSentResponse>> {
@@ -96,12 +95,12 @@ export async function completeEmailChangeAction(
   );
 }
 
-/** A code to the account's address confirms the withdrawal. */
+/** 계정 이메일로 회원 탈퇴 확인 코드를 발송합니다. */
 export async function startWithdrawalAction(): Promise<ActionResult<CodeSentResponse>> {
   return attempt(() => apiServer.post<CodeSentResponse>('/api/me/withdrawal/start', {}));
 }
 
-/** The account is gone; the API expires both cookies, and the screen sends the browser home. */
+/** 회원 탈퇴를 완료하고 API가 만료시킨 세션 쿠키를 브라우저에 반영합니다. */
 export async function completeWithdrawalAction(
   attemptId: string,
   code: string

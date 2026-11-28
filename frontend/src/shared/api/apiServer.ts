@@ -6,18 +6,18 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 type FetchOptions = RequestInit & {
-  /** Sends the access token from the browser's cookie. Default true. */
+  /** 브라우저 쿠키의 액세스 토큰을 `Authorization` 헤더에 담아 전송할지 여부입니다(기본값: `true`). */
   requireAuth?: boolean;
-  /** Sends the browser to the login page on a 401. Default true. */
+  /** 401 응답 수신 시 로그인 페이지로 리다이렉트할지 여부입니다(기본값: `true`). */
   shouldRedirectOn401?: boolean;
   /**
-   * Passes the session cookies the API sets on to the browser: for logging in, out and the like.
-   * Only from a Server Action (see relaySessionCookies).
+   * 로그인·로그아웃 등 백엔드 응답이 설정한 세션 쿠키를 브라우저로 전달할지 여부입니다.
+   * 쿠키 쓰기가 허용된 Server Action 또는 Route Handler에서만 사용해야 합니다(`relaySessionCookies` 참조).
    */
   relaySessionCookies?: boolean;
   /**
-   * Sends the browser's refresh-token cookie, which the API reads only on the requests that end
-   * or renew a session (logout, refresh). A server-to-server call carries no cookie otherwise.
+   * 브라우저의 리프레시 토큰 쿠키를 백엔드로 전달할지 여부입니다.
+   * 서버 간 호출은 기본적으로 쿠키를 자동 전달하지 않으므로, 로그아웃이나 토큰 갱신 요청에서만 활성화합니다.
    */
   sendRefreshToken?: boolean;
 };
@@ -61,11 +61,11 @@ async function fetchExtended<T>(url: string, options: FetchOptions = {}): Promis
 
   const response = await fetch(`${getApiBaseUrl()}${url}`, { ...rest, headers });
 
-  // Before anything else: a failed login still clears cookies, a logout answers 204 with them expired.
+  // 로그인 실패 시의 쿠키 초기화나 로그아웃(204)의 쿠키 만료 처리를 누락하지 않도록 상태 코드 분기 전에 먼저 반영합니다.
   if (relay) await relaySessionCookies(response);
 
   if (response.status === 401 && requireAuth && shouldRedirectOn401) {
-    redirect(`${PATHS.LOGIN}?alert=session_expired`); // Throws NEXT_REDIRECT, which Next.js handles.
+    redirect(`${PATHS.LOGIN}?alert=session_expired`); // Next.js가 처리하는 NEXT_REDIRECT 예외를 발생시킵니다.
   }
 
   if (!response.ok) {

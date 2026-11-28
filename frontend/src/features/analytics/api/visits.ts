@@ -5,10 +5,10 @@ import { headers } from 'next/headers';
 import { VisitRequest } from '../types';
 
 /**
- * Analytics 01-rules 흐름 1. The Next.js server calls the API, so the reader's address and browser
- * travel in the forwarding headers; the API trusts them only from a private address like ours.
- * The session is sent when there is one, so the owner's own visits are left out. Never fails the
- * page: a visit that was not recorded is only a number off.
+ * 블로그 홈 또는 게시글 방문을 기록합니다. (analytics 01-rules 흐름 1)
+ * Next.js 서버에서 API를 호출하므로 독자의 IP와 브라우저 정보를 전달 헤더에 담아 보내며,
+ * 로그인 세션이 있으면 소유자 본인의 방문은 집계에서 제외됩니다.
+ * 방문 기록 실패가 페이지 렌더링을 막지 않도록 예외를 삼킵니다.
  */
 export async function recordVisitAction(request: VisitRequest): Promise<void> {
   try {

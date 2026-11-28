@@ -42,8 +42,7 @@ export default function HeroSection() {
           ref={h1Ref}
           className="relative mb-6 break-keep text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl md:text-5xl lg:text-6xl"
         >
-          {/* 완성 문장을 투명하게 미리 깔아 최종 높이(줄 수)를 예약한다 — 타이핑 중
-              줄이 늘어나며 아래 콘텐츠가 밀리는 레이아웃 시프트를 모든 해상도에서 제거 */}
+          {/* 타이핑 중 줄바꿈으로 하단 콘텐츠가 밀리는 레이아웃 시프트를 막기 위해 완성 문장 높이를 미리 확보합니다. */}
           <span aria-hidden className="invisible">
             당신의 이야기를 세상에 펼쳐보세요.
           </span>
@@ -76,12 +75,6 @@ export default function HeroSection() {
               >
                 대시보드로 이동
               </Link>
-              {/* <Link
-                href={PATHS.NEW_POST}
-                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-8 py-3.5 text-base font-semibold text-gray-700 shadow-sm transition duration-300 ease-in-out hover:bg-gray-50"
-              >
-                새 글 작성
-              </Link> */}
             </>
           ) : (
             <Link

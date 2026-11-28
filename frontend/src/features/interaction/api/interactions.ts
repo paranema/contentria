@@ -15,9 +15,7 @@ async function attempt<T>(call: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
-// ---------------------------------------------------------------- counts (public)
-
-/** Like and comment counts of posts, subscriber counts of blogs; up to 100 ids of each. */
+/** 게시글의 좋아요·댓글 수와 블로그의 구독자 수를 각 최대 100개 ID까지 공개 조회합니다. */
 export async function getCounts(ids: {
   postIds?: string[];
   blogIds?: string[];
@@ -30,9 +28,7 @@ export async function getCounts(ids: {
   });
 }
 
-// ---------------------------------------------------------------- subscriptions (흐름 1)
-
-/** Whether the signed-in member subscribes to the blog. */
+/** 로그인한 회원의 해당 블로그 구독 여부를 조회합니다. (interaction 01-rules 흐름 1) */
 export async function isSubscribed(blogSlug: string): Promise<boolean> {
   const status = await apiServer.get<{ subscribed: boolean }>(
     `/api/me/subscriptions/${enc(blogSlug)}`,
@@ -58,9 +54,7 @@ export async function unsubscribeAction(blogSlug: string): Promise<ActionResult<
   });
 }
 
-// ---------------------------------------------------------------- likes (흐름 2)
-
-/** Which of [postIds] the signed-in member likes. */
+/** 주어진 게시글 ID 목록 중 로그인한 회원이 좋아요를 누른 게시글 ID 집합을 반환합니다. (interaction 01-rules 흐름 2) */
 export async function getMyLikes(postIds: string[]): Promise<Set<string>> {
   if (postIds.length === 0) return new Set();
   const liked = await apiServer.get<{ postIds: string[] }>(
@@ -80,9 +74,7 @@ export async function unlikeAction(postId: string): Promise<ActionResult<void>> 
   return attempt(() => apiServer.delete<void>(`/api/posts/${enc(postId)}/like`));
 }
 
-// ---------------------------------------------------------------- comments (흐름 3)
-
-/** A published post's comments, a page at a time; [cursor] comes from the page before. Public. */
+/** 발행된 게시글의 댓글 목록을 커서 기반 페이지 단위로 공개 조회합니다. (interaction 01-rules 흐름 3) */
 export async function getComments(postId: string, cursor?: string | null): Promise<CommentPage> {
   const query = cursor ? `?cursor=${enc(cursor)}` : '';
   return apiServer.get<CommentPage>(`/api/posts/${enc(postId)}/comments${query}`, {
@@ -90,7 +82,7 @@ export async function getComments(postId: string, cursor?: string | null): Promi
   });
 }
 
-/** A comment, or with [parentId] a reply to a top-level one. */
+/** 새 댓글을 작성하거나, parentId가 주어지면 최상위 댓글에 답글을 작성합니다. */
 export async function writeCommentAction(
   postId: string,
   body: string,

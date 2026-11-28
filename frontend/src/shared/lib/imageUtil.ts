@@ -6,7 +6,6 @@ export function getHighResGoogleProfileImage(
     return undefined;
   }
 
-  // URL에 '=s' 파라미터가 있는지 확인하고, 있다면 원하는 크기로 교체한다.
-  // 정규식을 사용하여 '=s' 뒤에 숫자가 오는 모든 경우를 처리한다.
+  // Google 프로필 이미지 URL 끝의 크기 파라미터(`=s숫자-c`)를 원하는 해상도로 교체합니다.
   return url.replace(/=s\d+(-c)?$/, `=s${size}-c`);
 }

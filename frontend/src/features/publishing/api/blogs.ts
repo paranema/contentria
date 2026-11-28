@@ -7,10 +7,10 @@ import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
 import { BlogView, ChangeBlogSettingsRequest, CreateBlogRequest } from '../types';
 
-/** The signed-in member's blogs, oldest first. */
+/** 로그인한 회원의 블로그 목록을 생성순으로 조회합니다. */
 export const getMyBlogs = cache(async () => apiServer.get<BlogView[]>('/api/me/blogs'));
 
-/** Anyone's blog, or null when there is no such blog. */
+/** 슬러그로 공개 블로그를 조회하며, 블로그가 없으면 null을 반환합니다. */
 export const getBlog = cache(async (slug: string): Promise<BlogView | null> => {
   try {
     return await apiServer.get<BlogView>(`/api/blogs/${encodeURIComponent(slug)}`, {
@@ -22,7 +22,7 @@ export const getBlog = cache(async (slug: string): Promise<BlogView | null> => {
   }
 });
 
-/** 흐름 1: the blog comes with sample categories and drafts. */
+/** 새 블로그를 생성합니다. 샘플 카테고리와 임시 글이 함께 만들어집니다. (흐름 1) */
 export async function createBlogAction(
   request: CreateBlogRequest
 ): Promise<ActionResult<BlogView>> {
@@ -33,7 +33,7 @@ export async function createBlogAction(
   }
 }
 
-/** The slug cannot change; the title and description can. */
+/** 블로그 제목과 설명을 변경합니다. 슬러그는 변경할 수 없습니다. */
 export async function changeBlogSettingsAction(
   slug: string,
   request: ChangeBlogSettingsRequest

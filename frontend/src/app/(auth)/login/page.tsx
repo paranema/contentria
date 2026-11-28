@@ -2,8 +2,9 @@ import LoginContainer from '@/features/member/components/login/LoginContainer';
 import { memberErrorMessage } from '@/features/member/errors';
 
 /**
- * `?error=<code>`: a failed Google sign-in, as the API sends the browser back.
- * `?alert=session_expired`: proxy.ts or apiServer found the session over.
+ * 쿼리 파라미터에 따른 안내 메시지를 표시합니다.
+ * - `?error=<code>`: Google 로그인 실패 시 API 서버가 리다이렉트하며 전달한 오류 코드입니다.
+ * - `?alert=session_expired`: proxy.ts 또는 apiServer에서 세션 만료를 감지한 경우입니다.
  */
 export default async function LoginPage({
   searchParams,

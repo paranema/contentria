@@ -1,5 +1,4 @@
-// The publishing context's API, as backend/contexts/publishing answers it
-// (docs/contexts/publishing/02-implementation.md).
+// 퍼블리싱 컨텍스트 백엔드 API의 요청·응답 모델입니다. (docs/contexts/publishing/02-implementation.md)
 
 export interface BlogView {
   blogId: string;
@@ -20,7 +19,7 @@ export interface ChangeBlogSettingsRequest {
   description: string | null;
 }
 
-/** Top-level categories, each followed by its children, in display order. */
+/** 상위 카테고리와 각 하위 카테고리가 표시 순서대로 나열된 카테고리 트리 응답입니다. */
 export interface CategoryTreeView {
   blogId: string;
   version: number;
@@ -35,16 +34,16 @@ export interface CategoryView {
   displayOrder: number;
 }
 
-/** The whole tree, as the editor sends it back with the version it loaded. */
+/** 편집기가 불러온 버전과 함께 전송하는 전체 카테고리 트리 수정 요청입니다. */
 export interface EditCategoryTreeRequest {
   version: number;
   categories: { key: string; name: string; parentKey: string | null }[];
 }
 
-/** DRAFT: never published. PRIVATE: published once, hidden again. Only PUBLISHED reaches readers. */
+/** 게시글 상태입니다. DRAFT는 임시 저장, PUBLISHED는 공개 발행, PRIVATE은 발행 후 비공개 전환 상태입니다. */
 export type PostStatus = 'DRAFT' | 'PUBLISHED' | 'PRIVATE';
 
-/** What the owner edits. */
+/** 블로그 소유자용 게시글 상세 정보입니다. */
 export interface PostView {
   postId: string;
   blogId: string;
@@ -78,11 +77,11 @@ export interface PostListItem {
   publishedAt: string | null;
   slug: string;
   updatedAt: string;
-  /** The blog's owner; the screen asks member for the profile. */
+  /** 블로그 소유자 회원 ID입니다. */
   authorId: string;
 }
 
-/** A page of a list, 20 at a time. [page] counts from 0. */
+/** 20개 단위로 조회되는 게시글 목록 페이지 응답이며, page는 0부터 시작합니다. */
 export interface PostPage {
   items: PostListItem[];
   page: number;
@@ -90,7 +89,7 @@ export interface PostPage {
   totalPages: number;
 }
 
-/** What readers see of a published post. */
+/** 독자에게 공개되는 발행 게시글 상세 정보입니다. */
 export interface PublishedPostView {
   postId: string;
   blogId: string;
@@ -104,13 +103,13 @@ export interface PublishedPostView {
   authorId: string;
 }
 
-/** An old slug: the post now lives at [currentSlug] (01-rules, 글 slug). */
+/** 이전 슬러그로 조회했을 때 안내할 현재 게시글 주소 정보입니다. (01-rules, 글 slug) */
 export interface MovedPost {
   blogSlug: string;
   currentSlug: string;
 }
 
-/** A published post's title and address, for screens that name posts by id. */
+/** 게시글 ID로 제목과 공개 주소를 조회한 요약 정보입니다. */
 export interface PublishedTitle {
   postId: string;
   blogSlug: string;

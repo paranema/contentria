@@ -35,7 +35,6 @@ export default function VerificationStep({
           autoFocus
         >
           <InputOTPGroup className="gap-2">
-            {/* 총 6자리의 입력 슬롯을 만듭니다. */}
             {Array.from({ length: 6 }).map((_, index) => (
               <InputOTPSlot
                 key={index}
@@ -49,7 +48,6 @@ export default function VerificationStep({
         </InputOTP>
 
         <div className="relative h-6 w-full">
-          {/* 로딩 상태 (필요 시 표시) */}
           <div
             className={`absolute inset-0 flex justify-center transition-all duration-300 ${isLoading ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'}`}
           >
@@ -59,7 +57,6 @@ export default function VerificationStep({
             </div>
           </div>
 
-          {/* 에러 상태 */}
           <div
             className={`absolute inset-0 flex justify-center transition-all duration-300 ${error && !isLoading ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-1 opacity-0'}`}
           >

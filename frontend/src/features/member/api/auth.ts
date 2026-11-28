@@ -13,8 +13,7 @@ import {
   StartSignUpRequest,
 } from '../types';
 
-// Every call that starts a session passes the cookies the API sets on to the browser
-// (shared/api/sessionCookies). None of them is authenticated, so none sends a token.
+// 세션을 시작하는 비인증 요청은 API가 발급한 세션 쿠키를 브라우저로 전달합니다. (shared/api/sessionCookies)
 const SESSION = { requireAuth: false, relaySessionCookies: true } as const;
 const ANONYMOUS = { requireAuth: false } as const;
 
@@ -26,7 +25,7 @@ async function attempt<T>(call: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
-/** 흐름 1의 1, 2번: mails a sign-up code. */
+/** 회원가입용 인증 코드를 이메일로 발송합니다. (흐름 1의 1, 2번) */
 export async function startSignUpAction(
   request: StartSignUpRequest
 ): Promise<ActionResult<CodeSentResponse>> {
@@ -35,7 +34,7 @@ export async function startSignUpAction(
   );
 }
 
-/** 흐름 1의 3번: the code and the password; the account is made and signed in. */
+/** 인증 코드와 비밀번호를 검증하여 계정을 생성하고 로그인 세션을 시작합니다. (흐름 1의 3번) */
 export async function completeSignUpAction(
   request: CompleteSignUpRequest
 ): Promise<ActionResult<SessionResponse>> {
@@ -50,7 +49,7 @@ export async function loginWithPasswordAction(
   return attempt(() => apiServer.post<SessionResponse>('/api/auth/login', request, SESSION));
 }
 
-/** 흐름 6의 1, 2번: mails a login code. Answers alike whether or not an account uses the address. */
+/** 로그인용 일회용 코드를 이메일로 발송하며, 계정 존재 여부와 무관하게 동일하게 응답합니다. (흐름 6의 1, 2번) */
 export async function startCodeLoginAction(
   request: StartCodeLoginRequest
 ): Promise<ActionResult<CodeSentResponse>> {
@@ -59,7 +58,7 @@ export async function startCodeLoginAction(
   );
 }
 
-/** 흐름 6의 3번 */
+/** 일회용 인증 코드를 검증하고 로그인 세션을 시작합니다. (흐름 6의 3번) */
 export async function completeCodeLoginAction(
   request: CompleteCodeLoginRequest
 ): Promise<ActionResult<SessionResponse>> {
@@ -68,7 +67,7 @@ export async function completeCodeLoginAction(
   );
 }
 
-/** This browser only. The API answers 204 with both cookies expired, whatever the session's state. */
+/** 현재 브라우저의 세션만 로그아웃합니다. 세션 상태와 무관하게 API가 두 쿠키를 만료시켜 응답합니다. */
 export async function logoutAction() {
   try {
     await apiServer.post(

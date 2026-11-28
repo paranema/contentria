@@ -11,20 +11,20 @@ export default function TableOfContents({ headings }: TableOfContentsProps) {
   const [activeId, setActiveId] = useState<string>('');
 
   useEffect(() => {
-    let ticking = false; // 💡 성능 최적화를 위한 플래그
+    let ticking = false;
 
     const handleScroll = () => {
-      // 💡 requestAnimationFrame을 사용하여 브라우저 렌더링 주기에 맞춰 한 번만 실행되도록 제어
+      // 브라우저 렌더링 주기에 맞춰 스크롤 계산이 한 번만 실행되도록 제한합니다.
       if (!ticking) {
         window.requestAnimationFrame(() => {
           let currentId = '';
           for (const heading of headings) {
             const element = document.getElementById(heading.id);
-            // 상단 기준 150px 위치를 지났는지 체크
+            // 뷰포트 상단 150px 기준선을 지난 마지막 헤딩을 현재 위치로 간주합니다.
             if (element && element.getBoundingClientRect().top < 150) {
               currentId = heading.id;
             } else {
-              // 화면 아래에 있는 헤딩을 만나면 즉시 루프 종료 (성능 이점)
+              // 기준선 아래에 있는 헤딩을 만나면 순회를 중단합니다.
               break;
             }
           }
@@ -36,7 +36,7 @@ export default function TableOfContents({ headings }: TableOfContentsProps) {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // 초기 로드 시 실행
+    handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, [headings]);
@@ -51,7 +51,7 @@ export default function TableOfContents({ headings }: TableOfContentsProps) {
           <a
             href="#"
             className={`block text-sm transition-colors hover:text-gray-900 ${
-              // activeId가 비어있으면(스크롤이 맨 위면) 활성화
+              // 스크롤이 최상단에 있어 활성 헤딩이 없으면 도입부 항목을 강조합니다.
               activeId === '' ? 'font-semibold text-indigo-600' : 'text-gray-500'
             }`}
             onClick={(e) => {

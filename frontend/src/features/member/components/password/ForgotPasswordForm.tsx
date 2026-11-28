@@ -22,8 +22,8 @@ import RecaptchaV2Step from '../RecaptchaV2Step';
 type Step = 'email' | 'recaptcha_v2_challenge' | 'sent';
 
 /**
- * A forgotten password (01-rules 흐름 3): a link to the address. The API answers alike whether or
- * not an account uses it, so the screen does too.
+ * 비밀번호 재설정 링크 발송 폼입니다. (01-rules 흐름 3)
+ * API가 계정 존재 여부와 무관하게 동일하게 응답하므로 화면도 동일한 안내를 표시합니다.
  */
 export default function ForgotPasswordForm() {
   const [step, setStep] = useState<Step>('email');

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: contentria-frontend-web
 data:
-  API_BASE_URL: "http://contentria-backend-api:8080"
-  EXTERNAL_API_BASE_URL: "/api"
+  INTERNAL_API_BASE_URL: "http://contentria-backend-api:8080"
+  PUBLIC_API_BASE_URL: ""
   RECAPTCHA_V3_SITE_KEY: "6LdfOawrAAAAAEt7MDy5aFYKWQoFlK_XgRWzgxz1"
-  RECAPTCHA_V2_CHECKBOX_SITE_KEY: "6LfqOawrAAAAAPfRduHFSGReBuwGmANSv0H6hU6S"
+  RECAPTCHA_V2_SITE_KEY: "6LfqOawrAAAAAPfRduHFSGReBuwGmANSv0H6hU6S"

@@ -49,7 +49,7 @@ const STATUS_BADGES: Record<PostStatus, { label: string; className: string }> = 
   },
 };
 
-/** What the owner can do with a post in each state (publishing 01-rules 흐름 4, 5). */
+/** 게시글의 현재 상태에 따라 소유자가 수행할 수 있는 작업 메뉴를 렌더링합니다. (01-rules, 흐름 4~5) */
 function PostActions({ post }: { post: PostListItem }) {
   const [isPending, startTransition] = useTransition();
 

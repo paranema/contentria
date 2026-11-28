@@ -1,6 +1,6 @@
 import { SerializedError } from '@/shared/api/actionResult';
 
-/** Codes the member API answers with that the screens act on, not only show. */
+/** 단순 메시지 표시 외에 화면 흐름 분기에 사용되는 회원 API 에러 코드입니다. */
 export const MEMBER_ERRORS = {
   RECAPTCHA_CHALLENGE_REQUIRED: 'RECAPTCHA_CHALLENGE_REQUIRED',
   VERIFICATION_MISMATCH: 'VERIFICATION_MISMATCH',
@@ -8,7 +8,7 @@ export const MEMBER_ERRORS = {
   VERIFICATION_EXPIRED: 'VERIFICATION_EXPIRED',
 } as const;
 
-/** The code attempt is over: only a new one, from the start, can go on. */
+/** 인증 코드 입력 시도가 잠기거나 만료되어 처음부터 다시 시작해야 하는지 판별합니다. */
 export function isAttemptOver(error: Pick<SerializedError, 'code'>): boolean {
   return (
     error.code === MEMBER_ERRORS.VERIFICATION_LOCKED ||
@@ -39,9 +39,9 @@ const MESSAGES: Record<string, string> = {
   SOCIAL_IDENTITY_TAKEN: '그 Google 계정은 다른 회원과 연동되어 있습니다.',
   PROVIDER_ALREADY_LINKED: '이미 다른 Google 계정이 연동되어 있습니다.',
   SIGN_IN_REQUIRED: '로그인한 뒤 다시 시도해 주세요.',
-  // The password link page is an auth screen, worded like the login pages.
+  // 비밀번호 링크 화면은 인증 화면이므로 로그인 화면과 동일하게 영문 문구를 사용합니다.
   INVALID_PASSWORD_TOKEN: 'This link is no longer valid. Please ask for a new one.',
-  // Social sign-in failures arrive as ?error=<code> on the login page.
+  // 소셜 로그인 실패는 로그인 페이지의 ?error=<code> 쿼리로 전달됩니다.
   SOCIAL_EMAIL_MISSING: 'Google did not share your email address. Please allow it and try again.',
   SOCIAL_EMAIL_NOT_VERIFIED: 'Your Google email address is not verified.',
   SOCIAL_LOGIN_FAILED: 'Signing in with Google failed. Please try again.',
@@ -49,7 +49,7 @@ const MESSAGES: Record<string, string> = {
 
 const PROVIDER_NAMES: Record<string, string> = { EMAIL: 'email and password', GOOGLE: 'Google' };
 
-/** What to tell the person about a failed member request. */
+/** 실패한 회원 요청에 대해 사용자에게 표시할 안내 문구를 반환합니다. */
 export function memberErrorMessage(
   error: Pick<SerializedError, 'code' | 'providers'> | null | undefined
 ): string | null {
@@ -64,8 +64,8 @@ export function memberErrorMessage(
 }
 
 /**
- * The dashboard is worded in Korean and the login pages in English, so the codes both can show
- * have a second wording here: code checks, entries, and linking Google (`?error=<code>`).
+ * 대시보드는 한국어, 로그인 화면은 영어를 사용하므로 두 화면에서 공통으로 발생할 수 있는
+ * 코드 검증·입력 오류 및 Google 연동 오류(`?error=<code>`)의 한국어 문구를 별도로 정의합니다.
  */
 const ACCOUNT_MESSAGES: Record<string, string> = {
   INVALID_EMAIL: '쓸 수 있는 이메일 주소를 넣어 주세요.',
@@ -79,7 +79,7 @@ const ACCOUNT_MESSAGES: Record<string, string> = {
   SOCIAL_LOGIN_FAILED: 'Google 연동에 실패했습니다. 다시 시도해 주세요.',
 };
 
-/** What the settings screen tells the person about a failed account request. */
+/** 설정 화면의 계정 요청이 실패했을 때 표시할 한국어 안내 문구를 반환합니다. */
 export function accountErrorMessage(error: Pick<SerializedError, 'code'>): string {
   return (
     ACCOUNT_MESSAGES[error.code] ?? MESSAGES[error.code] ?? '문제가 생겼습니다. 다시 시도해 주세요.'

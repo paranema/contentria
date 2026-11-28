@@ -4,9 +4,9 @@ import { PublicConfig } from '@/shared/config/runtimeConfig';
 import { createContext, useContext } from 'react';
 
 const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
-  externalApiBaseUrl: '/api',
+  publicApiBaseUrl: '',
   recaptchaV3SiteKey: '',
-  recaptchaV2CheckboxSiteKey: '',
+  recaptchaV2SiteKey: '',
 };
 
 const PublicConfigContext = createContext<PublicConfig>(DEFAULT_PUBLIC_CONFIG);

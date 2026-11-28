@@ -8,8 +8,8 @@ import { getMyBlogs } from '@/features/publishing/api/blogs';
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const blogs = await getMyBlogs();
 
-  // No guard here: a member without a blog still has subscriptions and a profile. The pages
-  // that need a blog (home, posts, categories) send a blog-less member to /dashboard/welcome.
+  // 블로그가 없는 회원도 구독 목록과 계정 설정은 이용할 수 있으므로 레이아웃에서는 리다이렉트하지 않습니다.
+  // 블로그가 필수인 하위 페이지(홈, 글 관리, 카테고리 관리)에서 개별적으로 /dashboard/welcome으로 이동시킵니다.
   const firstBlogSlug = blogs[0]?.slug ?? null;
 
   return (

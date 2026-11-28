@@ -10,7 +10,7 @@ import { redirect } from 'next/navigation';
 export default async function DashboardPage() {
   const [profile, blogs] = await Promise.all([getMyProfile(), getMyBlogs()]);
 
-  // The (main) layout already redirects blog-less users; this is direct-access defense.
+  // 블로그가 없는 상태로 접근한 경우 온보딩 화면으로 이동시킵니다.
   if (blogs.length === 0) {
     redirect('/dashboard/welcome');
   }

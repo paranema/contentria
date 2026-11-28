@@ -4,8 +4,7 @@ interface StatGroupCardProps {
 }
 
 /**
- * 통계 그룹 카드 — 하나의 지표(조회수/방문자)를 오늘·어제·누적 3열로 묶어 보여준다.
- * (지표 1개 = 카드 1개로 6장을 나열하는 것보다 의미 묶음이 또렷하고 차분하다)
+ * 하나의 지표(조회수·방문자)를 오늘·어제·누적 3열 카드로 묶어 표시합니다.
  */
 export default function StatGroupCard({ title, items }: StatGroupCardProps) {
   return (

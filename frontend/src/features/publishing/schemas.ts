@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-// As publishing takes them (01-rules, 처음 정하는 값). Looser here would only turn inline errors
-// into errors after submitting.
+// 퍼블리싱 도메인 규칙(01-rules, 처음 정하는 값)과 동일한 입력 검증 스키마를 정의합니다.
 
 const title = z
   .string()

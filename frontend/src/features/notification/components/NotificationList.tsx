@@ -9,12 +9,12 @@ import { NotificationEntries, NotificationEntry } from '../types';
 
 interface NotificationListProps {
   initial: NotificationEntries;
-  /** The page's server action for the next page. */
+  /** 다음 알림 페이지를 불러오는 서버 액션입니다. */
   loadMore: (cursor: string) => Promise<NotificationEntries>;
 }
 
 function sentence(entry: NotificationEntry): string {
-  // A post hidden or deleted since: nothing of it is named.
+  // 비공개 전환되었거나 삭제된 게시글은 제목을 노출하지 않습니다.
   if (!entry.post) return '지금은 볼 수 없는 글에 대한 알림입니다.';
   const who = entry.actorName ?? '알 수 없는 회원';
   const what = `'${entry.post.title}'`;
@@ -28,7 +28,7 @@ function sentence(entry: NotificationEntry): string {
   }
 }
 
-/** The inbox (notification 01-rules 흐름 3): newest first; opening one marks it read. */
+/** 최신순으로 알림 목록을 표시하며, 알림을 열면 읽음 처리 후 대상 글로 이동합니다. (notification 01-rules 흐름 3) */
 export default function NotificationList({ initial, loadMore }: NotificationListProps) {
   const router = useRouter();
   const [entries, setEntries] = useState(initial.entries);

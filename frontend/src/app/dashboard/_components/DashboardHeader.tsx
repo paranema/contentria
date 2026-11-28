@@ -17,9 +17,9 @@ import NotificationBell from '@/features/notification/components/NotificationBel
 
 interface DashboardHeaderProps {
   blogSlug: string | null;
-  /** (main) 레이아웃에서만 켜는 모바일 내비 Sheet 트리거 — 에디터/온보딩 헤더엔 없음 */
+  /** (main) 레이아웃에서만 표시하는 모바일 내비게이션 드로어 트리거 여부입니다. */
   showMobileNav?: boolean;
-  /** (main) 레이아웃에서만 켜는 글쓰기 CTA — 에디터/온보딩 헤더엔 없음 */
+  /** (main) 레이아웃에서만 표시하는 글쓰기 버튼 노출 여부입니다. */
   showWriteButton?: boolean;
 }
 
@@ -67,24 +67,12 @@ export default function DashboardHeader({
   return (
     <header className="sticky top-0 z-10 w-full border-b bg-white shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-        {/* 왼쪽 영역: 모바일 내비 + 블로그 제목 & 검색 전환 */}
         <div className="flex items-center md:w-64">
           {showMobileNav && <DashboardMobileNav blogSlug={blogSlug} />}
 
           <Link href="/dashboard" className="text-xl font-bold md:hidden">
             Contentria
           </Link>
-
-          {/* <div className={`relative ${isSearchVisible ? 'block' : 'hidden'} md:block`}>
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <Search size={18} className="text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="검색..."
-              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 md:w-64"
-            />
-          </div> */}
 
           {!isSearchVisible && (
             <button
@@ -96,13 +84,10 @@ export default function DashboardHeader({
           )}
         </div>
 
-        {/* 중앙 영역: 블로그 제목 (데스크톱에서만) */}
         <h1 className="hidden text-2xl font-bold md:block">Contentria</h1>
 
-        {/* 오른쪽 영역: 버튼 및 프로필 */}
         <div className="flex items-center space-x-2">
-          {/* 주 행동(글쓰기) CTA — 페이지마다 분산돼 있던 새 글 작성 버튼을 헤더로 일원화.
-              에디터(초안 유실 위험)/온보딩(블로그 없음)에서는 숨긴다 */}
+          {/* 새 글 작성 버튼을 헤더로 일원화하며, 초안 유실 위험이 있는 에디터와 블로그 생성 전인 온보딩에서는 숨깁니다. */}
           {showWriteButton && (
             <Button asChild size="sm" className="mr-1">
               <Link href="/dashboard/posts/new">
@@ -112,10 +97,8 @@ export default function DashboardHeader({
             </Button>
           )}
 
-          {/* 알림 버튼 */}
           <NotificationBell />
 
-          {/* 프로필 드롭다운 */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}

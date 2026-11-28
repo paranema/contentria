@@ -4,13 +4,13 @@ import { ActionResult, toActionError } from '@/shared/api/actionResult';
 import apiServer from '@/shared/api/apiServer';
 import { NotificationPage } from '../types';
 
-/** The signed-in member's notifications, a page at a time. */
+/** 로그인한 회원의 알림 목록을 커서 기반 페이지 단위로 조회합니다. */
 export async function getNotifications(cursor?: string | null): Promise<NotificationPage> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
   return apiServer.get<NotificationPage>(`/api/me/notifications${query}`);
 }
 
-/** For the bell, asked every so often (01-rules 전제 2). Null for someone not signed in. */
+/** 헤더 알림 벨에서 주기적으로 폴링하는 읽지 않은 알림 수를 반환합니다. 비로그인 상태면 null을 반환합니다. (01-rules 전제 2) */
 export async function getUnreadCount(): Promise<number | null> {
   try {
     const answer = await apiServer.get<{ count: number }>('/api/me/notifications/unread-count', {

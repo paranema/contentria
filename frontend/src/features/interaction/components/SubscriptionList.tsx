@@ -8,7 +8,7 @@ import { unsubscribeAction } from '../api/interactions';
 import { interactionErrorMessage } from '../errors';
 import { SubscribedBlog } from '../types';
 
-/** The blogs the member subscribes to, each with a way to stop. */
+/** 회원이 구독 중인 블로그 목록과 구독 취소 버튼을 렌더링합니다. */
 export default function SubscriptionList({ subscriptions }: { subscriptions: SubscribedBlog[] }) {
   const [isPending, startTransition] = useTransition();
 

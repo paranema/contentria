@@ -1,6 +1,6 @@
 import { CategoryView } from './types';
 
-/** A category with its children, for the sidebar. The first node stands for every post. */
+/** 사이드바에 표시할 카테고리 트리 노드입니다. 첫 번째 노드는 전체 글 보기를 나타냅니다. */
 export interface CategoryTreeNode {
   id: string;
   name: string;
@@ -10,7 +10,7 @@ export interface CategoryTreeNode {
 
 export const ALL_POSTS_ID = 'all';
 
-/** The API lists top-level categories each followed by its children; this nests them. */
+/** 상위 카테고리와 하위 카테고리가 순서대로 나열된 API 응답을 중첩 트리로 변환합니다. */
 export function buildCategoryTree(categories: CategoryView[]): CategoryTreeNode[] {
   const nodes = new Map<string, CategoryTreeNode>();
   categories.forEach((category) =>

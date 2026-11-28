@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react'; // forwardRef 추가
+import React, { forwardRef } from 'react';
 
 type InputFieldProps = {
   id: string;
@@ -31,7 +31,6 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     },
     ref
   ) => {
-    // 나머지 코드는 동일
     const getRoundedClass = () => {
       switch (isRounded) {
         case 'top':

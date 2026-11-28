@@ -7,7 +7,7 @@ import { useState, useTransition } from 'react';
 import { subscribeAction, unsubscribeAction } from '../api/interactions';
 import { interactionErrorMessage } from '../errors';
 
-/** Who is looking: someone not signed in, the blog's owner, or another member. */
+/** 현재 열람자 유형(비로그인 독자, 블로그 소유자, 일반 로그인 회원)입니다. */
 export type Viewer = 'anonymous' | 'owner' | 'member';
 
 interface SubscribeButtonProps {
@@ -17,7 +17,7 @@ interface SubscribeButtonProps {
   initialCount: number;
 }
 
-/** Interaction 01-rules 흐름 1: a member subscribes to someone else's blog, and sees new posts in the inbox. */
+/** 타인의 블로그를 구독하거나 구독 취소하는 버튼을 렌더링합니다. (interaction 01-rules 흐름 1) */
 export default function SubscribeButton({
   blogSlug,
   viewer,
