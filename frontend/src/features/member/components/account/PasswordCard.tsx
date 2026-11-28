@@ -20,8 +20,7 @@ import { accountErrorMessage } from '../../errors';
 import { PasswordChangeFormValues, passwordChangeSchema } from '../../schemas';
 
 /**
- * A new password for an account that has one; an account that signs in only with Google first
- * gets a link mailed to it (01-rules 흐름 3).
+ * 비밀번호가 있는 계정은 비밀번호 변경 폼을, Google로만 로그인하는 계정은 비밀번호 설정 링크 발송 화면을 표시합니다. (01-rules 흐름 3)
  */
 export default function PasswordCard({
   hasPassword,

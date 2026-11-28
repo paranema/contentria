@@ -12,7 +12,7 @@ import {
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
 
-// Only import this to the next file
+/** ForwardRefEditor에서 동적 임포트로 불러오는 내부 MDXEditor 래퍼입니다. */
 export default function InitializedMDXEditor({
   editorRef,
   ...props
@@ -20,7 +20,6 @@ export default function InitializedMDXEditor({
   return (
     <MDXEditor
       plugins={[
-        // Example Plugin Usage
         headingsPlugin(),
         listsPlugin(),
         quotePlugin(),

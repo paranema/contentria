@@ -62,8 +62,8 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
 }
 
 /**
- * Next.js hands a dynamic segment over still percent-encoded when it holds non-ASCII characters,
- * as Korean post slugs do. The API calls encode it themselves, so it is decoded once here.
+ * 한글 등 비 ASCII 문자가 포함된 동적 세그먼트는 퍼센트 인코딩된 상태로 전달됩니다.
+ * API 호출 함수에서 자체적으로 인코딩하므로 중복 인코딩을 막기 위해 먼저 한 번 디코딩합니다.
  */
 function slugsOf(params: { blogSlug: string; postSlug: string }) {
   return {
@@ -78,13 +78,12 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   if (!lookup) {
     notFound();
   }
-  // An old slug: the post lives at its current address now (publishing 01-rules, 옛 slug).
+  // 이전 슬러그로 접근한 경우 현재 게시글 주소로 영구 리다이렉트합니다. (publishing 01-rules, 옛 slug)
   if ('moved' in lookup) {
     permanentRedirect(`/@${lookup.moved.blogSlug}/${encodeURIComponent(lookup.moved.currentSlug)}`);
   }
 
-  // The post page (04-context-map, 조회 조합: 글 상세): publishing's post, member's author,
-  // media's video, interaction's likes and comments with their authors.
+  // 게시글 본문(publishing), 작성자(member), 동영상(media), 좋아요·댓글(interaction)을 병렬로 조회해 조합합니다. (04-context-map, 조회 조합: 글 상세)
   const { post } = lookup;
   const [[author], layout, video, counts, comments, { profile, viewer }] = await Promise.all([
     getPublicProfiles([post.authorId]),

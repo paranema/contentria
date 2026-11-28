@@ -2,11 +2,8 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 
 /**
- * 에디터 코드 블록용 GitHub Light 계열 하이라이트 팔레트.
- *
- * CodeMirror 기본 라이트 하이라이트는 흰 배경에서 대비가 낮아 코드가 잘 안 읽힌다.
- * codeMirrorPlugin의 `codeMirrorExtensions`로 주입하며, 문법(tag)이 매칭되지 않는
- * 언어/토큰은 기본 텍스트 색으로 렌더링될 뿐 오류가 나지 않는다.
+ * 에디터 코드 블록의 가독성을 높이기 위한 GitHub Light 계열 구문 강조 스타일입니다.
+ * 기본 라이트 테마의 낮은 대비를 보완하며, 매칭되지 않는 토큰은 기본 텍스트 색상으로 표시됩니다.
  */
 const editorHighlightStyle = HighlightStyle.define([
   { tag: [t.keyword, t.moduleKeyword, t.controlKeyword, t.operatorKeyword], color: '#cf222e' },

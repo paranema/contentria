@@ -47,7 +47,7 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
   if (!layout) {
     notFound();
   }
-  // A category this blog does not have answers 404 like a blog that does not exist.
+  // 해당 블로그에 존재하지 않는 카테고리로 접근하면 404 페이지를 반환합니다.
   if (category && !layout.categories.some((c) => c.slug === category)) {
     notFound();
   }
@@ -58,7 +58,7 @@ export default async function BlogPage({ params, searchParams }: UserBlogPagePro
   }
 
   const posts = postsPage.items;
-  // Interaction's counts for the whole page at once (04-context-map, 조회 조합: 글 목록)
+  // 현재 페이지 게시글들의 좋아요·댓글 수를 한 번에 조회합니다. (04-context-map, 조회 조합: 글 목록)
   const counts = await getCounts({ postIds: posts.map((post) => post.postId) });
   const totalPages = postsPage.totalPages;
   const categoryName = layout.categories.find((c) => c.slug === category)?.name;

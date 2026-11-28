@@ -7,9 +7,8 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import { existsSync, readdirSync } from 'node:fs';
 
 /**
- * The features under src/features, one per backend context
- * (docs/architecture/01-module-structure.md). Read from the folder so that a new feature gets its
- * boundary without touching this file.
+ * 백엔드 컨텍스트와 1:1로 대응하는 `src/features` 하위 기능 목록입니다(docs/architecture/01-module-structure.md).
+ * 새 기능을 추가할 때 이 설정 파일을 수정하지 않아도 모듈 경계가 자동 적용되도록 디렉터리에서 동적으로 읽어옵니다.
  */
 const FEATURES = existsSync('src/features')
   ? readdirSync('src/features', { withFileTypes: true })
@@ -28,7 +27,7 @@ export default [
       'tailwind.config.ts',
       'next.config.ts',
       'vitest.config.ts',
-      'next-env.d.ts', // next build가 다시 만든다
+      'next-env.d.ts', // next build 시 자동 생성되는 파일입니다.
       'node_modules/**',
       '.next/**',
       'out/**',
@@ -44,7 +43,7 @@ export default [
     },
     settings: {
       react: {
-        version: 'detect', // You can add this if you get a warning about the React version when you lint.
+        version: 'detect',
       },
     },
   },
@@ -79,9 +78,7 @@ export default [
     rules: {
       ...ts.configs['eslint-recommended'].rules,
       ...ts.configs['recommended'].rules,
-      // Allow underscore-prefixed identifiers to be intentionally unused.
-      // Standard convention for parameters/variables whose position is required
-      // but whose value is deliberately ignored (e.g., `(_, index) => ...`).
+      // 위치상 선언이 필요하지만 사용하지 않는 변수나 매개변수는 `_` 접두사로 허용합니다.
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -93,9 +90,9 @@ export default [
       ],
     },
   },
-  // Boundaries (docs/architecture/01-module-structure.md): shared knows no feature; a feature
-  // knows no other feature.
-  // What spans features is put together in app/, as apps/api's composition does on the backend.
+  // 모듈 경계 규칙입니다(docs/architecture/01-module-structure.md).
+  // shared는 개별 기능을 참조할 수 없고, 각 기능은 다른 기능을 직접 참조할 수 없습니다.
+  // 여러 기능을 조합하는 역할은 백엔드의 apps/api와 마찬가지로 app/ 계층에서 담당합니다.
   {
     files: ['src/shared/**/*.{ts,tsx}'],
     rules: {
@@ -136,7 +133,7 @@ export default [
       ],
     },
   })),
-  eslintPluginPrettierRecommended, // eslint-config-prettier 기능을 포함한다.
+  eslintPluginPrettierRecommended, // eslint-config-prettier 설정을 함께 적용합니다.
   {
     files: ['**/*.d.ts'],
     rules: {

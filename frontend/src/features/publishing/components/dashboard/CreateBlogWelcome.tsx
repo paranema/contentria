@@ -62,7 +62,7 @@ export default function CreateBlogWelcome() {
             <InputGroup>
               <InputGroupAddon>
                 <InputGroupText>
-                  {/* 모바일에선 addon이 한 줄을 다 차지해 입력칸이 깨지므로 @만 노출 */}
+                  {/* 모바일에서는 입력 공간 확보를 위해 도메인을 숨기고 @ 기호만 표시합니다. */}
                   <span className="hidden sm:inline">https://contentria.com/</span>@
                 </InputGroupText>
               </InputGroupAddon>
@@ -81,7 +81,7 @@ export default function CreateBlogWelcome() {
                 {errors.slug.message}
               </p>
             )}
-            {/* 모바일에선 addon이 @만 보이므로, 만들어질 전체 주소를 실시간으로 보여준다 */}
+            {/* 모바일에서도 생성될 전체 블로그 주소를 확인할 수 있도록 실시간 미리보기를 표시합니다. */}
             <p className="mt-2 break-all text-sm text-gray-500">
               내 블로그 주소:{' '}
               <span className="font-medium text-primary">

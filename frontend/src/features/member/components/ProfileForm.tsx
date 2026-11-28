@@ -81,7 +81,6 @@ export default function ProfileForm({ initialProfile }: ProfileFormProps) {
             )}
           </div>
 
-          {/* 이메일 입력 필드 (읽기 전용) */}
           <div className="space-y-2">
             <Label htmlFor="email">이메일</Label>
             <Input

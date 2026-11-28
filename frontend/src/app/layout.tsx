@@ -38,8 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="ko">
       <body className={pretendard.className}>
-        {/* 페이지 전환 피드백: 이전 화면을 유지한 채 상단 진행 바만 표시 (GitHub 방식).
-            느린 전환에서만 체감되고 빠른 전환에서는 거의 보이지 않는다. */}
+        {/* 페이지 전환 시 이전 화면을 유지한 채 상단 진행 바만 표시합니다. */}
         <NextTopLoader color="#4f46e5" height={3} showSpinner={false} shadow={false} />
         <PublicConfigProvider config={publicConfig}>
           <ReactQueryProvider>

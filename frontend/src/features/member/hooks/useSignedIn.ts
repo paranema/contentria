@@ -7,9 +7,8 @@ import { useCallback } from 'react';
 import { memberKeys } from './keys';
 
 /**
- * What every way of signing in ends with: the session cookies are already set, so the profile is
- * fetched again and the browser goes where it was headed (`?redirect=`, set by proxy.ts) or to
- * the dashboard.
+ * 모든 로그인 수단의 완료 후 처리를 수행합니다.
+ * 세션 쿠키가 설정된 상태에서 프로필 캐시를 무효화하고, 원래 이동하려던 경로(`proxy.ts`가 설정한 `?redirect=`)나 대시보드로 이동합니다.
  */
 export function useSignedIn() {
   const queryClient = useQueryClient();
@@ -20,7 +19,7 @@ export function useSignedIn() {
   }, [queryClient, router]);
 }
 
-/** Only a path on this site: `?redirect=https://elsewhere` must not become an open redirect. */
+/** 오픈 리다이렉트를 방지하기 위해 현재 사이트 내부 경로(`/`로 시작하고 `//`가 아닌 경로)만 허용합니다. */
 function redirectTarget(): string {
   const requested = new URLSearchParams(window.location.search).get('redirect');
   return requested && requested.startsWith('/') && !requested.startsWith('//')

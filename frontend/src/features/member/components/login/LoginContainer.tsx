@@ -49,7 +49,7 @@ const LoginFlow = ({ notice }: { notice: string | null }) => {
   return <AuthFormCard title={getTitle()}>{renderCurrentStep()}</AuthFormCard>;
 };
 
-/** [notice]: what to say before anything is tried, such as a failed Google sign-in or an expired session. */
+/** Google 로그인 실패나 세션 만료 등 로그인 시도 전에 먼저 표시할 안내 문구(`notice`)를 받아 로그인 흐름을 렌더링합니다. */
 export default function LoginContainer({ notice = null }: { notice?: string | null }) {
   return (
     <LoginFlowProvider>

@@ -12,7 +12,6 @@ interface ProfileDropdownProps {
 const ProfileDropdown = ({ user, onClose, onLogout }: ProfileDropdownProps) => {
   return (
     <div className="absolute right-0 z-20 mt-2 w-64 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-      {/* Profile info */}
       <div className="border-b border-gray-100 px-4 py-3">
         <div className="flex items-center">
           <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border border-gray-200">
@@ -27,7 +26,6 @@ const ProfileDropdown = ({ user, onClose, onLogout }: ProfileDropdownProps) => {
         </div>
       </div>
 
-      {/* Menu items */}
       <div className="py-1">
         <Link
           href="/dashboard/settings"
@@ -47,7 +45,6 @@ const ProfileDropdown = ({ user, onClose, onLogout }: ProfileDropdownProps) => {
         </Link>
       </div>
 
-      {/* Logout button */}
       <div className="border-t border-gray-100 py-1">
         <button
           onClick={() => {

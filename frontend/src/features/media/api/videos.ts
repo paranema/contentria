@@ -6,8 +6,7 @@ import { cache } from 'react';
 import { PostVideo } from '../types';
 
 /**
- * A published post's video, or null when it has none to show. `apps/api` puts this together:
- * it answers only for a post readers may see (media 01-rules 흐름 V4).
+ * 발행된 게시글에 첨부된 동영상 정보를 조회하며, 동영상이 없으면 null을 반환합니다. (media 01-rules 흐름 V4)
  */
 export const getPostVideo = cache(async (postId: string): Promise<PostVideo | null> => {
   try {

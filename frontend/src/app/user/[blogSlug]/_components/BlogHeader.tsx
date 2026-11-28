@@ -51,33 +51,23 @@ export default function BlogHeader({ blogSlug }: BlogHeaderProps) {
   return (
     <header className="w-full border-b bg-white shadow-sm">
       <div className="flex items-center justify-between px-4 py-3 sm:px-6">
-        {/* 좌측 영역 */}
         <div className="flex min-w-0 items-center">
           <Link href="/" className="flex flex-shrink-0 items-center space-x-2">
             <Image
               src="/contentria-icon.png"
               alt="Contentria 로고"
-              width={32} // 헤더에 맞는 적절한 크기 지정
+              width={32}
               height={32}
-              priority // 로고 이미지는 우선 로드
+              priority
             />
           </Link>
         </div>
 
-        {/* 중앙 영역 */}
         <h1 className="text-2xl font-bold">
           <Link href={blogHomeLink}>{'Contentria'}</Link>
         </h1>
 
-        {/* 우측 영역 */}
         <div className="flex items-center space-x-2 md:space-x-4">
-          {/* <button
-            onClick={openSubscribeModal}
-            className="hidden rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:block"
-          >
-            구독하기
-          </button> */}
-
           {user ? (
             <div className="relative" ref={profileRef}>
               <button

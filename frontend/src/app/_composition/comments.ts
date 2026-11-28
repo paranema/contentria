@@ -6,9 +6,8 @@ import type { CommentsWithAuthors } from '@/features/interaction/components/Comm
 import type { CommentView } from '@/features/interaction/types';
 
 /**
- * A page of a post's comments with their authors (04-context-map, 조회 조합: 댓글 목록):
- * interaction's comments, member's profiles, one call for every author on the page. A server
- * action, so the comment section can ask for the next page itself.
+ * 게시글 댓글 한 페이지와 작성자 프로필을 일괄 조회해 조합합니다. (04-context-map, 조회 조합: 댓글 목록)
+ * 댓글 섹션에서 다음 페이지를 직접 요청할 수 있도록 서버 액션으로 제공합니다.
  */
 export async function loadComments(
   postId: string,

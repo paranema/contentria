@@ -6,11 +6,11 @@
 
 세션은 `accessToken`과 `refreshToken` 두 개의 `HttpOnly` 쿠키로 구성되며, 만료 시간과 `Secure`·`SameSite=Lax` 속성은 모두 백엔드에서 결정합니다.
 
-| 작업 | `apiServer` 옵션 | 동작 방식 |
-| --- | --- | --- |
-| 일반 인증 요청 | `requireAuth: true` (기본값) | 브라우저 요청 쿠키의 `accessToken`을 읽어 백엔드로 `Authorization: Bearer` 헤더를 전달합니다. |
-| 로그인·회원가입·로그아웃 | `relaySessionCookies: true` | 백엔드가 응답 `Set-Cookie` 헤더로 발급하거나 만료시킨 `accessToken`, `refreshToken` 쿠키를 파싱해 브라우저 응답 쿠키에 그대로 반영합니다. |
-| 로그아웃 | `sendRefreshToken: true` | 서버 간 호출에는 브라우저 쿠키가 자동 첨부되지 않으므로, 요청 쿠키의 `refreshToken`을 읽어 백엔드 `Cookie` 헤더로 명시 전달합니다. |
+| 작업                     | `apiServer` 옵션             | 동작 방식                                                                                                                                 |
+| ------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 일반 인증 요청           | `requireAuth: true` (기본값) | 브라우저 요청 쿠키의 `accessToken`을 읽어 백엔드로 `Authorization: Bearer` 헤더를 전달합니다.                                             |
+| 로그인·회원가입·로그아웃 | `relaySessionCookies: true`  | 백엔드가 응답 `Set-Cookie` 헤더로 발급하거나 만료시킨 `accessToken`, `refreshToken` 쿠키를 파싱해 브라우저 응답 쿠키에 그대로 반영합니다. |
+| 로그아웃                 | `sendRefreshToken: true`     | 서버 간 호출에는 브라우저 쿠키가 자동 첨부되지 않으므로, 요청 쿠키의 `refreshToken`을 읽어 백엔드 `Cookie` 헤더로 명시 전달합니다.        |
 
 운영 환경에서는 웹과 API가 동일 도메인 뒤에 배포되고, 로컬 개발 환경에서는 포트만 다르므로(쿠키는 포트를 구분하지 않음) 두 환경 모두 동일한 쿠키 구조를 사용합니다.
 
@@ -27,10 +27,10 @@
 
 ### Google OAuth
 
-Google 로그인과 계정 연동은 브라우저 전체 이동으로 시작되므로 클러스터 내부 주소(`API_BASE_URL`)가 아닌 외부 공개 주소(`EXTERNAL_API_BASE_URL`)를 사용합니다(`features/member/oauth.ts`).
+Google 로그인과 계정 연동은 브라우저 전체 이동으로 시작되므로 클러스터 내부 주소(`INTERNAL_API_BASE_URL`)가 아닌 외부 공개 주소(`PUBLIC_API_BASE_URL`)를 사용합니다(`features/member/oauth.ts`).
 
-- 로그인 시작: `${externalApiBaseUrl}/oauth2/authorization/google`
-- 기존 계정 연동 시작: `${externalApiBaseUrl}/oauth2/authorization/google?intent=link`
+- 로그인 시작: `${publicApiBaseUrl}/api/oauth2/authorization/google`
+- 기존 계정 연동 시작: `${publicApiBaseUrl}/api/oauth2/authorization/google?intent=link`
 
 ### Google reCAPTCHA
 

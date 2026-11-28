@@ -1,6 +1,6 @@
 import { ApiError, UNKNOWN_ERROR } from './apiError';
 
-/** An error as a Server Action can hand it to the browser: a plain object, not an Error. */
+/** Server Action에서 브라우저로 직렬화해 전달할 수 있도록 일반 객체 형태로 변환한 에러 구조입니다. */
 export interface SerializedError {
   name: string;
   message: string;
@@ -12,7 +12,7 @@ export interface SerializedError {
 export type ActionResult<T> =
   { success: true; data: T } | { success: false; error: SerializedError };
 
-/** The failed result for whatever a Server Action caught. */
+/** Server Action에서 포착한 예외를 직렬화 가능한 실패 응답으로 변환합니다. */
 export function toActionError(error: unknown): { success: false; error: SerializedError } {
   if (error instanceof ApiError) {
     return {

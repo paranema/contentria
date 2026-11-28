@@ -22,7 +22,8 @@ import {
 
 interface CategoryItemCardProps {
   category: EditableCategory;
-  isOverlay?: boolean; // 드래그 중인 잔상(오버레이)인지 여부
+  /** 드래그 오버레이로 렌더링되는지 여부입니다. */
+  isOverlay?: boolean;
   canIndent?: boolean;
   canOutdent?: boolean;
   showAddSubCategoryButton?: boolean;
@@ -62,7 +63,7 @@ export default function CategoryItemCard({
         <Folder size={18} className="shrink-0 text-indigo-500" />
       )}
 
-      {/* min-w-0: input의 내재 최소폭 때문에 좁은 화면에서 행이 카드 밖으로 넘치는 것을 방지 */}
+      {/* input의 기본 최소 너비로 인해 좁은 화면에서 행이 카드 밖으로 넘치는 현상을 방지합니다. */}
       <input
         value={category.name}
         onChange={(e) => onUpdateName?.(category.id, e.target.value)}
@@ -74,7 +75,7 @@ export default function CategoryItemCard({
       <div className="flex shrink-0 items-center gap-1">
         {!isOverlay && (
           <>
-            {/* 데스크톱: hover 시 노출되는 인라인 액션 */}
+            {/* 데스크톱에서는 마우스 호버 시 인라인 액션 버튼을 표시합니다. */}
             <div className="hidden items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 md:flex">
               {showAddSubCategoryButton && (
                 <button
@@ -112,7 +113,7 @@ export default function CategoryItemCard({
               </button>
             </div>
 
-            {/* 모바일: hover가 없으므로 항상 보이는 ⋮ 메뉴로 제공 (인라인 버튼 4개는 폭도 초과) */}
+            {/* 모바일에서는 호버를 사용할 수 없고 화면 폭이 좁으므로 더보기 메뉴로 제공합니다. */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

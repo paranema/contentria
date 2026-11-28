@@ -27,7 +27,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_REQUEST: '입력한 값을 확인해 주세요.',
 };
 
-/** What to tell the person about a failed publishing request. */
+/** 퍼블리싱 요청 실패 시 사용자에게 안내할 오류 메시지를 반환합니다. */
 export function publishingErrorMessage(
   error: Pick<SerializedError, 'code'> | null | undefined
 ): string | null {

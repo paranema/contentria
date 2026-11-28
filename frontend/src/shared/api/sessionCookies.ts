@@ -1,14 +1,14 @@
 import { cookies } from 'next/headers';
 import { parseSetCookie } from './setCookie';
 
-/** The cookies the API carries a session in (backend: `SessionCookieNames`). */
+/** 백엔드가 세션을 전달할 때 사용하는 쿠키 이름 목록입니다(백엔드 `SessionCookieNames` 대응). */
 export const SESSION_COOKIES = ['accessToken', 'refreshToken'] as const;
 
 /**
- * Passes the session cookies the API set on its response on to the browser. The API sets them
- * itself and keeps the tokens out of the body, but a Server Action calls it from the Next.js
- * server, so the browser would never see them otherwise. Callable only where Next.js lets cookies
- * be written: a Server Action or a Route Handler.
+ * 백엔드 응답의 `Set-Cookie` 헤더에 담긴 세션 쿠키를 브라우저로 중계합니다.
+ * 백엔드는 토큰을 응답 본문에 노출하지 않고 쿠키로만 설정하므로, Next.js 서버에서 호출하는
+ * Server Action이나 Route Handler가 이를 브라우저 쿠키 저장소에 다시 기록해야 합니다.
+ * 쿠키 쓰기가 허용된 Server Action 또는 Route Handler에서만 호출할 수 있습니다.
  */
 export async function relaySessionCookies(response: Response): Promise<void> {
   const store = await cookies();

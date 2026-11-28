@@ -4,11 +4,11 @@ import React from 'react';
 
 interface PopularPostListProps {
   posts: PopularPost[];
-  /** 리더 URL(/@{blogSlug}/{postSlug}) 구성용 */
+  /** 공개 게시글 주소(/@{blogSlug}/{postSlug})를 구성하기 위한 블로그 슬러그입니다. */
   blogSlug: string;
 }
 
-/** 인기 게시글 순위 목록 — 제목만 간결하게, 클릭 시 발행된 글을 새 탭으로 연다. */
+/** 인기 게시글 순위 목록을 표시하며, 클릭 시 발행된 글을 새 탭으로 엽니다. */
 export default function PopularPostList({ posts, blogSlug }: PopularPostListProps) {
   if (!posts || posts.length === 0) {
     return (

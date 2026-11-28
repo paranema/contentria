@@ -1,4 +1,4 @@
-/** The actions the invisible check runs for; the API checks a token was made for its own request. */
+/** 보이지 않는 reCAPTCHA v3 검증에 사용하는 액션 이름입니다. API는 토큰이 해당 요청 용도로 발급되었는지 확인합니다. */
 export const RECAPTCHA_ACTIONS = {
   SIGN_UP: 'sign_up',
   LOGIN: 'login',

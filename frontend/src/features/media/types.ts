@@ -1,13 +1,13 @@
-// The media context's API, as backend/contexts/media answers it (docs/contexts/media/02-implementation.md).
+// media 컨텍스트의 API 요청 및 응답 타입을 정의합니다. (docs/contexts/media/02-implementation.md)
 
-/** What the browser declares before putting a file; the storage takes only that type and size. */
+/** 파일 업로드 전 브라우저가 선언하는 메타데이터이며, 스토리지는 선언된 형식과 크기만 허용합니다. */
 export interface PrepareUploadRequest {
   contentType: string;
   sizeBytes: number;
   fileName: string;
 }
 
-/** 흐름 1: where to put the image, and the address it will have once completed. */
+/** 이미지 업로드 대상 URL과 완료 후 부여될 공개 URL 정보입니다. (흐름 1) */
 export interface PreparedImageUpload {
   mediaId: string;
   uploadUrl: string;
@@ -15,7 +15,7 @@ export interface PreparedImageUpload {
   expiresAt: string;
 }
 
-/** 흐름 2: the image after the storage's copy was checked and its photo details removed. */
+/** 스토리지 파일 검증 및 EXIF 메타데이터 제거가 완료된 이미지 정보입니다. (흐름 2) */
 export interface ImageView {
   mediaId: string;
   imageUrl: string;
@@ -24,7 +24,7 @@ export interface ImageView {
   fileName: string;
 }
 
-/** 흐름 V1: where to put the original; the worker transcodes it once it is there. */
+/** 원본 동영상 업로드 대상 URL 정보이며, 업로드 후 워커가 트랜스코딩을 수행합니다. (흐름 V1) */
 export interface PreparedVideoUpload {
   videoId: string;
   uploadUrl: string;
@@ -33,7 +33,7 @@ export interface PreparedVideoUpload {
 
 export type VideoState = 'TRANSCODING' | 'COMPLETED' | 'FAILED';
 
-/** A post's video for its page (흐름 V4). Only a completed one has something to play. */
+/** 게시글 상세 화면용 동영상 정보이며, COMPLETED 상태일 때만 재생 URL이 제공됩니다. (흐름 V4) */
 export interface PostVideo {
   videoId: string;
   state: VideoState;

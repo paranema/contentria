@@ -26,7 +26,7 @@ interface BlogSettingsFormProps {
   blog: BlogView;
 }
 
-/** 블로그 공개 정보(제목/설명) 수정 폼 — 주소(slug)는 URL 정체성이라 읽기 전용. */
+/** 블로그 공개 정보(제목·설명)를 수정하는 폼입니다. 주소(slug)는 고유 식별자이므로 읽기 전용으로 표시합니다. */
 export default function BlogSettingsForm({ blog }: BlogSettingsFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

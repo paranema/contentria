@@ -9,16 +9,15 @@ interface DashboardProfileCardProps {
 }
 
 /**
- * 사이드바 상단 프로필 카드: 프로필 이미지 + 닉네임 + 블로그 주소.
- * 주소 클릭 시 (기존 '블로그로 돌아가기'처럼) 내 블로그를 새 탭으로 연다.
+ * 사이드바 상단에 프로필 이미지, 닉네임, 블로그 주소를 표시하는 카드입니다.
+ * 블로그 주소를 클릭하면 내 블로그를 새 탭에서 엽니다.
  */
 export default function DashboardProfileCard({ blogSlug }: DashboardProfileCardProps) {
   const { data: user } = useMyProfile();
 
   return (
     <div className="flex flex-col text-center">
-      {/* 카드 폭을 가득 채우는 정사각형 프로필 이미지 (티스토리식).
-          relative 필수: UserAvatar의 next/image가 fill 모드라 위치 지정 조상을 채운다 */}
+      {/* UserAvatar 내부의 next/image(fill 모드)가 카드 폭 기준 정사각형 영역을 채우도록 relative를 지정합니다. */}
       <div className="relative aspect-square w-full overflow-hidden">
         <UserAvatar user={user} size={256} shape="square" />
       </div>

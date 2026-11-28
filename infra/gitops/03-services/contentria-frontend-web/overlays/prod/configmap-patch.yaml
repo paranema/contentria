@@ -3,4 +3,4 @@ kind: ConfigMap
 metadata:
   name: contentria-frontend-web
 data:
-  EXTERNAL_API_BASE_URL: "https://www.contentria.com/api"
+  PUBLIC_API_BASE_URL: "https://www.contentria.com"

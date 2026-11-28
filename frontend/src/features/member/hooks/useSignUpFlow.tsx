@@ -11,8 +11,8 @@ import { useInvisibleRecaptcha } from './useInvisibleRecaptcha';
 import { useSignedIn } from './useSignedIn';
 
 /**
- * docs/contexts/member/01-rules.md, 흐름 1: email, code, password. The code is checked when the
- * password goes with it, so a wrong code sends the person back to the code step.
+ * 이메일 입력, 코드 확인, 비밀번호 설정으로 이어지는 회원가입 단계입니다. (docs/contexts/member/01-rules.md, 흐름 1)
+ * 인증 코드는 비밀번호와 함께 제출할 때 검증되므로 코드가 틀리면 코드 입력 단계로 돌아갑니다.
  */
 export type SignUpStep = 'email' | 'recaptcha_v2_challenge' | 'verify_code' | 'password';
 
@@ -53,7 +53,7 @@ function useSignUpFlowLogic() {
     await sendCode(email, { recaptchaV2Token: token });
   }
 
-  /** A new code makes the earlier one useless (01-rules, 가입 시도). */
+  /** 새 인증 코드를 재발송하면 이전 코드는 무효화됩니다. (01-rules, 가입 시도) */
   async function resendCode() {
     await sendCode(email, { recaptchaV3Token: await invisibleToken(RECAPTCHA_ACTIONS.SIGN_UP) });
   }

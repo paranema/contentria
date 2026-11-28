@@ -7,7 +7,7 @@ export const emailStepSchema = z.object({
     .email({ message: 'Please enter a valid email address.' }),
 });
 
-/** As the API takes a new password: 8 to 72 characters, the most BCrypt reads. */
+/** API 규칙과 BCrypt 최대 입력 길이에 맞춰 새 비밀번호를 8~72자로 검증합니다. */
 export const newPasswordSchema = z.object({
   password: z
     .string()
@@ -15,12 +15,12 @@ export const newPasswordSchema = z.object({
     .max(72, { message: 'Use at most 72 characters.' }),
 });
 
-/** An existing password: whether it matches is the API's call. */
+/** 기존 비밀번호 입력 여부만 확인하며, 일치 여부는 API에서 검증합니다. */
 export const passwordSchema = z.object({
   password: z.string().min(1, { message: 'Please enter your password.' }).max(72),
 });
 
-/** As the member domain takes a display name: 2 to 50 characters after trimming. */
+/** 회원 도메인 규칙에 따라 앞뒤 공백 제거 후 2~50자인 표시 이름을 검증합니다. */
 export const profileSchema = z.object({
   displayName: z
     .string()
@@ -29,7 +29,7 @@ export const profileSchema = z.object({
     .max(50, '이름은 50자 이하여야 합니다.'),
 });
 
-/** The settings screen's forms (01-rules 흐름 3, 4), worded for the dashboard. */
+/** 대시보드 설정 화면의 비밀번호 변경 폼 스키마입니다. (01-rules 흐름 3, 4) */
 export const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1, '현재 비밀번호를 입력해 주세요.').max(72),
   newPassword: z

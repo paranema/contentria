@@ -18,8 +18,8 @@ import { EmailChangeFormValues, emailChangeSchema } from '../../schemas';
 const CODE_LENGTH = 6;
 
 /**
- * 01-rules 흐름 4: codes go to both the current address and the new one, and both must come back.
- * An attempt that is over (locked or expired) starts again from the new address.
+ * 현재 주소와 새 주소 모두로 발송된 확인 코드를 검증해 이메일을 변경합니다. (01-rules 흐름 4)
+ * 시도가 잠기거나 만료되면 새 이메일 입력 단계부터 다시 시작합니다.
  */
 export default function EmailChangeCard({ email }: { email: string }) {
   const router = useRouter();

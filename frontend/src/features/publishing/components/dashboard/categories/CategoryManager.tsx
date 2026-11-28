@@ -37,13 +37,13 @@ interface CategoryManagerProps {
 
 export default function CategoryManager({ blogSlug, initialTree }: CategoryManagerProps) {
   const [items, setItems] = useState<EditableCategory[]>(toEditable(initialTree.categories));
-  // The tree's version when it was loaded; the API refuses a save over someone else's change.
+  // 불러온 시점의 트리 버전이며, 다른 변경사항과 충돌하면 저장이 거부됩니다.
   const [version, setVersion] = useState(initialTree.version);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [overId, setOverId] = useState<string | null>(null);
 
-  // 특정 부모(Level 0)의 자식(Level 1) ID 목록 가져오기
+  // 상위 카테고리(level 0)에 속한 하위 카테고리(level 1) ID 목록을 반환합니다.
   const getChildrenIds = (parentId: string, flattenedCategories: EditableCategory[]): string[] => {
     return flattenedCategories.filter((item) => item.parentId === parentId).map((item) => item.id);
   };
@@ -59,12 +59,13 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
     return items.map((item) => item.id);
   }, [items, activeId]);
 
+  // 단순 클릭과 구분하기 위해 5px 이상 이동했을 때만 드래그를 시작합니다.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // 5px 이상 움직여야 드래그 시작 (클릭 실수 방지)
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // 인디케이터 위치 계산: 특정 아이템 위에 선을 그릴지, 아래에 그릴지 결정
+  // 드래그 중인 항목의 이동 방향에 따라 드롭 표시선을 항목 위나 아래에 표시합니다.
   const getIndicatorSide = (itemId: string, itemIndex: number): 'top' | 'bottom' | null => {
     if (!activeId || !overId) {
       return null;
@@ -124,7 +125,6 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
       const remainingList = newList.filter((item) => !movingIds.includes(item.id));
       const movingBlock = items.filter((item) => movingIds.includes(item.id));
 
-      // 타겟 위치 찾기
       let targetIndex = remainingList.findIndex((item) => item.id === over.id);
 
       if (isMovingDown) {
@@ -174,7 +174,6 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
     setOverId(null);
   };
 
-  // 들여쓰기
   const handleIndent = (id: string) => {
     const index = items.findIndex((item) => item.id === id);
     if (index === 0) {
@@ -210,7 +209,6 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
     }
   };
 
-  // 내어쓰기
   const handleOutdent = (id: string) => {
     const currentItem = items.find((item) => item.id === id);
 
@@ -253,8 +251,7 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
     setIsSaving(true);
 
     try {
-      // The whole tree in the list's order. A new row's temporary id is its key; children name
-      // their parent by its key.
+      // 목록 순서대로 전체 트리를 전송하며, 새 항목은 임시 ID를 key로 사용해 부모-자식 관계를 연결합니다.
       const result = await editCategoryTreeAction(blogSlug, {
         version,
         categories: items.map((item) => ({
@@ -267,7 +264,7 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
         alert(publishingErrorMessage(result.error));
         return;
       }
-      // New rows now have real ids and slugs.
+      // 서버에서 확정된 실제 ID와 슬러그 및 새 버전으로 상태를 갱신합니다.
       setItems(toEditable(result.data.categories));
       setVersion(result.data.version);
       alert('카테고리가 성공적으로 저장되었습니다.');
@@ -347,7 +344,7 @@ export default function CategoryManager({ blogSlug, initialTree }: CategoryManag
 
   return (
     <div className="flex flex-col gap-6">
-      {/* flex-wrap: 모바일에서 버튼 그룹이 줄바꿈되어 카드 밖으로 밀리지 않게 한다 */}
+      {/* 모바일 화면에서 버튼 그룹이 카드 밖으로 넘치지 않도록 줄바꿈을 허용합니다. */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
         <Button onClick={handleAddCategory}>
           <Plus size={16} />

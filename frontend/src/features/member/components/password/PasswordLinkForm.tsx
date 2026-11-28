@@ -17,12 +17,11 @@ import { NewPasswordFormData, newPasswordSchema } from '../../schemas';
 import AuthFormCard from '../AuthFormCard';
 
 /**
- * The page a mailed password link opens, for a reset and for a social-only account's first
- * password alike (MEMBER_PASSWORD_LINK_URL). The token comes in the fragment, which never reaches
- * a server log, and is dropped from the address bar once read. Setting the password signs in.
+ * 이메일로 발송된 비밀번호 재설정 및 소셜 전용 계정의 첫 비밀번호 설정 링크(`MEMBER_PASSWORD_LINK_URL`)가 여는 화면입니다.
+ * 서버 로그에 남지 않도록 URL 해시 프래그먼트로 전달된 토큰을 읽은 즉시 주소창에서 제거하며, 비밀번호 설정 완료 시 로그인됩니다.
  */
 export default function PasswordLinkForm() {
-  // undefined: not read yet (the fragment exists only in the browser); null: no token.
+  // undefined는 브라우저 전용 해시를 아직 읽기 전 상태이며, null은 토큰이 없는 상태입니다.
   const [token, setToken] = useState<string | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<SerializedError | null>(null);

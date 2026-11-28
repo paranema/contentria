@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getUnreadCount } from '../api/notifications';
 
-/** How often the bell asks; there is no push (01-rules 전제 2). */
+/** 별도 푸시 채널 없이 읽지 않은 알림 수를 주기적으로 조회하는 폴링 간격(1분)입니다. (01-rules 전제 2) */
 const POLL_MS = 60_000;
 
-/** The header's bell: the unread count, asked now and every minute, and the way to the inbox. */
+/** 상단 헤더에 읽지 않은 알림 배지와 알림함 이동 링크를 렌더링합니다. */
 export default function NotificationBell() {
   const [unread, setUnread] = useState(0);
 

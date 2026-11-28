@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { cache } from 'react';
 import { CategoryTreeView, EditCategoryTreeRequest } from '../types';
 
-/** A blog's categories with the tree's version, or null when there is no such blog. Public. */
+/** 블로그의 카테고리 트리와 버전을 공개 조회하며, 블로그가 없으면 null을 반환합니다. */
 export const getCategoryTree = cache(async (blogSlug: string): Promise<CategoryTreeView | null> => {
   try {
     return await apiServer.get<CategoryTreeView>(
@@ -23,8 +23,8 @@ export const getCategoryTree = cache(async (blogSlug: string): Promise<CategoryT
 });
 
 /**
- * 흐름 2: replaces the whole tree. The version is the one the editor loaded; another change in
- * between fails with CATEGORY_TREE_CHANGED rather than being overwritten.
+ * 카테고리 트리 전체를 교체합니다. 편집기가 불러온 버전과 다르면 덮어쓰지 않고
+ * CATEGORY_TREE_CHANGED 오류로 실패합니다. (흐름 2)
  */
 export async function editCategoryTreeAction(
   blogSlug: string,

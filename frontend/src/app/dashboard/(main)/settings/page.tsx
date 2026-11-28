@@ -11,8 +11,7 @@ import { accountErrorMessage } from '@/features/member/errors';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 
 /**
- * `?linked=true` or `?error=<code>`: the API sends the browser back here after linking Google
- * (MEMBER_SOCIAL_LINK_RESULT_URL).
+ * Google 계정 연동 후 API 서버가 리다이렉트(`?linked=true` 또는 `?error=<code>`, MEMBER_SOCIAL_LINK_RESULT_URL)하는 설정 페이지입니다.
  */
 export default async function SettingsPage({
   searchParams,
@@ -25,7 +24,7 @@ export default async function SettingsPage({
     getMyCredentials(),
     getMyBlogs(),
   ]);
-  // A reader without a blog still has an account to manage.
+  // 블로그를 개설하지 않은 독자 회원도 계정 설정은 관리할 수 있습니다.
   const blog = blogs[0];
 
   return (

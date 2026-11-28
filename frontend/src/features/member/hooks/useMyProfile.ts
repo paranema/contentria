@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMyProfileOrNull } from '../api/profile';
 import { memberKeys } from './keys';
 
-/** The signed-in member's profile, null for someone not signed in. The root layout prefetches it. */
+/** 로그인한 회원의 프로필을 조회하며 비로그인 시 null을 반환합니다. 루트 레이아웃에서 미리 패치합니다. */
 export const useMyProfile = () =>
   useQuery({
     queryKey: memberKeys.profile(),

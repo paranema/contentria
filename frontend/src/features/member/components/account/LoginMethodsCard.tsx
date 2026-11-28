@@ -10,8 +10,8 @@ import { accountErrorMessage } from '../../errors';
 import { useGoogleOAuth } from '../../oauth';
 
 /**
- * How the account signs in (01-rules 흐름 3). Google is linked through a browser navigation and
- * comes back to this screen; the password is never removed here, only social providers are.
+ * 계정의 로그인 수단을 관리합니다. (01-rules 흐름 3)
+ * Google 연동은 브라우저 이동을 거쳐 이 화면으로 돌아오며, 비밀번호는 제거하지 않고 소셜 연동만 해제할 수 있습니다.
  */
 export default function LoginMethodsCard({ providers }: { providers: string[] }) {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function LoginMethodsCard({ providers }: { providers: string[] })
         setFailure(accountErrorMessage(result.error));
         return;
       }
-      // Drops a `?linked=true` left from linking, which no longer holds.
+      // 이전 연동 시 주소창에 남아 있던 `?linked=true` 쿼리를 제거합니다.
       router.replace(window.location.pathname);
     });
   };

@@ -6,7 +6,7 @@ import Footer from '@/app/_components/Footer';
 export default async function EditorLayout({ children }: { children: React.ReactNode }) {
   const blogs = await getMyBlogs();
 
-  // Same guard as (main): the editor is meaningless without a blog (direct-URL defense).
+  // 블로그가 없는 상태에서 URL로 직접 접근하는 경우 온보딩 화면으로 이동시킵니다.
   if (blogs.length === 0) {
     redirect('/dashboard/welcome');
   }

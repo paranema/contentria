@@ -76,13 +76,11 @@ function whenInAdmonition(editorInFocus: EditorInFocus | null) {
 interface PostEditorClientProps {
   blogSlug: string;
   categories: CategoryView[];
-  /** The post being edited; none for a new one. */
+  /** 수정할 기존 글 데이터이며, 새 글 작성 시에는 전달하지 않습니다. */
   initialData?: PostView;
-  /**
-   * Media's parts, handed in by the page that puts the editor together: an image upload for the
-   * body, and the field that uploads the post's one video and gives back its id.
-   */
+  /** 본문 이미지를 업로드하고 공개 URL을 반환하는 핸들러입니다. */
   uploadImage: ImageUploader;
+  /** 게시글에 첨부할 단일 영상 업로드 필드를 렌더링하는 함수입니다. */
   renderVideoField: (field: {
     value: string | null;
     onChange: (videoId: string | null) => void;
@@ -90,13 +88,12 @@ interface PostEditorClientProps {
 }
 
 /**
- * What the save buttons do (publishing 01-rules 흐름 3~5): saving keeps a post's status, so a new
- * post or a draft is saved as a draft and published as a second step; a published post stays
- * published; a private one can be put back out.
+ * 에디터 하단 저장 버튼의 동작 유형입니다. (01-rules, 흐름 3~5)
+ * 일반 저장(SAVE)은 현재 상태를 유지하며, 발행(PUBLISH)과 재공개(REPUBLISH)는 저장 후 상태를 전환합니다.
  */
 type SaveAction = 'SAVE' | 'PUBLISH' | 'REPUBLISH';
 
-/** No category: the post sits under "분류 없음". */
+/** 카테고리를 지정하지 않은("분류 없음") 상태를 나타내는 선택 값입니다. */
 const NO_CATEGORY = 'none';
 
 export function PostEditorClient({
@@ -107,7 +104,7 @@ export function PostEditorClient({
   renderVideoField,
 }: PostEditorClientProps) {
   const router = useRouter();
-  const editorRef = useRef<MDXEditorMethods>(null); // MDXEditor의 인스턴스에 접근하기 위한 ref 생성
+  const editorRef = useRef<MDXEditorMethods>(null);
 
   const titleRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>(
@@ -116,7 +113,7 @@ export function PostEditorClient({
   const [videoId, setVideoId] = useState<string | null>(initialData?.videoId ?? null);
   const status = initialData?.status ?? 'DRAFT';
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  // 어느 저장 버튼이 진행 중인지 (해당 버튼에만 스피너 표시)
+  // 현재 실행 중인 저장 동작을 추적하여 해당 버튼에만 로딩 표시기를 렌더링합니다.
   const [pendingAction, setPendingAction] = useState<SaveAction | null>(null);
 
   const markdown =
@@ -154,12 +151,12 @@ function helloWorld() {
   const handleEditorAreaClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
 
-    // 툴바 클릭은 무시
+    // 툴바 영역 클릭은 무시합니다.
     if (target.closest('.mdxeditor-toolbar')) {
       return;
     }
 
-    // contenteditable 내부 클릭은 무시
+    // 본문 편집 영역 내부 클릭은 무시합니다.
     if (
       target.getAttribute('contenteditable') === 'true' ||
       target.closest('[contenteditable="true"]')
@@ -169,7 +166,7 @@ function helloWorld() {
 
     editorRef.current?.focus();
 
-    // 약간의 지연 후 커서 위치 조정 (focus가 완료된 후)
+    // 포커스 이동이 끝난 뒤 본문 하단 여백을 클릭한 경우 커서를 문서 끝으로 옮깁니다.
     setTimeout(() => {
       const editorContainer = target.closest('.mdxeditor') as HTMLElement;
       const editableEl = editorContainer?.querySelector('[contenteditable="true"]') as HTMLElement;
@@ -177,7 +174,6 @@ function helloWorld() {
       if (editableEl) {
         const clickY = e.clientY;
 
-        // 실제 콘텐츠의 마지막 위치 찾기
         const allElements = Array.from(editableEl.querySelectorAll('*'));
         const lastVisibleElement = allElements
           .reverse()
@@ -186,9 +182,8 @@ function helloWorld() {
         if (lastVisibleElement) {
           const lastRect = lastVisibleElement.getBoundingClientRect();
 
-          // 콘텐츠 아래 영역 클릭 시 커서를 끝으로
+          // 마지막 본문 요소 아래 10px 이상의 여백을 클릭했을 때 커서를 끝으로 배치합니다.
           if (clickY > lastRect.bottom + 10) {
-            // 10px 여유
             const range = document.createRange();
             const sel = window.getSelection();
             range.selectNodeContents(editableEl);
@@ -211,11 +206,11 @@ function helloWorld() {
       }
 
       setSaveStatus('saving');
-      setPendingAction(action); // 진행 중인 버튼에만 스피너를 띄우기 위한 추적
+      setPendingAction(action);
       const request: PostRequest = {
         title,
         body,
-        // Revising keeps a summary the author wrote; otherwise the API derives one from the body.
+        // 작성자가 직접 입력한 요약이 있으면 유지하고, 없으면 서버가 본문에서 자동 생성합니다.
         summary: initialData?.summaryWrittenByAuthor ? initialData.summary : null,
         categoryId: selectedCategory === NO_CATEGORY ? null : selectedCategory,
         videoId,
@@ -285,10 +280,7 @@ function helloWorld() {
 
       {renderVideoField({ value: videoId, onChange: setVideoId })}
 
-      {/* 박스형 타이틀(a안): 고정 툴바가 타이틀-본문 사이를 끊으므로
-          문서형(borderless) 대신 필드형을 유지한다 — 포커스 링은 테마(--ring) 적용.
-          uncontrolled(ref): controlled로 두면 키 입력마다 MDXEditor를 포함한
-          트리 전체가 리렌더되어 타이핑이 밀린다. 값은 저장 시에만 읽는다. */}
+      {/* 키 입력마다 MDXEditor 전체가 리렌더링되어 입력이 지연되는 것을 막기 위해 비제어(ref) 입력을 사용합니다. */}
       <div className="mb-4">
         <Input
           ref={titleRef}
@@ -323,7 +315,6 @@ function helloWorld() {
               },
               ImageDialog: CustomImageDialog,
             }),
-            // the default code block language to insert when user clicks the "insert code block" button
             codeBlockPlugin({
               defaultCodeBlockLanguage: 'js',
               codeBlockEditorDescriptors: [
@@ -340,11 +331,9 @@ function helloWorld() {
                 kotlin: 'Kotlin',
                 bash: 'Bash',
               },
-              // 기본 라이트 하이라이트는 대비가 낮아 GitHub Light 계열 팔레트로 교체
+              // 기본 라이트 테마의 낮은 대비를 보완하기 위해 커스텀 구문 강조 스타일을 적용합니다.
               codeMirrorExtensions: [editorSyntaxHighlighting],
             }),
-            // the viewMode parameter lets you switch the editor to diff or source mode.
-            // you can get the diffMarkdown from your backend and pass it here.
             diffSourcePlugin({ diffMarkdown: 'An older version', viewMode: 'rich-text' }),
             toolbarPlugin({
               toolbarContents: () => (
@@ -409,7 +398,7 @@ function helloWorld() {
               ),
             }),
             directivesPlugin({ directiveDescriptors: [AdmonitionDirectiveDescriptor] }),
-            // 모든 플러그인이 등록된 뒤에 와야 활성 플러그인 기준으로 변환기가 구성된다
+            // 앞서 등록된 플러그인들을 기준으로 마크다운 단축키 변환기를 구성하도록 마지막에 배치합니다.
             markdownShortcutPlugin(),
             codeFenceOnEnterPlugin(),
           ]}

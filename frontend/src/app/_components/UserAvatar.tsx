@@ -5,14 +5,13 @@ import { MyProfile } from '@/features/member/types';
 interface UserAvatarProps {
   user: MyProfile | null | undefined;
   size?: number;
-  /** circle(기본): 헤더 등 작은 아바타 / square: 프로필 카드처럼 영역을 가득 채울 때 */
+  /** 아바타 형태를 지정합니다. circle(기본값)은 원형, square는 영역을 가득 채우는 정사각형입니다. */
   shape?: 'circle' | 'square';
 }
 
 /**
- * 구글 OAuth 프로필 URL은 끝의 크기 파라미터(=s96-c) 때문에 기본 96px로 내려와
- * 크게 그리면 화질이 깨진다. 표시 크기에 맞춰(레티나 2배, 96~512 범위) 파라미터를
- * 키워 고해상도를 요청한다. 구글 URL 패턴이 아니면 원본 그대로 둔다.
+ * Google OAuth 프로필 URL의 기본 크기 파라미터(=s96-c)를 레티나 2배 크기(96~512px)로 교체해 고해상도 이미지를 요청합니다.
+ * Google URL 패턴이 아니면 원본 URL을 그대로 반환합니다.
  */
 function withDisplaySize(url: string, size: number): string {
   const target = Math.min(Math.max(size * 2, 96), 512);

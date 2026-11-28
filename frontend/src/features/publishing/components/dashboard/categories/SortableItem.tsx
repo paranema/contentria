@@ -9,8 +9,10 @@ interface SortableItemProps {
   isFirst: boolean;
   prevItemLevel: number;
 
-  isDraggingCurrent: boolean; // 내가 드래그 당하는 중인가?
-  indicatorSide: 'top' | 'bottom' | null; // 선을 어디에 그릴 것인가?
+  /** 현재 항목이나 상위 항목이 드래그 중인지 여부입니다. */
+  isDraggingCurrent: boolean;
+  /** 드롭 위치 표시선을 렌더링할 방향입니다. */
+  indicatorSide: 'top' | 'bottom' | null;
 
   onRemove: (id: string) => void;
   onUpdateName: (id: string, name: string) => void;

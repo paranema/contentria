@@ -1,24 +1,16 @@
 import type { Translation } from '@mdxeditor/editor';
 
-/**
- * MDXEditor 한글 번역 사전.
- *
- * MDXEditor는 모든 UI 문자열을 `translation(key, defaultValue, interpolations)`로
- * 조회한다. 키 목록은 설치된 @mdxeditor/editor 3.50.0 dist에서 추출했으며,
- * 사전에 없는 키는 영어 기본값(defaultValue)으로 폴백되므로 라이브러리 업데이트로
- * 키가 추가되어도 빈 라벨이 생기지 않는다.
- */
-/**
- * MDXEditor의 undo/redo 툴팁과 같은 표기(⌘Z / Ctrl+Z)를 따른다.
- * SSR 중에는 navigator가 없으므로 가드 — 에디터 자체가 ssr:false라 실제 표기는 항상 클라이언트 기준.
- */
+// 운영체제에 맞춰 단축키 안내 표기(⌘Z / Ctrl+Z)를 분기합니다.
 const IS_APPLE =
   typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 const mod = (key: string) => (IS_APPLE ? `⌘${key}` : `Ctrl+${key}`);
 
+/**
+ * MDXEditor UI 문자열의 한국어 번역 사전입니다.
+ * 사전에 없는 키는 라이브러리의 영문 기본값(defaultValue)으로 대체됩니다.
+ */
 const KO: Record<string, string> = {
-  // 툴바 — 서식 토글. 단축키 힌트는 실제 등록된 키에만 붙인다:
-  // ⌘/Ctrl+B·I·U는 lexical 코어, ⌘/Ctrl+K는 MDXEditor link-dialog가 처리.
+  // 서식 토글 툴바 항목입니다. 실제 단축키가 등록된 항목에만 단축키 안내를 함께 표시합니다.
   'toolbar.undo': '실행 취소 {{shortcut}}',
   'toolbar.redo': '다시 실행 {{shortcut}}',
   'toolbar.bold': `굵게 (${mod('B')})`,
@@ -38,7 +30,7 @@ const KO: Record<string, string> = {
   'toolbar.inlineCode': '인라인 코드',
   'toolbar.removeInlineCode': '인라인 코드 해제',
 
-  // 툴바 — 삽입류
+  // 삽입 툴바 항목입니다.
   'toolbar.link': `링크 삽입 (${mod('K')})`,
   'toolbar.image': '이미지 삽입',
   'toolbar.table': '테이블 삽입',
@@ -48,7 +40,7 @@ const KO: Record<string, string> = {
   'toolbar.insertFrontmatter': '프런트매터 삽입',
   'toolbar.editFrontmatter': '프런트매터 편집',
 
-  // 툴바 — 목록/블록 유형
+  // 목록 및 블록 유형 툴바 항목입니다.
   'toolbar.bulletedList': '글머리 기호 목록',
   'toolbar.numberedList': '번호 목록',
   'toolbar.checkList': '체크리스트',
@@ -58,13 +50,13 @@ const KO: Record<string, string> = {
   'toolbar.blockTypes.quote': '인용문',
   'toolbar.blockTypes.heading': '제목 {{level}}',
 
-  // 툴바 — 보기 모드
+  // 보기 모드 전환 툴바 항목입니다.
   'toolbar.richText': '리치 텍스트',
   'toolbar.source': '소스 모드',
   'toolbar.diffMode': '변경 비교',
   'toolbar.toggleGroup': '토글 그룹',
 
-  // 알림 상자(admonition)
+  // 알림 상자(admonition) 항목입니다.
   'admonitions.note': '노트',
   'admonitions.tip': '팁',
   'admonitions.info': '정보',
@@ -73,12 +65,12 @@ const KO: Record<string, string> = {
   'admonitions.changeType': '알림 상자 유형 선택',
   'admonitions.placeholder': '알림 상자 유형',
 
-  // 코드 블록
+  // 코드 블록 항목입니다.
   'codeBlock.language': '코드 블록 언어',
   'codeBlock.selectLanguage': '코드 블록 언어 선택',
   'codeblock.delete': '코드 블록 삭제',
 
-  // 링크 다이얼로그 / 프리뷰
+  // 링크 대화상자 및 미리보기 항목입니다.
   'createLink.url': 'URL',
   'createLink.urlPlaceholder': 'URL을 선택하거나 붙여넣으세요',
   'createLink.text': '링크 텍스트',
@@ -92,11 +84,11 @@ const KO: Record<string, string> = {
   'linkPreview.edit': '링크 URL 편집',
   'linkPreview.remove': '링크 제거',
 
-  // 다이얼로그 공통
+  // 대화상자 공통 버튼 항목입니다.
   'dialogControls.save': '저장',
   'dialogControls.cancel': '취소',
 
-  // 테이블 편집 메뉴
+  // 테이블 편집 메뉴 항목입니다.
   'table.columnMenu': '열 메뉴',
   'table.rowMenu': '행 메뉴',
   'table.textAlignment': '텍스트 정렬',
@@ -111,7 +103,7 @@ const KO: Record<string, string> = {
   'table.deleteRow': '이 행 삭제',
   'table.deleteTable': '테이블 삭제',
 
-  // 이미지 (업로드 다이얼로그는 CustomImageDialog가 대체하지만 인라인 편집 버튼은 스톡)
+  // 이미지 편집 및 업로드 대화상자 항목입니다.
   'imageEditor.editImage': '이미지 편집',
   'imageEditor.deleteImage': '이미지 삭제',
   'uploadImage.dialogTitle': '이미지 업로드',
@@ -124,11 +116,11 @@ const KO: Record<string, string> = {
   'uploadImage.width': '너비:',
   'uploadImage.height': '높이:',
 
-  // 본문 영역 (스크린 리더 라벨)
+  // 본문 편집 영역의 스크린 리더 라벨입니다.
   'contentArea.editableMarkdown': '편집 가능한 마크다운',
 };
 
-/** `{{shortcut}}`, `{{level}}` 같은 머스태시 보간을 지원하는 번역 함수. */
+/** `{{shortcut}}`, `{{level}}` 등의 변수 치환을 지원하는 MDXEditor 한국어 번역 함수입니다. */
 export const mdxEditorKoTranslation: Translation = (key, defaultValue, interpolations) => {
   let value = KO[key] ?? defaultValue;
   if (interpolations) {

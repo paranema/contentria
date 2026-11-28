@@ -6,10 +6,10 @@ import RecentPostsSection, {
 } from '@/features/publishing/components/home/RecentPostsSection';
 import { withAuthors } from '../_composition/posts';
 
-/** How many of the latest posts the home page shows. */
+/** 홈 화면에 노출할 최신 게시글 최대 개수입니다. */
 const RECENT_POSTS = 6;
 
-/** The latest posts with their authors' names; without names if member does not answer. */
+/** 최신 게시글 목록에 작성자 이름을 결합하며, 회원 조회 실패 시 이름 없이 반환합니다. */
 async function recentPostCards(): Promise<RecentPostCard[]> {
   const items = (await getRecentPosts()).items.slice(0, RECENT_POSTS);
   const posts = await withAuthors(items).catch(() =>
@@ -27,9 +27,8 @@ async function recentPostCards(): Promise<RecentPostCard[]> {
 }
 
 /**
- * 사이트 홈 — 콜드스타트 단계의 역할은 "예비 블로거 설득":
- * 1) 히어로 2) 에디터 쇼케이스(주장 대신 증거) 3) 최근 발행된 글(살아있는 사이트 신호,
- *    글이 적으면 자동 숨김). 콘텐츠가 쌓이면 3)을 발견 창구로 점진 확장한다.
+ * 예비 블로거 유입을 위한 홈 화면입니다.
+ * 히어로, 에디터 쇼케이스, 최근 발행 글(게시글 부족 시 자동 숨김) 순서로 구성하며, 향후 콘텐츠 탐색 영역으로 확장합니다.
  */
 export default async function HomePage() {
   const recentPosts = await recentPostCards();

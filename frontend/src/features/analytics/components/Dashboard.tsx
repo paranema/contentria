@@ -9,18 +9,18 @@ import StatGroupCard from './StatGroupCard';
 
 interface DashboardProps {
   blogSlug: string;
-  /** The owner's display name, from member, as the page put it together. */
+  /** 페이지에서 member 컨텍스트로부터 조합한 블로그 소유자 표시 이름입니다. */
   ownerName: string | null;
 }
 
-/** The blog dashboard (analytics 01-rules 흐름 3): one API call that apps/api puts together. */
+/** 단일 API 응답으로 조합된 블로그 관리 대시보드를 렌더링합니다. (analytics 01-rules 흐름 3) */
 export default function Dashboard({ blogSlug, ownerName }: DashboardProps) {
   const { data, isFetching } = useDashboard(blogSlug, DASHBOARD_RANGE);
   const stats = data?.summary;
 
   return (
     <div className="space-y-6">
-      {/* 환영 헤더 — 글쓰기 CTA는 페이지가 아니라 상단 헤더에 일원화돼 있다 */}
+      {/* 글쓰기 버튼은 상단 공통 헤더에 일원화되어 있으므로 환영 문구만 표시합니다. */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">블로그관리 홈</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -28,7 +28,7 @@ export default function Dashboard({ blogSlug, ownerName }: DashboardProps) {
         </p>
       </div>
 
-      {/* 통계: 조회수/방문자 그룹 카드 — 각 카드에 오늘·어제·누적 3열 (티스토리식) */}
+      {/* 조회수와 방문자 지표를 각각 오늘·어제·누적 3열 카드로 표시합니다. */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <StatGroupCard
           title="조회수"
@@ -48,14 +48,13 @@ export default function Dashboard({ blogSlug, ownerName }: DashboardProps) {
         />
       </div>
 
-      {/* 트래픽 차트 — 전체 폭 */}
       <div className="rounded-lg bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-baseline gap-2">
             <h2 className="text-lg font-semibold">트래픽 현황</h2>
             <span className="text-sm text-gray-400">최근 30일</span>
           </div>
-          {/* 범례: 차트의 TRAFFIC_SERIES와 같은 색 정의를 공유 */}
+          {/* 차트 선과 동일한 색상 정의(TRAFFIC_SERIES)를 공유하여 범례를 표시합니다. */}
           <div className="flex items-center gap-4">
             {TRAFFIC_SERIES.map((series) => (
               <span key={series.key} className="flex items-center gap-1.5 text-sm text-gray-600">
@@ -77,7 +76,7 @@ export default function Dashboard({ blogSlug, ownerName }: DashboardProps) {
         )}
       </div>
 
-      {/* 인기 글 — 다음 행. 글 관리로 가는 링크는 사이드바 메뉴가 담당하므로 두지 않는다 */}
+      {/* 글 관리 이동은 사이드바 메뉴가 담당하므로 별도 링크 없이 인기 게시글만 표시합니다. */}
       <div className="rounded-lg bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-baseline gap-2">
           <h2 className="text-lg font-semibold">인기 게시글</h2>

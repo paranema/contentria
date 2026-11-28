@@ -10,15 +10,15 @@ const COMPRESSION_OPTIONS = {
 };
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const MAGIC_NUMBERS: Record<string, { offset: number; bytes: number[] }[]> = {
   'image/jpeg': [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
   'image/png': [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
   'image/gif': [{ offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }],
   'image/webp': [
-    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
-    { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // WEBP
+    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF 컨테이너 헤더입니다.
+    { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // WEBP 포맷 헤더입니다.
   ],
 };
 
@@ -32,9 +32,8 @@ async function validateMagicNumber(file: File): Promise<boolean> {
 }
 
 /**
- * Media 01-rules 흐름 1, 2: checks and compresses the image in the browser, asks for an upload
- * address, puts the file to the storage itself, then has the API check what was stored. Returns
- * the image's public address for the post body. Throws an Error with a message to show.
+ * 브라우저에서 이미지 형식·매직 넘버를 검증하고 압축한 뒤 R2에 업로드하고,
+ * 서버 검증을 거쳐 본문 삽입용 공개 이미지 URL을 반환합니다. (media 01-rules 흐름 1, 2)
  */
 export async function uploadImageToR2(file: File): Promise<string> {
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -51,7 +50,7 @@ export async function uploadImageToR2(file: File): Promise<string> {
     );
   }
 
-  // Compress the image (skip GIFs to preserve animation)
+  // 애니메이션 보존을 위해 GIF는 압축에서 제외합니다.
   const compressedFile =
     file.type === 'image/gif' ? file : await imageCompression(file, COMPRESSION_OPTIONS);
 
@@ -62,7 +61,7 @@ export async function uploadImageToR2(file: File): Promise<string> {
   });
   if (!prepared.success) throw new Error(mediaErrorMessage(prepared.error));
 
-  // The address is signed for exactly this type and size.
+  // 발급받은 URL은 선언된 Content-Type과 파일 크기에 맞춰 서명되어 있습니다.
   const uploadResponse = await fetch(prepared.data.uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': compressedFile.type },

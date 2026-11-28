@@ -13,7 +13,6 @@ const MESSAGES: Record<string, string> = {
   INVALID_REQUEST: '요청을 확인해주세요.',
 };
 
-/** What to tell the person about a failed media request. */
 export function mediaErrorMessage(error: Pick<SerializedError, 'code'>): string {
   return MESSAGES[error.code] ?? '업로드에 실패했습니다. 다시 시도해주세요.';
 }

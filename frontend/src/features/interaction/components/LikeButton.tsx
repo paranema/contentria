@@ -13,11 +13,11 @@ interface LikeButtonProps {
   viewer: Viewer;
   initialLiked: boolean;
   initialCount: number;
-  /** Where to come back to after signing in. */
+  /** 로그인 후 돌아올 경로입니다. */
   loginRedirect: string;
 }
 
-/** Interaction 01-rules 흐름 2: a member likes someone else's post once. */
+/** 타인의 게시글에 좋아요를 토글하는 버튼을 렌더링합니다. (interaction 01-rules 흐름 2) */
 export default function LikeButton({
   postId,
   viewer,

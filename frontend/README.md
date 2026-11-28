@@ -71,13 +71,12 @@ npm test           # 단위 테스트 실행
 
 로컬 실행 시 `.env.sample`을 `.env.local`로 복사해 값을 설정합니다. 운영 환경에서는 컨테이너 기동 시 런타임 환경 변수로 주입합니다([런타임 설정 구조](docs/architecture/03-api-communication.md#런타임-설정)).
 
-| 변수명                           | 설명                                                                                          |
-| -------------------------------- | --------------------------------------------------------------------------------------------- |
-| `API_BASE_URL`                   | Next.js 서버가 호출하는 백엔드 주소입니다. 기본값은 `http://localhost:8080`입니다.            |
-| `EXTERNAL_API_BASE_URL`          | Google OAuth 등 브라우저가 직접 이동하는 백엔드 공개 주소로, `/api` 경로까지 포함합니다.      |
-| `RECAPTCHA_V3_SITE_KEY`          | Google reCAPTCHA v3 사이트 키입니다. 로컬 개발 시 비워 둘 수 있습니다.                        |
-| `RECAPTCHA_V2_CHECKBOX_SITE_KEY` | 추가 검증 시 사용하는 Google reCAPTCHA v2 체크박스 사이트 키입니다.                           |
-| `CDN_BASE_URL`                   | 선택 항목으로, 기본 허용 도메인 외에 `next/image` 허용 호스트를 빌드 시 추가할 때 지정합니다. |
+| 변수명                  | 설명                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `INTERNAL_API_BASE_URL` | Next.js 서버가 호출하는 백엔드 내부 주소입니다. 기본값은 `http://localhost:8080`입니다.                             |
+| `PUBLIC_API_BASE_URL`   | Google OAuth 등 브라우저가 직접 이동하는 백엔드 공개 주소입니다. 비워 두면 현재 도메인 기준 상대 경로로 이동합니다. |
+| `RECAPTCHA_V3_SITE_KEY` | Google reCAPTCHA v3 사이트 키입니다. 로컬 개발 시 비워 둘 수 있습니다.                                              |
+| `RECAPTCHA_V2_SITE_KEY` | 추가 검증 시 사용하는 Google reCAPTCHA v2 사이트 키입니다. 로컬 개발 시 비워 둘 수 있습니다.                        |
 
 ## 배포
 

@@ -6,11 +6,11 @@ import { PostListItem } from '../../types';
 interface PostCardProps {
   blogSlug: string;
   post: PostListItem;
-  /** Like and comment counts, as the page put them together from interaction. */
+  /** 페이지에서 조합해 전달하는 좋아요 및 댓글 수입니다. */
   counts?: { likes: number; comments: number };
 }
 
-/** A published post in a blog's list. */
+/** 블로그 글 목록에 표시되는 발행 글 카드입니다. */
 export default function PostCard({ blogSlug, post, counts }: PostCardProps) {
   return (
     <div className="flex flex-col space-y-2 border-b border-gray-200 py-2">

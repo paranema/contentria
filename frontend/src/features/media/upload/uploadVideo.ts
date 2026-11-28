@@ -2,13 +2,11 @@ import { prepareVideoUploadAction } from '../api/uploads';
 import { mediaErrorMessage } from '../errors';
 
 const ALLOWED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska'];
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
 /**
- * Requests a presigned URL and uploads the video directly to R2 with progress.
- * Uses XMLHttpRequest because `fetch` does not expose upload progress.
- *
- * @returns the created `videoId` (attach it to the post on save).
+ * 서명된 URL을 발급받아 원본 동영상을 진행률 콜백과 함께 R2에 직접 업로드하고 생성된 videoId를 반환합니다.
+ * fetch는 업로드 진행률 이벤트를 지원하지 않으므로 XMLHttpRequest를 사용합니다.
  */
 export async function uploadVideoToR2(
   file: File,
@@ -29,7 +27,7 @@ export async function uploadVideoToR2(
   });
   if (!prepared.success) throw new Error(mediaErrorMessage(prepared.error));
 
-  // Once the original is in the storage, the bucket tells the worker, which transcodes it.
+  // 원본이 스토리지에 저장되면 버킷 이벤트를 통해 워커가 트랜스코딩을 시작합니다.
   await uploadWithProgress(prepared.data.uploadUrl, file, onProgress);
 
   return prepared.data.videoId;

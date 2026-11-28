@@ -15,7 +15,7 @@ import { memberKeys } from '../../hooks/keys';
 
 const CODE_LENGTH = 6;
 
-/** A code mailed to the account's address confirms the withdrawal; then the browser goes home. */
+/** 계정 이메일로 발송된 확인 코드로 탈퇴를 확정하고 홈 화면으로 이동합니다. */
 export default function WithdrawalCard({ email }: { email: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();

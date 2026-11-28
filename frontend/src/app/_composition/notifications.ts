@@ -6,9 +6,8 @@ import type { NotificationEntries } from '@/features/notification/types';
 import { getPublishedTitles } from '@/features/publishing/api/posts';
 
 /**
- * A page of the inbox, named (notification 01-rules 전제 3): notification's ids, publishing's
- * titles of posts still published, member's names of whoever acted. A server action, so the inbox
- * can ask for the next page itself.
+ * 알림 목록 한 페이지에 발행 중인 게시글 제목과 행위자 이름을 조합합니다. (notification 01-rules 전제 3)
+ * 알림함에서 다음 페이지를 직접 요청할 수 있도록 서버 액션으로 제공합니다.
  */
 export async function loadNotifications(cursor?: string | null): Promise<NotificationEntries> {
   const page = await getNotifications(cursor);
