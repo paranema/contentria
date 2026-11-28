@@ -1,14 +1,12 @@
 name: Frontend image
 
-# main에 프론트엔드 변경이 들어오면 정적 검사·단위 테스트를 수행한 뒤
-# 환경 무관 standalone 이미지를 빌드해 GHCR에 올린다.
 on:
   push:
     branches:
       - main
     paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-images.yml'
+      - "frontend/**"
+      - ".github/workflows/frontend-images.yml"
   workflow_dispatch:
 
 permissions:
@@ -35,8 +33,8 @@ jobs:
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies

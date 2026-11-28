@@ -7,8 +7,9 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import { existsSync, readdirSync } from 'node:fs';
 
 /**
- * The features under src/features, one per backend context (docs/architecture.md). Read from the
- * folder so that a new feature gets its boundary without touching this file.
+ * The features under src/features, one per backend context
+ * (docs/architecture/01-module-structure.md). Read from the folder so that a new feature gets its
+ * boundary without touching this file.
  */
 const FEATURES = existsSync('src/features')
   ? readdirSync('src/features', { withFileTypes: true })
@@ -92,7 +93,8 @@ export default [
       ],
     },
   },
-  // Boundaries (docs/architecture.md): shared knows no feature; a feature knows no other feature.
+  // Boundaries (docs/architecture/01-module-structure.md): shared knows no feature; a feature
+  // knows no other feature.
   // What spans features is put together in app/, as apps/api's composition does on the backend.
   {
     files: ['src/shared/**/*.{ts,tsx}'],
